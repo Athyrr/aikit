@@ -47,9 +47,41 @@ in a project never shows a method artifact.
 ## Install
 
 ```bash
-claude plugin marketplace add /home/adam_adhar/ezytail-workspace/aikit
-claude plugin install aikit@aikit-local
+claude plugin marketplace add ~/ezytail-workspace/aikit --scope project
+claude plugin install aikit@aikit-local --scope project
 ```
+
+`--scope project` writes to `ezytail-workspace/.claude/settings.json`: aiKit is
+active in the workspace and nowhere else on the machine.
+
+## Launch
+
+```bash
+aikit/bin/ezy                    # workspace session, every project's agents reachable
+aikit/bin/ezy --only ezylive     # just one
+```
+
+`--add-dir` carries agents and skills across repositories but **not**
+`.mcp.json` — measured. The toolbelt's MCP servers stay unreachable from a
+workspace session, so the debug perimeter holds by construction. Debug still
+starts from inside `ezyflow-tool-belt/`.
+
+## Iterating on the method
+
+Installing a plugin **copies** it into
+`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`, and
+`claude plugin update` compares *versions*, not content — without a bump it
+reports "already at the latest version" and the stale copy keeps running.
+
+```bash
+aikit/bin/deploy [patch|minor|major] "message"
+```
+
+bumps both manifests, checks the hook still emits valid JSON, validates,
+commits, resyncs and updates. **Takes effect in a new session.**
+
+One exception: `projects/*.md` is read from the source tree by the hook, so a
+registry edit is live in the next session with no deploy.
 
 ## Differences from superpowers
 

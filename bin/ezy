@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Launch a Claude session at the workspace root with every registered project
+# surfaced, so their agents and skills are dispatchable without leaving the
+# workspace.
+#
+# --add-dir carries agents and skills across repositories, but NOT .mcp.json:
+# measured, a workspace session with --add-dir ezyflow-tool-belt sees the seven
+# toolbelt skills and none of its MCP servers. The debug perimeter therefore
+# survives this launcher untouched — knowledge crosses, tools do not. Debug
+# sessions still start from inside ezyflow-tool-belt/.
+#
+# Paths come from the registry frontmatter, so adding a project file is enough.
+#
+# Usage: ezy [claude args...]        all registered projects
+#        ezy --only ezylive [args]   just one
+set -euo pipefail
+
+workspace="$(cd "$(dirname "$0")/../.." && pwd)"
+registry="${workspace}/aikit/projects"
+
+only=""
+if [ "${1:-}" = "--only" ]; then only="${2:?--only needs a project name}"; shift 2; fi
+
+compgen -G "${registry}/*.md" > /dev/null 2>&1 \
+  || { echo "ezy: empty registry at ${registry}" >&2; exit 1; }
+
+args=()
+for f in "${registry}"/*.md; do
+  name=$(basename "$f" .md)
+  [ -z "$only" ] || [ "$name" = "$only" ] || continue
+  path=$(awk '/^---[[:space:]]*$/{fm++;next} fm==1 && /^path:/{sub(/^path:[[:space:]]*/,"");print;exit} fm>=2{exit}' "$f")
+  [ -n "$path" ] && [ -d "${workspace}/${path}" ] && args+=(--add-dir "${workspace}/${path}")
+done
+
+[ ${#args[@]} -gt 0 ] || { echo "ezy: no registered project resolved under ${workspace}" >&2; exit 1; }
+
+cd "$workspace"
+exec claude "${args[@]}" "$@"
