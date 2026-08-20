@@ -26,14 +26,24 @@ preamble=$(cat "${PLUGIN_ROOT}/skills/using-aikit/SKILL.md" 2>&1 || echo "Error 
 # reinstall. The bundled copy stays as a fallback.
 #
 # Missing or empty registry degrades to nothing injected.
-workspace="${CLAUDE_PROJECT_DIR:-$PWD}"
+# Walk up from the session's directory: aiKit may be launched from inside any
+# project of the workspace, not only from its root. The registry is found by
+# ancestry, never by assuming the cwd is the workspace.
 registry_dir=""
-for candidate in "${workspace}/aikit/projects" "${workspace}/projects" "${PLUGIN_ROOT}/projects"; do
-    if compgen -G "${candidate}/*.md" > /dev/null 2>&1; then
-        registry_dir="$candidate"
+workspace_root=""
+probe="${CLAUDE_PROJECT_DIR:-$PWD}"
+while [ -n "$probe" ] && [ "$probe" != "/" ]; do
+    if compgen -G "${probe}/aikit/projects/*.md" > /dev/null 2>&1; then
+        registry_dir="${probe}/aikit/projects"
+        workspace_root="$probe"
         break
     fi
+    probe="$(dirname "$probe")"
 done
+if [ -z "$registry_dir" ] && compgen -G "${PLUGIN_ROOT}/projects/*.md" > /dev/null 2>&1; then
+    registry_dir="${PLUGIN_ROOT}/projects"
+    workspace_root="$(dirname "$PLUGIN_ROOT")"
+fi
 
 registry=""
 if [ -n "$registry_dir" ]; then
@@ -59,6 +69,7 @@ if [ -n "$registry_dir" ]; then
     registry=$'\n\n## Workspace projects\n\n'
     registry+=$'| project | path | what it is |\n|---|---|---|\n'
     registry+="${rows}"
+    registry+=$'\nWorkspace root: `'"${workspace_root}"$'` — the `path` column is relative to it.\n'
     registry+=$'\nBefore working on a project, read `'"${registry_dir}"$'/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. **Never work on a project whose registry file you have not read.**'
 fi
 # ---------------------------------------------------------------------------

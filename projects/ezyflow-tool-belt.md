@@ -44,8 +44,21 @@ aikit/bin/ezy --tools          # workspace session + the toolbelt's MCP servers
 
 It wires `--mcp-config ezyflow-tool-belt/.mcp.json --strict-mcp-config`. That
 file is the one apm maintains: no copy, no duplicate, and an `apm install`
-refresh is picked up on the next launch. **Never copy it anywhere** — it holds
-real `Authorization: Bearer` tokens, which is why it is gitignored. It gives
+refresh is picked up on the next launch.
+
+**It holds no secrets.** Verified: the two `Authorization` headers are
+`${VAR:-}` placeholders that the harness resolves at launch from the
+environment; the only literal value is `NATSEYES_URL`. The toolbelt's own
+`CLAUDE.md` explains why the default-syntax placeholder is deliberate — apm's
+regex does not recognise it, so it never prompts and never freezes a token into
+the file. The secrets live in the shell, exported by `toolbelt-env`:
+
+```bash
+eval "$(/home/adam_adhar/ezytail-workspace/ezyflow-tool-belt/toolbelt-env)"
+```
+
+That is what makes the configuration portable: the file can be referenced from
+anywhere, and it only works where the environment is set. It gives
 the tools but **not** the routing skills, so the session guesses at tool names
 — measured. Prefer the scoped route whenever the answer matters.
 
