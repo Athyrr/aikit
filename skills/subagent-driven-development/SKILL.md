@@ -193,12 +193,12 @@ implementation.
 
 | Role | Model | Why |
 |---|---|---|
-| `planner` | **fable** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are. |
-| `reviewer` | **fable** | Same shape of judgement, applied to a diff instead of a spec. |
-| `spike` | **fable** | A spike produces a finding, not code. Analysis, not production. |
-| `implementer` | **opus** | Production work. This is where wrong output costs the most to undo. |
-| `explorer` | sonnet | High-volume reading, low judgement. |
-| `verifier` | sonnet | Runs the registry's command and reports what came back. |
+| `aikit:planner` | **fable** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are. |
+| `aikit:reviewer` | **fable** | Same shape of judgement, applied to a diff instead of a spec. |
+| `aikit:spike` | **fable** | A spike produces a finding, not code. Analysis, not production. |
+| `aikit:implementer` | **opus** | Production work. This is where wrong output costs the most to undo. |
+| `aikit:explorer` | sonnet | High-volume reading, low judgement. |
+| `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
 
 Each archetype carries this in its frontmatter, so dispatching by archetype
 name gets the right model without you specifying one.
@@ -219,7 +219,7 @@ real about the attempt:
 
 - more context in the brief (the interfaces, the constraint, the trap it hit);
 - a narrower target (split the task, dispatch the remainder separately);
-- a `spike` first, so the attempt stops guessing at an unknown.
+- a `aikit:spike` first, so the attempt stops guessing at an unknown.
 
 Re-dispatching the same brief to the same tier is not an attempt. It is a coin
 flip charged to your budget.
@@ -291,7 +291,7 @@ and fix-round diffs need it.
   fix-loop rounds 1-3 resume this agent.
 - **Which agent:** if the task carries an `Agent:` line, dispatch that domain
   expert from the project's registry — it knows conventions the generic
-  archetype does not. Otherwise dispatch `implementer`.
+  archetype does not. Otherwise dispatch `aikit:implementer`.
 - Never dispatch multiple implementation subagents in parallel (conflicts).
   **One exception, and it must hold completely:** the tasks declare
   `Depends on: none`, their Files blocks are disjoint, and each runs in its own
@@ -322,7 +322,7 @@ down or up, and guessing that wrongly is the most expensive mistake available
 to you:
 1. Context problem → down: provide more context, re-dispatch, **record the attempt in the ledger**
 2. Needs more reasoning → down: implementation is already at the ceiling, so change the brief instead — add the interfaces, the constraint or the trap it hit — and record the attempt
-3. Technical unknown → down: dispatch `spike` with one written question and a written budget
+3. Technical unknown → down: dispatch `aikit:spike` with one written question and a written budget
 4. Task too large, or files outside its declared set → **up**: finish the independent tasks, then re-split
 5. The plan or spec is wrong → **up**: stop, write the loop report, do not re-dispatch
 

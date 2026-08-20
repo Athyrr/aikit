@@ -31,10 +31,13 @@ Never spend a retry on a failure that belongs upward. Two questions settle it:
 
 ## Down — the spike
 
-`spike` is an **agent**, dispatched with the Agent tool — not a skill, and not
-`aikit:spike`, which does not exist. Same for the other archetypes: `explorer`,
-`planner`, `implementer`, `reviewer`, `verifier` are dispatched, never invoked
-as skills.
+`aikit:spike` is an **agent**, dispatched with the Agent tool as
+`subagent_type: "aikit:spike"` — never invoked as a skill. Same for the other
+archetypes. The `aikit:` prefix is part of the name: a dispatch on bare `aikit:spike`
+fails with "subagent_type does not exist".
+
+Project domain agents are **not** prefixed: `next_expert`, `ezy-api-expert`,
+`extension_expert`, `designer`.
 
 A spike answers one question. It is not a smaller version of the task.
 

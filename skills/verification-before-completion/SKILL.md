@@ -34,7 +34,7 @@ the spec, and claim `GATES_PASS — human verification required`. Never `PASS`.
 A verdict you cannot establish is worse than no verdict, because it stops
 anyone else from looking.
 
-Dispatch `verifier` for this when you want the measurement separated from the
+Dispatch `aikit:verifier` for this when you want the measurement separated from the
 agent that did the work.
 
 ## The Gate Function

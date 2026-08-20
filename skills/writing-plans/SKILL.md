@@ -104,7 +104,7 @@ include this section.]
 what makes a task parallelisable.]
 
 **Agent:** [a domain expert from the project's registry file when the task
-falls in its area — e.g. `next_expert`. Omit for the generic `implementer`.]
+falls in its area — e.g. `next_expert`. Omit for the generic `aikit:implementer`.]
 
 **Files:**
 - Create: `exact/path/to/file.py`

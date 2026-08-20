@@ -56,11 +56,11 @@ at the workspace root.
 
 | Role | Model |
 |---|---|
-| `planner`, `reviewer`, `spike` | **fable** — evaluative work: planning, judging a diff, answering a question |
-| `implementer` | **opus** — production work, where wrong output costs most to undo |
-| `explorer`, `verifier` | sonnet |
+| `aikit:planner`, `aikit:reviewer`, `aikit:spike` | **fable** — evaluative work: planning, judging a diff, answering a question |
+| `aikit:implementer` | **opus** — production work, where wrong output costs most to undo |
+| `aikit:explorer`, `aikit:verifier` | sonnet |
 
-`reviewer` is always a fresh instance — never the one that wrote the code.
+`aikit:reviewer` is always a fresh instance — never the one that wrote the code.
 
 When a plan task names a project's domain expert (`Agent: next_expert`),
 dispatch that one instead of the generic implementer — **and check its model,

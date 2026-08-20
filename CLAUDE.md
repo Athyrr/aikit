@@ -18,6 +18,19 @@ workspace behaves, including this one.
 - After touching any manifest: `claude plugin validate .`
 - A plugin change only takes effect in a **new** session.
 
+## Agents
+
+- **The dispatch name carries the prefix**: `aikit:planner`, not `planner`.
+  A bare name fails with "subagent_type does not exist". Project domain agents
+  (`next_expert`, …) are not prefixed — they come from their own repository.
+- **A `tools:` list in an agent's frontmatter excludes MCP tools.** Measured:
+  `aikit:explorer`, restricted to `Glob, Grep, Read, Bash, Write, TodoWrite`,
+  sees no `mcp__*` tool at all, while `general-purpose` (tools `*`) inherits
+  every connected server. So an agent that must reach the toolbelt cannot
+  declare a `tools:` list — omit it and constrain by instruction instead.
+- Subagents **inherit** the session's MCP connections. They never establish
+  their own. What the launcher wired is what they get.
+
 ## Attribution
 
 Derived from superpowers (MIT, Jesse Vincent). Keep the notice in `LICENSE`.

@@ -32,14 +32,14 @@ Cross-cutting: `aikit:checking-plan-drift` after every task,
 
 ## The archetypes
 
-`explorer`, `planner`, `implementer`, `reviewer`, `verifier`, `spike` — roles in
-the process, each with a fixed model: **fable** for `planner`, `reviewer` and
-`spike` (evaluative work), **opus** for `implementer` (production work), sonnet
-for `explorer` and `verifier`. Implementation therefore runs at the ceiling,
+`aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`, `aikit:verifier`, `aikit:spike` — roles in
+the process, each with a fixed model: **fable** for `aikit:planner`, `aikit:reviewer` and
+`aikit:spike` (evaluative work), **opus** for `aikit:implementer` (production work), sonnet
+for `aikit:explorer` and `aikit:verifier`. Implementation therefore runs at the ceiling,
 which removes "retry on a stronger model" from the fix loop — see
 `aikit:handling-blockers`. A project's domain agents (`next_expert`, …) are the other axis:
 when a plan task names one, it is dispatched instead of the generic
-`implementer`. The registry says which exist.
+`aikit:implementer`. The registry says which exist.
 
 Phases 1 and 2 are never delegated — a subagent cannot ask the human a
 question.
