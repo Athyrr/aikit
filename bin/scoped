@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Run an instruction inside a project's own perimeter, in a separate Claude
+# process, and print what it reports back.
+#
+# Why a process and not a subagent: an Agent-tool subagent runs inside the
+# caller's session and inherits the MCP servers that session connected at
+# startup. It cannot connect its own, and it cannot re-scope to a directory.
+# A process launched with cwd = <project> loads that project's .mcp.json, its
+# skills and its agents natively — and the subagents IT dispatches inherit
+# them in turn (measured). That is the only way to keep the orchestrator's
+# context free of the toolbelt while still using it.
+#
+# The session persists: the first call creates it, later calls resume it, so a
+# plan's task 1 can open the perimeter and tasks 2..n can work inside it
+# without paying the discovery again.
+#
+# Permissions come from the project's registry frontmatter (`allow:`, `deny:`),
+# not from a blanket bypass. The process can call what the registry blesses and
+# nothing else — a tool that is neither allowed nor denied simply blocks, since
+# nobody is there to approve it.
+#
+# Usage:
+#   scoped <project> <feature> <instruction...>
+#   scoped <project> <feature> @path/to/prompt.md
+set -euo pipefail
+
+workspace="$(cd "$(dirname "$0")/../.." && pwd)"
+registry="${workspace}/aikit/projects"
+
+[ $# -ge 3 ] || { echo "usage: scoped <project> <feature> <instruction...>" >&2; exit 2; }
+project=$1; feature=$2; shift 2
+
+fiche="${registry}/${project}.md"
+[ -f "$fiche" ] || { echo "scoped: no registry entry for '${project}'" >&2; exit 2; }
+
+field() {
+  awk -v key="$1" '
+    /^---[[:space:]]*$/ { fm++; next }
+    fm == 1 && $0 ~ "^" key ":" { sub("^" key ":[[:space:]]*", ""); print; exit }
+    fm >= 2 { exit }
+  ' "$fiche"
+}
+
+path=$(field path)
+dir="${workspace}/${path}"
+[ -d "$dir" ] || { echo "scoped: ${dir} does not exist" >&2; exit 2; }
+
+instruction="$*"
+if [ "${instruction:0:1}" = "@" ]; then
+  f="${instruction:1}"
+  [ -f "$f" ] || { echo "scoped: no such prompt file: ${f}" >&2; exit 2; }
+  instruction=$(cat "$f")
+fi
+
+work="${workspace}/work/${project}/${feature}"
+mkdir -p "$work"
+marker="${work}/.session"
+
+args=()
+read -r -a allow <<< "$(field allow)"
+read -r -a deny  <<< "$(field deny)"
+[ ${#allow[@]} -gt 0 ] && args+=(--allowed-tools "${allow[@]}")
+[ ${#deny[@]}  -gt 0 ] && args+=(--disallowed-tools "${deny[@]}")
+
+if [ -s "$marker" ]; then
+  sid=$(cat "$marker")
+  args+=(--resume "$sid")
+  echo "scoped: resuming ${project} session ${sid}" >&2
+else
+  sid=$(python3 -c "import uuid; print(uuid.uuid4())")
+  printf '%s' "$sid" > "$marker"
+  args+=(--session-id "$sid")
+  echo "scoped: opening ${project} perimeter, session ${sid}" >&2
+fi
+
+cd "$dir"
+exec claude "${args[@]}" -p "$instruction"

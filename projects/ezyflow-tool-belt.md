@@ -3,6 +3,8 @@ name: ezyflow-tool-belt
 path: ezyflow-tool-belt
 summary: monorepo de serveurs MCP exposant la stack ezyflow (commandes, livraisons, logs, NATS) - la boite a outils de diagnostic
 mcp: .mcp.json
+allow: mcp__natseyes mcp__periscope mcp__gaia mcp__ref-match mcp__kube-vigie-recette mcp__kube-vigie-prod Read Grep Glob Skill
+deny: mcp__natseyes__delete_message mcp__natseyes__delete_consumer mcp__natseyes__delete_kv_key mcp__natseyes__replay_message
 ---
 
 # ezyflow-tool-belt
@@ -22,6 +24,20 @@ over MCP. Distributed as an apm package.
 The toolbelt is a tool. aiKit uses it the way a developer does — through the
 MCP servers, from wherever the work is.
 
+**The default route is a scoped process**, so the orchestrator never carries
+the toolbelt:
+
+```bash
+aikit/bin/scoped ezyflow-tool-belt <feature> "<question>"
+```
+
+See `aikit:delegating-to-a-perimeter`. The process runs with `cwd` here, so it
+loads the six MCP servers **and** the seven routing skills natively, and its
+own subagents inherit them. Permissions come from the `allow:` / `deny:` lines
+of this file's frontmatter.
+
+The ad-hoc alternative, for a one-off question with no plan around it:
+
 ```bash
 aikit/bin/ezy --tools          # workspace session + the toolbelt's MCP servers
 ```
@@ -29,7 +45,9 @@ aikit/bin/ezy --tools          # workspace session + the toolbelt's MCP servers
 It wires `--mcp-config ezyflow-tool-belt/.mcp.json --strict-mcp-config`. That
 file is the one apm maintains: no copy, no duplicate, and an `apm install`
 refresh is picked up on the next launch. **Never copy it anywhere** — it holds
-real `Authorization: Bearer` tokens, which is why it is gitignored.
+real `Authorization: Bearer` tokens, which is why it is gitignored. It gives
+the tools but **not** the routing skills, so the session guesses at tool names
+— measured. Prefer the scoped route whenever the answer matters.
 
 `--add-dir` is not involved and not needed. The two flags are orthogonal:
 `--add-dir` carries knowledge without tools, `--mcp-config` carries tools

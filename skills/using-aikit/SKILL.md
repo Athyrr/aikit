@@ -39,8 +39,10 @@ reads its registry file, and routes. Nothing runs before it.
 | 5 | Execute | `aikit:subagent-driven-development` | code, and `sdd/` next to the plan |
 | 6 | Verify | `aikit:verification-before-completion` | the project's completion criterion, met |
 
-Two cross-cutting skills: `aikit:checking-plan-drift` after every task, and
-`aikit:handling-blockers` whenever something fails.
+Three cross-cutting skills: `aikit:checking-plan-drift` after every task,
+`aikit:handling-blockers` whenever something fails, and
+`aikit:delegating-to-a-perimeter` whenever a question needs a project's own
+MCP servers or skills — that work happens in its process, never in yours.
 
 Phases 1 and 2 need the human. They are never delegated to a subagent — a
 subagent cannot ask a question, so a delegated spec is an invented spec.
