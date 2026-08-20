@@ -40,13 +40,15 @@ while [ -n "$probe" ] && [ "$probe" != "/" ]; do
     fi
     probe="$(dirname "$probe")"
 done
-if [ -z "$registry_dir" ] && compgen -G "${PLUGIN_ROOT}/projects/*.md" > /dev/null 2>&1; then
-    registry_dir="${PLUGIN_ROOT}/projects"
-    workspace_root="$(dirname "$PLUGIN_ROOT")"
-fi
+# No fallback to the plugin's bundled copy on purpose. The method is generic and
+# travels everywhere; the registry is one workspace's data. Injecting Ezytail's
+# project table into an unrelated repository would order the agent to route work
+# to projects that are not there.
 
 registry=""
-if [ -n "$registry_dir" ]; then
+if [ -z "$registry_dir" ]; then
+    registry=$'\n\n## No project registry here\n\nThis session is outside a workspace that carries one (`<workspace>/aikit/projects/`). The method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
+elif [ -n "$registry_dir" ]; then
     rows=""
     for f in "${registry_dir}"/*.md; do
         field() {

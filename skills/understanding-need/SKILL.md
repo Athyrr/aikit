@@ -23,6 +23,12 @@ branch, the conventions to load, the domain agents, the completion criterion,
 and the traps. Working on a project whose registry file you have not read is a
 process error, not a shortcut.
 
+**Outside a workspace that carries a registry**, the session context says so.
+The method still applies in full — only the routing step has nothing to route
+to. Establish the same four things from the project's own documentation before
+planning, state that you did, and flag the completion criterion explicitly: it
+is the one a registry would have given you, and phase 6 cannot run without it.
+
 ## 2. Classify the request
 
 | The request is | Route |

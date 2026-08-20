@@ -26,7 +26,8 @@ Then announce "Using [skill] to [purpose]" and follow it exactly. If it has a
 checklist, create a todo per item.
 
 **Every request starts with `aikit:understanding-need`.** It names the project,
-reads its registry file, and routes. Nothing runs before it.
+reads its registry file, and routes. Nothing runs before it. Where no registry
+exists, the method is unchanged — its facts come from the project's own docs.
 
 ## The Phases
 
