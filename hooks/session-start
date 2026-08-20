@@ -17,17 +17,34 @@ preamble=$(cat "${PLUGIN_ROOT}/skills/using-aikit/SKILL.md" 2>&1 || echo "Error 
 # --- project registry -------------------------------------------------------
 # Each projects/<name>.md carries a YAML frontmatter with at least:
 #   name, path, summary
+#
+# The registry is workspace DATA, not plugin code. It is read from the live
+# source directory first, because installing a plugin COPIES it into
+# ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ pinned to a commit:
+# the bundled copy goes stale the moment you edit a project file. Reading the
+# source means a registry edit takes effect in the very next session, with no
+# reinstall. The bundled copy stays as a fallback.
+#
 # Missing or empty registry degrades to nothing injected.
+workspace="${CLAUDE_PROJECT_DIR:-$PWD}"
+registry_dir=""
+for candidate in "${workspace}/aikit/projects" "${workspace}/projects" "${PLUGIN_ROOT}/projects"; do
+    if compgen -G "${candidate}/*.md" > /dev/null 2>&1; then
+        registry_dir="$candidate"
+        break
+    fi
+done
+
 registry=""
-if compgen -G "${PLUGIN_ROOT}/projects/*.md" > /dev/null 2>&1; then
+if [ -n "$registry_dir" ]; then
     rows=""
-    for f in "${PLUGIN_ROOT}"/projects/*.md; do
+    for f in "${registry_dir}"/*.md; do
         field() {
             awk -v key="$1" '
                 /^---[[:space:]]*$/ { fm++; next }
                 fm == 1 && $0 ~ "^" key ":" {
                     sub("^" key ":[[:space:]]*", "")
-                    gsub(/^["'\'']|["'\'']$/, "")
+                    gsub(/^["'"'"']|["'"'"']$/, "")
                     print
                     exit
                 }
@@ -42,7 +59,7 @@ if compgen -G "${PLUGIN_ROOT}/projects/*.md" > /dev/null 2>&1; then
     registry=$'\n\n## Workspace projects\n\n'
     registry+=$'| project | path | what it is |\n|---|---|---|\n'
     registry+="${rows}"
-    registry+=$'\nRead `'"${PLUGIN_ROOT}"$'/projects/<name>.md` before working on a project: it holds the base branch, the domain agents, the completion criterion, and the convention files to load.'
+    registry+=$'\nBefore working on a project, read `'"${registry_dir}"$'/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. **Never work on a project whose registry file you have not read.**'
 fi
 # ---------------------------------------------------------------------------
 
