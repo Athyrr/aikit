@@ -20,12 +20,25 @@ is the failure it exists to prevent.
 
 | # | Phase | Skill |
 |---|---|---|
-| 1 | Understand the need | `aikit:brainstorming` |
-| 2 | Specify | `aikit:brainstorming` |
+| 1 | Understand the need | `aikit:understanding-need` |
+| 2 | Specify | `aikit:brainstorming` → `aikit:writing-specs` |
 | 3 | Plan | `aikit:writing-plans` |
 | 4 | Split into tasks | `aikit:writing-plans` |
 | 5 | Execute | `aikit:subagent-driven-development` |
 | 6 | Verify | `aikit:verification-before-completion` |
+
+Cross-cutting: `aikit:checking-plan-drift` after every task,
+`aikit:handling-blockers` whenever something fails.
+
+## The archetypes
+
+`explorer`, `planner`, `implementer`, `reviewer`, `verifier`, `spike` — roles in
+the process. A project's domain agents (`next_expert`, …) are the other axis:
+when a plan task names one, it is dispatched instead of the generic
+`implementer`. The registry says which exist.
+
+Phases 1 and 2 are never delegated — a subagent cannot ask the human a
+question.
 
 ## Where things live
 

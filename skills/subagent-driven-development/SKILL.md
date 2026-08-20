@@ -147,6 +147,12 @@ a ledger file, not only in todos.
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
   `# SDD ledger — plan: <plan file path>`.
+- **The retry budget lives here, not in your head.** Before each attempt at a
+  task, write `Task N: attempt K/3 — <what changed since the last one>`, and
+  read back the task's existing lines first. Finding `attempt 3/3` already
+  recorded means the budget is spent — escalate, even with no memory of the
+  earlier rounds. Compaction erases attempt counts before it erases anything
+  else.
 - The ledger is your recovery map: the commits it names exist in git even
   when your context no longer remembers creating them. After compaction,
   trust the ledger and `git log` over your own recollection.
@@ -279,7 +285,14 @@ and fix-round diffs need it.
   a pointer to that ledger entry in the dispatch.
 - Record the implementer's agent identity from the dispatch result —
   fix-loop rounds 1-3 resume this agent.
+- **Which agent:** if the task carries an `Agent:` line, dispatch that domain
+  expert from the project's registry — it knows conventions the generic
+  archetype does not. Otherwise dispatch `implementer`.
 - Never dispatch multiple implementation subagents in parallel (conflicts).
+  **One exception, and it must hold completely:** the tasks declare
+  `Depends on: none`, their Files blocks are disjoint, and each runs in its own
+  git worktree (`aikit:using-git-worktrees`). If any of the three is missing,
+  sequence them. A shared file beats any dependency block.
 
 Template: [implementer-prompt.md](implementer-prompt.md)
 
@@ -287,17 +300,27 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path.
+**DONE:** First run the drift check — `aikit:checking-plan-drift`, using the
+BASE you recorded before dispatching. It is mechanical and takes seconds, and
+it is the only thing that catches a plan quietly abandoned. Drift is routed
+with `aikit:handling-blockers` before any review: reviewing code whose scope
+already left the plan reviews the wrong question.
+
+Then generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), and dispatch the task reviewer with the printed path.
 
 **DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
 
 **NEEDS_CONTEXT:** The implementer needs information that wasn't provided. Provide the missing context and re-dispatch.
 
-**BLOCKED:** The implementer cannot complete the task. Assess the blocker:
-1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model
-3. If the task is too large, break it into smaller pieces
-4. If the plan itself is wrong, rule on the correction, ledger it, and re-dispatch with the ruling carried in the dispatch
+**BLOCKED:** The implementer cannot complete the task. **Route it with
+`aikit:handling-blockers`** — the nature of the failure decides whether you go
+down or up, and guessing that wrongly is the most expensive mistake available
+to you:
+1. Context problem → down: provide more context, re-dispatch, **record the attempt in the ledger**
+2. Needs more reasoning → down: re-dispatch with a more capable model, record the attempt
+3. Technical unknown → down: dispatch `spike` with one written question and a written budget
+4. Task too large, or files outside its declared set → **up**: finish the independent tasks, then re-split
+5. The plan or spec is wrong → **up**: stop, write the loop report, do not re-dispatch
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 

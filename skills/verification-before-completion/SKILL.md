@@ -19,12 +19,30 @@ NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
 
 If you haven't run the verification command in this message, you cannot claim it passes.
 
+## The Command Is Not Yours To Invent
+
+**The command that proves the claim is written in the project's registry file**
+(`aikit/projects/<name>.md`, "Completion criterion"). Run that one, as written.
+An equivalent-looking substitute is not evidence — `dotnet test` from the wrong
+directory, or a per-tool suite run from the repository root, fails or passes for
+reasons that have nothing to do with the work.
+
+**Some projects in this workspace have no automated suite.** Their registry
+file says so. There, the Iron Law does not relax — it changes shape: run the
+build and lint gates, then hand the human the manual verification steps from
+the spec, and claim `GATES_PASS — human verification required`. Never `PASS`.
+A verdict you cannot establish is worse than no verdict, because it stops
+anyone else from looking.
+
+Dispatch `verifier` for this when you want the measurement separated from the
+agent that did the work.
+
 ## The Gate Function
 
 ```
 BEFORE claiming any status or expressing satisfaction:
 
-1. IDENTIFY: What command proves this claim?
+1. IDENTIFY: What command proves this claim?  (the registry says)
 2. RUN: Execute the FULL command (fresh, complete)
 3. READ: Full output, check exit code, count failures
 4. VERIFY: Does output confirm the claim?

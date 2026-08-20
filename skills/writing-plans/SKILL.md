@@ -33,6 +33,22 @@ Before defining tasks, map out which files will be created or modified and what 
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
+## The Files Block Is Not Optional
+
+Every task declares the exact files it touches. That single declaration does
+three jobs, and dropping it silently disables all three:
+
+1. `aikit:checking-plan-drift` compares it against `git diff --name-only` after
+   the task — the only mechanical detector of a plan quietly abandoned;
+2. it bounds the implementer's scope, so "I needed one more file" surfaces as a
+   report instead of disappearing into a diff;
+3. **disjoint file sets are what make parallel dispatch safe.** Two tasks that
+   share a file are sequential, whatever their dependency block says.
+
+If a file is needed by the whole plan and owned by no single task (a lockfile,
+a generated manifest), name it in Global Constraints. Otherwise it shows up as
+drift on whichever task happens to touch it.
+
 ## Task Right-Sizing
 
 A task is the smallest unit that carries its own test cycle and is worth a
@@ -83,6 +99,12 @@ include this section.]
 
 ````markdown
 ### Task N: [Component Name]
+
+**Depends on:** [task numbers, or `none`. `none` plus a disjoint file set is
+what makes a task parallelisable.]
+
+**Agent:** [a domain expert from the project's registry file when the task
+falls in its area — e.g. `next_expert`. Omit for the generic `implementer`.]
 
 **Files:**
 - Create: `exact/path/to/file.py`

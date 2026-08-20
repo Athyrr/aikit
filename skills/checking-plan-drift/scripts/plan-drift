@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Compare what a plan task DECLARED it would touch against what git says it did.
+
+Usage:  plan-drift PLAN_FILE TASK_N BASE [HEAD]
+
+Run it from the project repository root. BASE is the commit recorded before
+dispatching the implementer (never HEAD~1 — that silently drops all but the
+last commit of a multi-commit task).
+
+Exit status: 0 = clean, 1 = drift, 2 = usage or parse error.
+"""
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+def task_block(plan_text, n):
+    """The text of '### Task N: ...' up to the next task heading."""
+    pattern = re.compile(rf"^###\s+Task\s+{n}\b.*?$(.*?)(?=^###\s+Task\s+\d|\Z)",
+                         re.MULTILINE | re.DOTALL)
+    m = pattern.search(plan_text)
+    return m.group(1) if m else None
+
+
+def declared_paths(block):
+    """Paths under the **Files:** block: Create/Modify/Test entries.
+
+    Accepts `path`, `path:123-145` and bare paths. Line ranges are stripped —
+    git reports files, not ranges.
+    """
+    files_section = re.search(r"\*\*Files:\*\*(.*?)(?:\n\s*\n|\Z)", block, re.DOTALL)
+    if not files_section:
+        return []
+    out = []
+    for line in files_section.group(1).splitlines():
+        m = re.match(r"\s*[-*]\s*(?:Create|Modify|Test|Delete)\s*:\s*(.+)", line, re.I)
+        if not m:
+            continue
+        path = m.group(1).strip().strip("`").strip()
+        path = re.sub(r":\d+(?:-\d+)?$", "", path)   # drop :123-145
+        if path:
+            out.append(path)
+    return out
+
+
+def main():
+    if len(sys.argv) not in (4, 5):
+        print(__doc__, file=sys.stderr)
+        return 2
+    plan_file, task_n, base = sys.argv[1], sys.argv[2], sys.argv[3]
+    head = sys.argv[4] if len(sys.argv) == 5 else "HEAD"
+
+    text = Path(plan_file).read_text()
+    block = task_block(text, task_n)
+    if block is None:
+        print(f"plan-drift: no 'Task {task_n}' in {plan_file}", file=sys.stderr)
+        return 2
+
+    declared = declared_paths(block)
+    if not declared:
+        print(f"plan-drift: task {task_n} declares no Files: block.", file=sys.stderr)
+        print("Drift cannot be checked. Fix the plan — every task declares its files.",
+              file=sys.stderr)
+        return 2
+
+    try:
+        diff = subprocess.run(["git", "diff", "--name-only", f"{base}..{head}"],
+                              capture_output=True, text=True, check=True)
+    except FileNotFoundError:
+        print("plan-drift: git not found", file=sys.stderr)
+        return 2
+    except subprocess.CalledProcessError as e:
+        print(f"plan-drift: git failed: {e.stderr.strip()}", file=sys.stderr)
+        return 2
+
+    touched = [p for p in diff.stdout.splitlines() if p.strip()]
+    extra = [p for p in touched if p not in declared]
+    untouched = [p for p in declared if p not in touched]
+
+    def show(label, items):
+        print(f"{label} ({len(items)})")
+        for i in items:
+            print(f"  {i}")
+
+    show("DECLARED", declared)
+    show("TOUCHED", touched)
+    print()
+    show("EXTRA — touched but not declared", extra)
+    show("UNTOUCHED — declared but not touched", untouched)
+    print()
+
+    if extra or untouched:
+        print("VERDICT: DRIFT")
+        if extra:
+            print("  Extra files are an unplanned dependency until proven otherwise.")
+            print("  Route with aikit:handling-blockers — this is usually an upward failure.")
+        if untouched:
+            print("  Untouched declared files mean the task is incomplete, or the plan")
+            print("  named a file the work did not need. Decide which, in writing.")
+        return 1
+
+    print("VERDICT: CLEAN — the diff matches what the task declared.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
