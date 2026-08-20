@@ -63,9 +63,10 @@ at the workspace root.
 `reviewer` is always a fresh instance — never the one that wrote the code.
 
 When a plan task names a project's domain expert (`Agent: next_expert`),
-dispatch that one instead of the generic implementer — **and override its model
-to opus**, because the domain experts are set to sonnet. Domain knowledge and
-model tier are separate choices.
+dispatch that one instead of the generic implementer — **and check its model,
+overriding to opus for implementation work.** Domain experts carry their own
+tier and it is not always the right one. Domain knowledge and model tier are
+separate choices.
 
 ## When something fails, the nature of the failure decides the direction
 

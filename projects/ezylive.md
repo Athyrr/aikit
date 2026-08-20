@@ -23,9 +23,18 @@ depending on which side the task touches.
 
 ## Domain agents
 
-`designer`, `extension_expert`, `ezy-api-expert`, `next_expert` — they live in
-`ezylive/ezy_live/.claude/agents/` and are only reachable if the session was
-launched with `--add-dir ezylive/ezy_live`. They cross-route explicitly
+They live in `ezylive/ezy_live/.claude/agents/` and are only reachable if the
+session was launched with `--add-dir ezylive/ezy_live`.
+
+| Expert | Its own model | For implementation work |
+|---|---|---|
+| `extension_expert` | opus | dispatch as-is |
+| `ezy-api-expert` | opus | dispatch as-is |
+| `next_expert` | sonnet | **override to opus** |
+| `designer` | sonnet | **override to opus** |
+
+These files belong to the ezylive repository, not to aiKit — do not edit them
+to fix the tier. Override on the dispatch instead. They cross-route explicitly
 ("NE PAS utiliser pour X → agent Y"); follow that routing rather than picking
 by intuition.
 

@@ -204,10 +204,12 @@ Each archetype carries this in its frontmatter, so dispatching by archetype
 name gets the right model without you specifying one.
 
 **When a task names a project's domain expert instead (`Agent: next_expert`),
-that agent carries its own model** — the ezylive experts are set to sonnet.
-For implementation work, pass an explicit model override on the dispatch so
-the expert runs at opus. Domain knowledge and model tier are separate choices;
-picking the expert must not silently downgrade the tier.
+that agent carries its own model, and it is not necessarily the right tier.**
+Check the project's registry file: on ezylive, `extension_expert` and
+`ezy-api-expert` are already opus, while `designer` and `next_expert` are
+sonnet. For implementation work, pass an explicit model override on the
+dispatch so the expert runs at opus. Domain knowledge and model tier are
+separate choices; picking the expert must never silently downgrade the tier.
 
 ### The consequence you have to plan around
 
