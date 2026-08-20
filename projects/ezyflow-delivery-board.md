@@ -6,11 +6,15 @@ summary: front Next.js listant les livraisons a preparer et en preparation - PAS
 
 # ezyflow-delivery-board
 
+## Identity
+
 | | |
 |---|---|
 | Git root | **none — not a repository yet** |
 | Base branch | n/a |
 | Remote | n/a |
+
+## What it is
 
 Next.js front listing deliveries *to prepare* and *in preparation*, all
 contexts merged, read from the Ezytail data API — the same one the production
@@ -36,6 +40,10 @@ cheap and restores all of the above.
 
 `README.md`. Needs `.env.local` (copy from `.env.example` and fill).
 
+## Domain agents
+
+None.
+
 ## Completion criterion
 
 ```bash
@@ -43,3 +51,13 @@ npm run typecheck      # tsc --noEmit
 npm test               # pretest compiles src/lib, then node --test tests/
 npm run lint
 ```
+
+## Traps
+
+- `pretest` compiles `src/lib/statuses.ts` and `src/lib/resolve.ts` into
+  `.test-build/` before the suite runs. A test failing on a stale `.test-build`
+  is not a test failure — remove the directory and run again.
+- `.env.local` is required and not committed. A missing one fails at runtime,
+  not at build: the symptom looks like an API problem.
+- No repository, so nothing above can be recovered by `git checkout`. Read
+  before overwriting.

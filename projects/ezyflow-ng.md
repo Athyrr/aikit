@@ -6,11 +6,15 @@ summary: plateforme d'integration evenementielle .NET 8 / NATS entre Shopify, Od
 
 # ezyflow-ng
 
+## Identity
+
 | | |
 |---|---|
 | Git root | `ezyflow-ng/` |
 | Base branch / PR base | `release` |
 | Remote | `git@github.com:Ezytail/ezyflow-ng.git` |
+
+## What it is
 
 Event-driven integration platform on .NET Aspire orchestrating data flow
 between e-commerce (Shopify), ERP (Odoo), WMS (Reflex) and warehouse (Ketra)

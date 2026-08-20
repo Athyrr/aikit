@@ -3,17 +3,20 @@ name: ezyflow-tool-belt
 path: ezyflow-tool-belt
 summary: monorepo de serveurs MCP exposant la stack ezyflow (commandes, livraisons, logs, NATS) - la boite a outils de diagnostic
 mcp: .mcp.json
-allow: mcp__natseyes mcp__periscope mcp__gaia mcp__ref-match mcp__kube-vigie-recette mcp__kube-vigie-prod Read Grep Glob Skill
-deny: mcp__natseyes__delete_message mcp__natseyes__delete_consumer mcp__natseyes__delete_kv_key mcp__natseyes__replay_message
+allow: mcp__periscope mcp__gaia mcp__ref-match mcp__kube-vigie-recette mcp__kube-vigie-prod mcp__natseyes__detect_divergence mcp__natseyes__get_consumer mcp__natseyes__get_kv_value mcp__natseyes__get_message mcp__natseyes__get_pending_messages mcp__natseyes__get_pending_subjects mcp__natseyes__get_stream_info mcp__natseyes__list_consumers mcp__natseyes__list_kv_buckets mcp__natseyes__list_kv_keys mcp__natseyes__list_servers mcp__natseyes__list_streams mcp__natseyes__read_messages mcp__natseyes__search_subjects Read Grep Glob Skill
 ---
 
 # ezyflow-tool-belt
+
+## Identity
 
 | | |
 |---|---|
 | Git root | `ezyflow-tool-belt/` |
 | Base branch | `master` |
 | Remote | `git@github.com:Ezytail/ezyflow-tool-belt.git` |
+
+## What it is
 
 Monorepo of servers exposing the ezyflow stack — orders, deliveries, logs,
 product reference data, NATS/JetStream — to humans (web UI, CLI) and to agents
@@ -70,21 +73,25 @@ without knowledge.
 roughly 5-6k tokens resident for the whole session (natseyes alone measures
 2,115). Launch with `--tools` when the work needs diagnosis, not by reflex.
 
-## What is blocked from the workspace, and why
+## The destructive surface
 
 Four natseyes tools mutate **production**: `delete_message`, `delete_consumer`,
-`delete_kv_key` (all annotated `destructiveHint`) and `replay_message`, which
-fans a message out to every consumer of its subject.
+`delete_kv_key` (all annotated `destructiveHint=true`) and `replay_message`,
+which fans a message out to every consumer of its subject.
 
-They are denied in `ezytail-workspace/.claude/settings.json`. A denied MCP tool
-is not refused at call time — it is **removed from the schema**, so it is never
-offered and never attempted.
+**No blocklist stands in their way.** The gate is the ordinary permission
+prompt: in an interactive session a call to any of them stops and asks you.
+The other five servers are read-only by construction — kube-vigie bounds an
+agent's verbs with `READ_VERBS`, and the rest are query surfaces.
 
-The perimeter is therefore no longer "which directory you launched from" but
-something finer and more useful: **read everything from the workspace, mutate
-only from the toolbelt.** A session launched inside `ezyflow-tool-belt/` uses
-that project's settings, not the workspace's, so the deliberate destructive
-work still has its place — just not the same place as writing code.
+The one place a prompt cannot protect you is an **unattended** process, which
+approves nothing. That is why the `allow:` line above whitelists natseyes tool
+by tool rather than the whole server: `bin/scoped` can read everything and
+cannot delete anything, without a blocklist existing anywhere.
+
+*(Worth a look one day: `ref-match` exposes `refmatch_run`, `refmatch_reconcile`
+and `refmatch_refresh`. I have not established whether they mutate. They are
+allowed at server level today.)*
 
 The toolbelt **reads** the ecosystem and writes nothing back to it. A finding
 that requires a code change becomes a task on the target project, never an
@@ -93,6 +100,12 @@ edit from here.
 ## Load before working
 
 `CLAUDE.md` at the root, plus the per-tool `tools/<tool>/CLAUDE.md`.
+
+## Domain agents
+
+None. Its seven skills carry the routing instead — `ezyflow-tools` chooses the
+server, `ezy-expert` holds the domain vocabulary, `ezy-context` fixes the terms.
+They are only loaded where the toolbelt is installed.
 
 ## Completion criterion
 

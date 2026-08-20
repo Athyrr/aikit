@@ -6,11 +6,15 @@ summary: extension navigateur (Chrome MV3 / Firefox MV2) + dashboard Next.js pou
 
 # ezylive
 
+## Identity
+
 | | |
 |---|---|
 | Git root | `ezylive/` — **work in `ezylive/ezy_live/`** |
 | Base branch / PR base | `ezylive-next-gen` |
 | Remote | `git@github.com:Ezytail/ezylive.git` |
+
+## What it is
 
 Two front-ends over one Ezytail backend: `extension/` injects order and incident
 status cards into Shopify / PrestaShop / Odoo back-offices; `web-app/` is a
