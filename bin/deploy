@@ -48,5 +48,5 @@ git add -A
 git commit -q -m "${next}${2:+ - $2}" || echo "→ rien a committer"
 
 claude plugin marketplace update aikit-local  > /dev/null
-claude plugin update aikit@aikit-local --scope project > /dev/null
+claude plugin update aikit@aikit-local --scope user > /dev/null
 echo "→ deploye. Prend effet dans une NOUVELLE session."
