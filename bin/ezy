@@ -1,38 +1,83 @@
 #!/usr/bin/env bash
-# Launch a Claude session at the workspace root with every registered project
-# surfaced, so their agents and skills are dispatchable without leaving the
-# workspace.
+# Launch a Claude session at the workspace root, wired from the registry.
 #
-# --add-dir carries agents and skills across repositories, but NOT .mcp.json:
-# measured, a workspace session with --add-dir ezyflow-tool-belt sees the seven
-# toolbelt skills and none of its MCP servers. The debug perimeter therefore
-# survives this launcher untouched — knowledge crosses, tools do not. Debug
-# sessions still start from inside ezyflow-tool-belt/.
+# Two independent switches, because the harness treats them independently:
 #
-# Paths come from the registry frontmatter, so adding a project file is enough.
+#   --add-dir    carries a project's agents and skills into the session.
+#                It does NOT carry that project's .mcp.json, and it does NOT
+#                load its CLAUDE.md — both measured. Cost is the descriptions
+#                only, ~1.4k tokens for the whole workspace.
 #
-# Usage: ezy [claude args...]        all registered projects
-#        ezy --only ezylive [args]   just one
+#   --mcp-config carries a project's MCP servers. It does NOT carry its skills
+#                or agents. Cost is the tool schemas, ~5-6k tokens for the
+#                toolbelt's six servers — hence opt-in.
+#
+# Knowledge and tools are orthogonal. Pick what the session actually needs.
+#
+# Paths and MCP files come from the registry frontmatter (`path:`, `mcp:`),
+# so adding a project file is enough — nothing here to maintain in parallel.
+#
+# Usage:
+#   ezy                          agents + skills of every registered project
+#   ezy --tools                  ... plus the MCP servers projects declare
+#   ezy --no-dirs --tools        MCP only, no agents or skills surfaced
+#   ezy --only ezylive           one project
 set -euo pipefail
 
 workspace="$(cd "$(dirname "$0")/../.." && pwd)"
 registry="${workspace}/aikit/projects"
 
-only=""
-if [ "${1:-}" = "--only" ]; then only="${2:?--only needs a project name}"; shift 2; fi
+only=""; want_tools=0; want_dirs=1
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only)     only="${2:?--only needs a project name}"; shift 2 ;;
+    --tools)    want_tools=1; shift ;;
+    --no-dirs)  want_dirs=0; shift ;;
+    *)          break ;;
+  esac
+done
 
 compgen -G "${registry}/*.md" > /dev/null 2>&1 \
   || { echo "ezy: empty registry at ${registry}" >&2; exit 1; }
+
+field() {  # field <file> <key>
+  awk -v key="$2" '
+    /^---[[:space:]]*$/ { fm++; next }
+    fm == 1 && $0 ~ "^" key ":" { sub("^" key ":[[:space:]]*", ""); print; exit }
+    fm >= 2 { exit }
+  ' "$1"
+}
 
 args=()
 for f in "${registry}"/*.md; do
   name=$(basename "$f" .md)
   [ -z "$only" ] || [ "$name" = "$only" ] || continue
-  path=$(awk '/^---[[:space:]]*$/{fm++;next} fm==1 && /^path:/{sub(/^path:[[:space:]]*/,"");print;exit} fm>=2{exit}' "$f")
-  [ -n "$path" ] && [ -d "${workspace}/${path}" ] && args+=(--add-dir "${workspace}/${path}")
+  path=$(field "$f" path)
+  [ -n "$path" ] && [ -d "${workspace}/${path}" ] || continue
+
+  [ "$want_dirs" = 1 ] && args+=(--add-dir "${workspace}/${path}")
+
+  if [ "$want_tools" = 1 ]; then
+    mcp=$(field "$f" mcp)
+    if [ -n "$mcp" ]; then
+      full="${workspace}/${path}/${mcp}"
+      if [ -f "$full" ]; then
+        args+=(--mcp-config "$full")
+      else
+        echo "ezy: ${name} declares mcp: ${mcp} but ${full} is missing —" >&2
+        echo "     run 'apm install' in ${path} to generate it." >&2
+      fi
+    fi
+  fi
 done
 
-[ ${#args[@]} -gt 0 ] || { echo "ezy: no registered project resolved under ${workspace}" >&2; exit 1; }
+# --strict-mcp-config only when we brought our own: otherwise it would also
+# suppress the user-scope servers a bare session legitimately expects.
+if [ "$want_tools" = 1 ] && printf '%s\n' "${args[@]:-}" | grep -q -- '--mcp-config'; then
+  args+=(--strict-mcp-config)
+fi
+
+[ ${#args[@]} -gt 0 ] || { echo "ezy: nothing to wire under ${workspace}" >&2; exit 1; }
 
 cd "$workspace"
 exec claude "${args[@]}" "$@"

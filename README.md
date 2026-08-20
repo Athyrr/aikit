@@ -74,14 +74,28 @@ active in the workspace and nowhere else on the machine.
 ## Launch
 
 ```bash
-aikit/bin/ezy                    # workspace session, every project's agents reachable
-aikit/bin/ezy --only ezylive     # just one
+aikit/bin/ezy                    # agents + skills of every registered project
+aikit/bin/ezy --tools            # ... plus the MCP servers projects declare
+aikit/bin/ezy --no-dirs --tools  # MCP only
+aikit/bin/ezy --only ezylive     # one project
 ```
 
-`--add-dir` carries agents and skills across repositories but **not**
-`.mcp.json` — measured. The toolbelt's MCP servers stay unreachable from a
-workspace session, so the debug perimeter holds by construction. Debug still
-starts from inside `ezyflow-tool-belt/`.
+**Two orthogonal switches**, because the harness treats them independently:
+
+| | carries | does not carry | cost |
+|---|---|---|---|
+| `--add-dir` | agents, skills | `.mcp.json`, `CLAUDE.md` | ~1.4k tok, whole workspace |
+| `--mcp-config` | MCP servers | skills, agents | ~5-6k tok for the toolbelt's 49 tools |
+
+Both measured. `--mcp-config` points at the toolbelt's own `.mcp.json` — the
+file apm maintains — so there is no copy to keep in sync, and none of its
+`Bearer` tokens are duplicated anywhere.
+
+Tools are opt-in because of that cost, not because of a boundary. The boundary
+is enforced elsewhere and more precisely: the four destructive natseyes tools
+are denied in `ezytail-workspace/.claude/settings.json`, which **removes them
+from the schema** rather than refusing them at call time. Read everything from
+the workspace; mutate only from a session launched inside the toolbelt.
 
 ## Iterating on the method
 

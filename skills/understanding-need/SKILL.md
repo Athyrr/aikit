@@ -28,6 +28,7 @@ process error, not a shortcut.
 | The request is | Route |
 |---|---|
 | Something is broken / behaves wrong | `aikit:systematic-debugging` — you are diagnosing, not building |
+| … and the diagnosis needs the live systems | the toolbelt's MCP servers must be connected. If they are not, say so and stop: the session has to be relaunched with `aikit/bin/ezy --tools`. Do not guess at production state from the code. |
 | Build, add, change, remove behaviour | `aikit:brainstorming` — continue to phase 2 |
 | "How does X work / where is Y" | Answer it. No feature directory, no spec. |
 | Too unclear to classify | Ask one question. Do not open a directory on a guess. |

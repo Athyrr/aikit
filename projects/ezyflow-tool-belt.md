@@ -1,7 +1,8 @@
 ---
 name: ezyflow-tool-belt
 path: ezyflow-tool-belt
-summary: monorepo de serveurs MCP exposant la stack ezyflow (commandes, livraisons, logs, NATS) - DEBUG UNIQUEMENT
+summary: monorepo de serveurs MCP exposant la stack ezyflow (commandes, livraisons, logs, NATS) - la boite a outils de diagnostic
+mcp: .mcp.json
 ---
 
 # ezyflow-tool-belt
@@ -16,17 +17,43 @@ Monorepo of servers exposing the ezyflow stack — orders, deliveries, logs,
 product reference data, NATS/JetStream — to humans (web UI, CLI) and to agents
 over MCP. Distributed as an apm package.
 
-## Perimeter — read this before anything else
+## How to reach it
 
-**The toolbelt is used from the toolbelt.** Its MCP servers only connect when
-the session's own project root carries the `.mcp.json` — measured: a workspace
-session with `--add-dir ezyflow-tool-belt` gets the seven skills but **none of
-the MCP servers**. That is the intended boundary, and the harness enforces it
-for free: knowledge crosses, tools do not.
+The toolbelt is a tool. aiKit uses it the way a developer does — through the
+MCP servers, from wherever the work is.
 
-So: **debug work happens in a session launched from this directory.** A
-workspace session may read the toolbelt's skills for vocabulary and diagnosis;
-it cannot and must not reach the MCP tools.
+```bash
+aikit/bin/ezy --tools          # workspace session + the toolbelt's MCP servers
+```
+
+It wires `--mcp-config ezyflow-tool-belt/.mcp.json --strict-mcp-config`. That
+file is the one apm maintains: no copy, no duplicate, and an `apm install`
+refresh is picked up on the next launch. **Never copy it anywhere** — it holds
+real `Authorization: Bearer` tokens, which is why it is gitignored.
+
+`--add-dir` is not involved and not needed. The two flags are orthogonal:
+`--add-dir` carries knowledge without tools, `--mcp-config` carries tools
+without knowledge.
+
+**It is opt-in, and the reason is cost**: 49 tool schemas across six servers,
+roughly 5-6k tokens resident for the whole session (natseyes alone measures
+2,115). Launch with `--tools` when the work needs diagnosis, not by reflex.
+
+## What is blocked from the workspace, and why
+
+Four natseyes tools mutate **production**: `delete_message`, `delete_consumer`,
+`delete_kv_key` (all annotated `destructiveHint`) and `replay_message`, which
+fans a message out to every consumer of its subject.
+
+They are denied in `ezytail-workspace/.claude/settings.json`. A denied MCP tool
+is not refused at call time — it is **removed from the schema**, so it is never
+offered and never attempted.
+
+The perimeter is therefore no longer "which directory you launched from" but
+something finer and more useful: **read everything from the workspace, mutate
+only from the toolbelt.** A session launched inside `ezyflow-tool-belt/` uses
+that project's settings, not the workspace's, so the deliberate destructive
+work still has its place — just not the same place as writing code.
 
 The toolbelt **reads** the ecosystem and writes nothing back to it. A finding
 that requires a code change becomes a task on the target project, never an
