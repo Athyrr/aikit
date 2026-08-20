@@ -9,7 +9,7 @@ workspace behaves, including this one.
   real session. Cut before you add.
 - `skills/using-aikit/SKILL.md` is injected **in full** at every session start
   and after every compaction. Adding ten lines there taxes every session
-  forever. Keep it under ~100 lines.
+  forever. Keep it under ~120 lines (it is at 118, and ~1,600 tokens).
 - Use `aikit:writing-skills` when creating or editing a skill.
 - After touching `hooks/session-start`, verify it still emits valid JSON:
   ```bash

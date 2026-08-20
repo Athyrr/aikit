@@ -34,18 +34,33 @@ reads its registry file, and routes. Nothing runs before it.
 |---|---|---|---|
 | 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
 | 2 | Specify | `aikit:brainstorming` then `aikit:writing-specs` | `work/<project>/<feature>/spec.md` |
+| 2.5 | Impact | dispatch the project's domain expert, consultatively | `work/<project>/<feature>/impact.md` |
 | 3 | Plan | `aikit:writing-plans` | `work/<project>/<feature>/plan.md` |
 | 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
 | 5 | Execute | `aikit:subagent-driven-development` | code, and `sdd/` next to the plan |
 | 6 | Verify | `aikit:verification-before-completion` | the project's completion criterion, met |
 
-Three cross-cutting skills: `aikit:checking-plan-drift` after every task,
-`aikit:handling-blockers` whenever something fails, and
-`aikit:delegating-to-a-perimeter` whenever a question needs a project's own
-MCP servers or skills — that work happens in its process, never in yours.
+Phase 2.5 asks the expert what a doc cannot answer: *which files does this
+spec touch, what are the traps, how would you cut it?* It writes no code.
 
-Phases 1 and 2 need the human. They are never delegated to a subagent — a
-subagent cannot ask a question, so a delegated spec is an invented spec.
+Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
+`aikit:checking-plan-drift` after every task, `aikit:handling-blockers` on any
+failure, `aikit:delegating-to-a-perimeter` when a question needs a project's
+own MCP servers.
+
+## What loads where
+
+> **Big reads happen in contexts that get thrown away.**
+
+A subagent reads the 27,000-token doc, returns a 300-token finding, and dies.
+**You hold the plan and the state — nothing else**, around 10k.
+
+Never open a large doc whole: the registry routes each kind of task to the
+section it needs. Pass **paths, not contents**. Full table:
+`aikit:loading-policy`.
+
+Phases 1 and 2 need the human, so they are never delegated: a subagent cannot
+ask a question, and a delegated spec is an invented spec.
 
 **The artifact is the memory, not the conversation.** Each phase ends with a
 file. Never chain two phases in one context hoping to remember the first.
@@ -64,11 +79,9 @@ at the workspace root.
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.
 
-When a plan task names a project's domain expert (`Agent: next_expert`),
-dispatch that one instead of the generic implementer — **and check its model,
-overriding to opus for implementation work.** Domain experts carry their own
-tier and it is not always the right one. Domain knowledge and model tier are
-separate choices.
+When a task names a domain expert (`Agent: next_expert`), dispatch it instead
+of the generic implementer, **overriding its model to opus** for implementation
+work: experts carry their own tier and it is often lower.
 
 ## When something fails, the nature of the failure decides the direction
 
@@ -91,12 +104,10 @@ These thoughts mean STOP — you're rationalizing:
 
 | Thought | Reality |
 |---------|---------|
-| "This is just a simple question" | Questions are tasks. Check for skills. |
 | "I need more context first" | Skill check comes BEFORE clarifying questions. |
-| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
 | "This doesn't need a formal skill" | If a skill exists, use it. |
 | "I remember this skill" | Skills evolve. Read the current version. |
-| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "I'll read the file myself, it's quicker" | Quicker now, resident forever. Dispatch. |
 | "The plan is basically right" | Basically right is a spec problem. Go up. |
 | "I'll widen the scope slightly" | That is drift. Report it instead. |
 

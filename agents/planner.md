@@ -12,9 +12,15 @@ method — read the skill.
 
 ## Before you plan
 
-Read, in this order: the project's registry file, the spec, then the code the
-spec touches. A plan written without reading the code invents file paths, and
-invented paths make every later drift check meaningless.
+Read, in this order: the project's registry file, the spec, `impact.md` if
+phase 2.5 produced one, then the code the spec touches. A plan written without
+reading the code invents file paths, and invented paths make every later drift
+check meaningless.
+
+**Read documentation in slices.** The registry file carries a routing table:
+this kind of task → that section, with its cost. `ezyflow-ng/EVENT_CHAINS.md`
+is 27,400 tokens; the slice you need is rarely above 4,000. Opening the file
+whole spends your budget on text that has nothing to do with the spec.
 
 ## Non-negotiable
 

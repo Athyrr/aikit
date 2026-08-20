@@ -43,7 +43,14 @@ updated: 2026-08-20
 # [Feature] — Spec
 
 Plan: [[plan]] · Status: [[status]]
+
+> **Asked for:** "<the human's request, quoted verbatim>"
 ```
+
+The verbatim quote is not decoration. Between here and a task brief the request
+is reformulated four times — spec, plan, brief, dispatch — and each
+reformulation is a chance to drift. Quoted once, it can be checked at every
+level. Carry it into each task brief too.
 
 `base_sha` is the commit the spec was written against. Months later it is the
 only way to tell whether the spec describes the code you are looking at. On a
@@ -72,7 +79,14 @@ The wikilinks cost nothing and make the artifact directory navigable as a vault.
 A spec with an open question is not agreed. Either resolve it with the human or
 mark the affected scope out-of-scope for this pass.
 
-Set `status: agreed`, then continue to `aikit:writing-plans`.
+Set `status: agreed`, then run **phase 2.5** before planning: dispatch the
+project's domain expert consultatively — *"here is the spec: which files does
+it touch, what are the traps, how would you cut it? Write no code."* — and have
+it write `work/<project>/<feature>/impact.md`.
+
+The expert answers what a document cannot: a judgement on **this** spec. Skip
+2.5 only where the registry lists no domain expert. Then continue to
+`aikit:writing-plans`.
 
 ## Red flags
 
