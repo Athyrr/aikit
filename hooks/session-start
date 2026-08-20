@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# SessionStart hook for the aiKit plugin.
+#
+# Injects two things into every session (startup, /clear, and after compaction):
+#   1. the full text of the using-aikit skill  -> the method itself
+#   2. a compact table of the workspace projects -> the router
+#
+# The compaction matcher is the point: the method survives context loss.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+preamble=$(cat "${PLUGIN_ROOT}/skills/using-aikit/SKILL.md" 2>&1 || echo "Error reading using-aikit skill")
+
+# --- project registry -------------------------------------------------------
+# Each projects/<name>.md carries a YAML frontmatter with at least:
+#   name, path, summary
+# Missing or empty registry degrades to nothing injected.
+registry=""
+if compgen -G "${PLUGIN_ROOT}/projects/*.md" > /dev/null 2>&1; then
+    rows=""
+    for f in "${PLUGIN_ROOT}"/projects/*.md; do
+        field() {
+            awk -v key="$1" '
+                /^---[[:space:]]*$/ { fm++; next }
+                fm == 1 && $0 ~ "^" key ":" {
+                    sub("^" key ":[[:space:]]*", "")
+                    gsub(/^["'\'']|["'\'']$/, "")
+                    print
+                    exit
+                }
+                fm >= 2 { exit }
+            ' "$f"
+        }
+        n=$(field name);    [ -n "$n" ] || n="$(basename "$f" .md)"
+        p=$(field path);    [ -n "$p" ] || p="?"
+        s=$(field summary); [ -n "$s" ] || s="-"
+        rows+="| ${n} | ${p} | ${s} |"$'\n'
+    done
+    registry=$'\n\n## Workspace projects\n\n'
+    registry+=$'| project | path | what it is |\n|---|---|---|\n'
+    registry+="${rows}"
+    registry+=$'\nRead `'"${PLUGIN_ROOT}"$'/projects/<name>.md` before working on a project: it holds the base branch, the domain agents, the completion criterion, and the convention files to load.'
+fi
+# ---------------------------------------------------------------------------
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+body=$(escape_for_json "${preamble}${registry}")
+
+session_context="<EXTREMELY_IMPORTANT>\naiKit is active.\n\n**Below is the full content of your 'aikit:using-aikit' skill - your entry point to the method. For every other skill, use the 'Skill' tool.**\n\n${body}\n</EXTREMELY_IMPORTANT>"
+
+# printf rather than a heredoc: bash 5.3+ hangs on heredocs here.
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+
+exit 0
