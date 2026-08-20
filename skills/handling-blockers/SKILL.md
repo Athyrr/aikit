@@ -56,9 +56,11 @@ spike — it is an unplanned dependency. **Go up.**
 ## Down — the fix loop
 
 - The budget is **three attempts** unless the plan says otherwise.
-- Each attempt must change something real: more context, a different model, a
-  narrower target. Re-dispatching the same prompt to the same model is not an
-  attempt, it is a coin flip.
+- Each attempt must change something real. **Not the model** — implementation
+  already runs at the ceiling (opus), so the usual "escalate a tier" move does
+  not exist here. What is left: more context in the brief, a narrower target,
+  or a spike first so the attempt stops guessing. Re-dispatching the same brief
+  to the same tier is not an attempt, it is a coin flip charged to your budget.
 - After the budget: escalate. Do not extend it silently.
 
 ## The budget lives in the ledger, not in your head

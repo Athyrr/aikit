@@ -33,7 +33,11 @@ Cross-cutting: `aikit:checking-plan-drift` after every task,
 ## The archetypes
 
 `explorer`, `planner`, `implementer`, `reviewer`, `verifier`, `spike` — roles in
-the process. A project's domain agents (`next_expert`, …) are the other axis:
+the process, each with a fixed model: **fable** for `planner`, `reviewer` and
+`spike` (evaluative work), **opus** for `implementer` (production work), sonnet
+for `explorer` and `verifier`. Implementation therefore runs at the ceiling,
+which removes "retry on a stronger model" from the fix loop — see
+`aikit:handling-blockers`. A project's domain agents (`next_expert`, …) are the other axis:
 when a plan task names one, it is dispatched instead of the generic
 `implementer`. The registry says which exist.
 

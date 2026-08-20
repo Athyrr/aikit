@@ -52,12 +52,20 @@ file. Never chain two phases in one context hoping to remember the first.
 changes themselves. Specs, plans, ledgers and scratch all live under `work/`
 at the workspace root.
 
-## The archetypes
+## The archetypes, and their fixed models
 
-Dispatch by role: `explorer` (reconnaissance), `planner`, `implementer`,
-`reviewer` (always a fresh instance — never the one that wrote the code),
-`verifier`, `spike`. When a plan task names a project's domain expert
-(`Agent: next_expert`), dispatch that one instead of the generic implementer.
+| Role | Model |
+|---|---|
+| `planner`, `reviewer`, `spike` | **fable** — evaluative work: planning, judging a diff, answering a question |
+| `implementer` | **opus** — production work, where wrong output costs most to undo |
+| `explorer`, `verifier` | sonnet |
+
+`reviewer` is always a fresh instance — never the one that wrote the code.
+
+When a plan task names a project's domain expert (`Agent: next_expert`),
+dispatch that one instead of the generic implementer — **and override its model
+to opus**, because the domain experts are set to sonnet. Domain knowledge and
+model tier are separate choices.
 
 ## When something fails, the nature of the failure decides the direction
 
@@ -85,9 +93,7 @@ These thoughts mean STOP — you're rationalizing:
 | "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
 | "This doesn't need a formal skill" | If a skill exists, use it. |
 | "I remember this skill" | Skills evolve. Read the current version. |
-| "The skill is overkill" | Simple things become complex. Use it. |
 | "I'll just do this one thing first" | Check BEFORE doing anything. |
-| "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
 | "The plan is basically right" | Basically right is a spec problem. Go up. |
 | "I'll widen the scope slightly" | That is drift. Report it instead. |
 

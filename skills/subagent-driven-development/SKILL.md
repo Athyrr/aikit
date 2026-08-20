@@ -189,40 +189,42 @@ implementation.
 
 ## Model Selection
 
-Use the least powerful model that can handle each role to conserve cost and increase speed.
+**aiKit fixes the model per role. It is not a per-task judgement call.**
 
-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+| Role | Model | Why |
+|---|---|---|
+| `planner` | **fable** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are. |
+| `reviewer` | **fable** | Same shape of judgement, applied to a diff instead of a spec. |
+| `spike` | **fable** | A spike produces a finding, not code. Analysis, not production. |
+| `implementer` | **opus** | Production work. This is where wrong output costs the most to undo. |
+| `explorer` | sonnet | High-volume reading, low judgement. |
+| `verifier` | sonnet | Runs the registry's command and reports what came back. |
 
-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
+Each archetype carries this in its frontmatter, so dispatching by archetype
+name gets the right model without you specifying one.
 
-**Architecture and design tasks**: use the most capable available model.
-The final whole-branch review is one of these — dispatch it on the most
-capable available model, not the session default.
+**When a task names a project's domain expert instead (`Agent: next_expert`),
+that agent carries its own model** — the ezylive experts are set to sonnet.
+For implementation work, pass an explicit model override on the dispatch so
+the expert runs at opus. Domain knowledge and model tier are separate choices;
+picking the expert must not silently downgrade the tier.
 
-**Review tasks**: choose the model with the same judgment, scaled to the
-diff's size, complexity, and risk. A small mechanical diff does not need the
-most capable model; a subtle concurrency change does. Scoped re-reviews of
-small fix diffs take a cheap-to-mid tier.
+### The consequence you have to plan around
 
-**Fix-loop escalation (rounds 4-5)**: use a model at least one tier above
-the implementer that got stuck.
+Implementation already runs at the ceiling. **"Re-dispatch with a more capable
+model" is not an available retry.** A retry must therefore change something
+real about the attempt:
 
-**Always specify the model explicitly when dispatching a subagent.** An
-omitted model inherits your session's model — often the most capable and
-most expensive — which silently defeats this section.
+- more context in the brief (the interfaces, the constraint, the trap it hit);
+- a narrower target (split the task, dispatch the remainder separately);
+- a `spike` first, so the attempt stops guessing at an unknown.
 
-**Turn count beats token price.** Wall-clock and context cost scale with how
-many turns a subagent takes, and the cheapest models routinely take 2-3× the
-turns on multi-step work — costing more overall. Use a mid-tier model as the
-floor for reviewers and for implementers working from prose descriptions.
-When the task's plan text contains the complete code to write, the
-implementation is transcription plus testing: use the cheapest tier for
-that implementer. Single-file mechanical fixes also take the cheapest tier.
+Re-dispatching the same brief to the same tier is not an attempt. It is a coin
+flip charged to your budget.
 
-**Task complexity signals (implementation tasks):**
-- Touches 1-2 files with a complete spec → cheap model
-- Touches multiple files with integration concerns → standard model
-- Requires design judgment or broad codebase understanding → most capable model
+**Always pass the model explicitly when you dispatch anything that is not one
+of these archetypes.** An omitted model inherits your session's, which
+silently defeats the table above.
 
 ## The Task Loop
 
@@ -317,7 +319,7 @@ Then generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, 
 down or up, and guessing that wrongly is the most expensive mistake available
 to you:
 1. Context problem → down: provide more context, re-dispatch, **record the attempt in the ledger**
-2. Needs more reasoning → down: re-dispatch with a more capable model, record the attempt
+2. Needs more reasoning → down: implementation is already at the ceiling, so change the brief instead — add the interfaces, the constraint or the trap it hit — and record the attempt
 3. Technical unknown → down: dispatch `spike` with one written question and a written budget
 4. Task too large, or files outside its declared set → **up**: finish the independent tasks, then re-split
 5. The plan or spec is wrong → **up**: stop, write the loop report, do not re-dispatch

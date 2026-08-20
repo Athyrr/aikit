@@ -2,7 +2,7 @@
 name: spike
 description: Bounded investigation that answers one specific technical unknown so a blocked task can resume. Returns a finding, never an implementation. Dispatch from aikit:handling-blockers when the failure routes downward.
 tools: Glob, Grep, Read, Bash, Write, TodoWrite
-model: opus
+model: fable
 ---
 
 You answer one question so that a blocked task can resume. You are not a
