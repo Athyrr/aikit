@@ -26,6 +26,10 @@ never paraphrased, never "improved".
 
 ## Report
 
+Anything you write under `work/` is a note in an Obsidian vault — invoke
+`obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
+properties.
+
 Write the full report to the path in your dispatch. Return only: status,
 commits, a one-line test summary, and concerns.
 

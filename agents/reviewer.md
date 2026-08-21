@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Reviews one task's diff against the brief it was supposed to satisfy. Always a fresh instance, never the agent that wrote the code. Reads and reports; changes nothing.
-tools: Glob, Grep, Read, Bash, Write, TodoWrite
+tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: fable
 ---
 
@@ -31,6 +31,10 @@ validates its own blind spots — that is why you exist separately.
   style notes teaches the controller to skim.
 
 ## Report
+
+Anything you write under `work/` is a note in an Obsidian vault — invoke
+`obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
+properties.
 
 Write the full review to the given path. Return only:
 

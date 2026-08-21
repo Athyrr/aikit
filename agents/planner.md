@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Turns an agreed spec into an implementation plan split into bite-sized tasks, each declaring the exact files it touches. Dispatch for phase 3-4. Reads the codebase, writes only the plan file.
-tools: Glob, Grep, Read, Bash, Write, TodoWrite
+tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: fable
 ---
 
@@ -43,6 +43,10 @@ interfaces block, can finish it and prove it. If you cannot describe its
 verification in one line, it is too big — split it.
 
 ## Report
+
+Anything you write under `work/` is a note in an Obsidian vault — invoke
+`obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
+properties.
 
 Return the plan path, the task count, which tasks are parallelisable, and any
 place where the spec was silent and you had to choose. That last list is what

@@ -1,7 +1,7 @@
 ---
 name: spike
 description: Bounded investigation that answers one specific technical unknown so a blocked task can resume. Returns a finding, never an implementation. Dispatch from aikit:handling-blockers when the failure routes downward.
-tools: Glob, Grep, Read, Bash, Write, TodoWrite
+tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: fable
 ---
 
@@ -24,6 +24,10 @@ it. It usually means the plan was wrong, and that decision belongs upward, not
 to you.
 
 ## The finding
+
+Anything you write under `work/` is a note in an Obsidian vault — invoke
+`obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
+properties.
 
 Write it to the given path:
 

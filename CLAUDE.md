@@ -9,7 +9,11 @@ workspace behaves, including this one.
   real session. Cut before you add.
 - `skills/using-aikit/SKILL.md` is injected **in full** at every session start
   and after every compaction. Adding ten lines there taxes every session
-  forever. Keep it under ~120 lines (it is at 118, and ~1,600 tokens).
+  forever. Keep it under ~125 lines (it is at 120, and ~1,600 tokens).
+- **Every archetype declares `Skill`.** A `tools:` list is exhaustive: without
+  it an agent cannot invoke a single skill — not even the one its own body
+  tells it to follow. `agents/planner.md` said "Follow `aikit:writing-plans`"
+  for eight versions while being unable to.
 - Use `aikit:writing-skills` when creating or editing a skill.
 - After touching `hooks/session-start`, verify it still emits valid JSON:
   ```bash

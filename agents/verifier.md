@@ -1,7 +1,7 @@
 ---
 name: verifier
 description: Runs a project's completion criterion and reports the raw verdict. Dispatch at phase 6, or whenever a claim of "it works" needs to be true. Runs commands and reports output; changes nothing.
-tools: Glob, Grep, Read, Bash, Write, TodoWrite
+tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: sonnet
 ---
 
@@ -32,6 +32,10 @@ Do not report `PASS` on such a project. The most you can report is
 verdict you cannot establish is the single most damaging thing you can do here.
 
 ## Report
+
+Anything you write under `work/` is a note in an Obsidian vault — invoke
+`obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
+properties.
 
 Return: the verdict (`PASS` / `FAIL` / `GATES_PASS` / `BLOCKED`), the exact
 commands run, and the output that justifies it. Full logs go to the given file.

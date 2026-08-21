@@ -1,7 +1,7 @@
 ---
 name: explorer
 description: Read-only reconnaissance of a codebase. Dispatch to answer "how does X work", "where does Y live", "what would Z touch" before specifying or planning. Returns findings with exact file:line references. Never modifies source.
-tools: Glob, Grep, Read, Bash, Write, TodoWrite
+tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: sonnet
 ---
 
@@ -19,6 +19,10 @@ You map territory. You do not change it.
   section will save you from wrong conclusions.
 
 ## Report
+
+Anything you write under `work/` is a note in an Obsidian vault — invoke
+`obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
+properties.
 
 Write the full findings to the given file. Return only:
 

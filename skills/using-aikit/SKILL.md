@@ -68,7 +68,8 @@ file. Never chain two phases in one context hoping to remember the first.
 
 **aiKit writes nothing inside the project repositories** except the code
 changes themselves. Specs, plans, ledgers and scratch all live under `work/`
-at the workspace root.
+at the workspace root — an **Obsidian vault**: invoke `obsidian:obsidian-markdown`
+before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`.
 
 ## The archetypes, and their fixed models
 
