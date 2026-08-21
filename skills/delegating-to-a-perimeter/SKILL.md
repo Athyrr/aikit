@@ -74,6 +74,11 @@ environment, what has already been ruled out. Not your session's history.
 evidence that carry it, and the path of a full trace written to
 `work/<project>/<feature>/diagnostic-N.md`. Everything else stays over there.
 
+That trace carries the same frontmatter as any artifact — `project`, `feature`,
+`created`, `updated`, plus `phase: diagnostic` and `status: done` once the
+conclusion holds. `work/` is a vault; a note without those properties is
+invisible to it.
+
 Tell it to use the project's own routing skills — on the toolbelt,
 `ezyflow-tools` routes to the right server and `ezy-expert` holds the domain
 vocabulary. A perimeter agent that ignores them is guessing at tool names.
