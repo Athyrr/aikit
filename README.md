@@ -64,38 +64,46 @@ in a project never shows a method artifact.
 ## Install
 
 ```bash
-claude plugin marketplace add ~/ezytail-workspace/aikit --scope project
-claude plugin install aikit@aikit-local --scope project
+claude plugin marketplace add ~/ezytail-workspace/aikit --scope user
+claude plugin install aikit@aikit-local --scope user
 ```
 
-`--scope project` writes to `ezytail-workspace/.claude/settings.json`: aiKit is
-active in the workspace and nowhere else on the machine.
+`--scope user` makes the method available from any repository on the machine —
+it is a way of working, not workspace data. What stays workspace-bound is the
+**registry**: the hook looks for `aikit/projects/*.md` by walking up from the
+session's directory, so outside the workspace only the method is injected.
+
+Install in one scope only. Two scopes means two entries, and `bin/deploy`
+updates one of them while the other keeps running.
 
 ## Launch
 
+`claude` on its own is enough for most work. The launcher exists for one
+thing only — surfacing the **agents and skills of the other repositories**,
+which nothing carries on its own:
+
 ```bash
-aikit/bin/ezy                    # agents + skills of every registered project
-aikit/bin/ezy --tools            # ... plus the MCP servers projects declare
-aikit/bin/ezy --no-dirs --tools  # MCP only
-aikit/bin/ezy --only ezylive     # one project
+aikit/bin/ezy                 # + agents and skills of every registered project
+aikit/bin/ezy --only ezylive  # one project
+aikit/bin/ezy --dry-run       # print the command instead of running it
 ```
 
-**Two orthogonal switches**, because the harness treats them independently:
+`--add-dir` carries agents and skills; it does **not** carry that project's
+`.mcp.json` or its `CLAUDE.md`. All measured. Cost is the descriptions only,
+~1.4k tokens for the whole workspace.
 
-| | carries | does not carry | cost |
-|---|---|---|---|
-| `--add-dir` | agents, skills | `.mcp.json`, `CLAUDE.md` | ~1.4k tok, whole workspace |
-| `--mcp-config` | MCP servers | skills, agents | ~5-6k tok for the toolbelt's 49 tools |
+**The toolbelt needs no flag.** It is installed at the workspace root
+(`apm install Ezytail/ezyflow-tool-belt --target claude`) and `.mcp.json`
+lookup walks *up* the tree, so its six MCP servers are present in any session
+opened anywhere in the workspace — including inside a sub-repository like
+`ezylive/ezy_live`. Its seven routing skills do not travel that way: they are
+read from the session's own project root, which is why a toolbelt
+investigation is worth running through `bin/scoped` (perimeter `.`).
 
-Both measured. `--mcp-config` points at the toolbelt's own `.mcp.json` — the
-file apm maintains — so there is no copy to keep in sync, and none of its
-`Bearer` tokens are duplicated anywhere.
-
-Tools are opt-in because of that cost, not because of a boundary. The boundary
-is enforced elsewhere and more precisely: the four destructive natseyes tools
-are denied in `ezytail-workspace/.claude/settings.json`, which **removes them
-from the schema** rather than refusing them at call time. Read everything from
-the workspace; mutate only from a session launched inside the toolbelt.
+Nothing is denied in `ezytail-workspace/.claude/settings.json`. The four
+destructive natseyes tools are held back by the ordinary permission prompt in
+an interactive session, and by the registry's `allow:` list in an unattended
+one — see `projects/ezyflow-tool-belt.md`.
 
 ## Iterating on the method
 

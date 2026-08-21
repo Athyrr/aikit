@@ -34,7 +34,7 @@ is the one a registry would have given you, and phase 6 cannot run without it.
 | The request is | Route |
 |---|---|
 | Something is broken / behaves wrong | `aikit:systematic-debugging` — you are diagnosing, not building |
-| … and the diagnosis needs the live systems | `aikit:delegating-to-a-perimeter` — open the toolbelt's perimeter in its own process. Never guess at production state from the code, and never load its tools into this session. |
+| … and the diagnosis needs the live systems | `aikit:delegating-to-a-perimeter` — run it in its own process. Its tools are already in your session; what you are keeping out is its forty tool calls. Never guess at production state from the code. |
 | Build, add, change, remove behaviour | `aikit:brainstorming` — continue to phase 2 |
 | "How does X work / where is Y" | Answer it. No feature directory, no spec. |
 | Too unclear to classify | Ask one question. Do not open a directory on a guess. |

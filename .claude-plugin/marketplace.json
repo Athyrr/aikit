@@ -8,7 +8,7 @@
     {
       "name": "aikit",
       "description": "aiKit - agentic method for the Ezytail workspace",
-      "version": "0.8.1",
+      "version": "0.8.2",
       "source": "./",
       "author": {
         "name": "Adam Adhar"

@@ -1,38 +1,35 @@
 #!/usr/bin/env bash
 # Launch a Claude session at the workspace root, wired from the registry.
 #
-# Two independent switches, because the harness treats them independently:
+# The toolbelt is NOT wired here. It is installed in the workspace itself
+# (`apm install Ezytail/ezyflow-tool-belt --target claude`), so its six MCP
+# servers and its seven routing skills are already there — and the MCP servers
+# even reach a session opened in a sub-repository, because .mcp.json lookup
+# walks up the tree. Measured, 2026-08-21. Nothing to pass.
 #
-#   --add-dir    carries a project's agents and skills into the session.
-#                It does NOT carry that project's .mcp.json, and it does NOT
-#                load its CLAUDE.md — both measured. Cost is the descriptions
-#                only, ~1.4k tokens for the whole workspace.
+# What a launcher still has to carry is the other projects' **agents and
+# skills**: those do NOT travel up or down. `--add-dir <project>` surfaces
+# them (it carries neither that project's .mcp.json nor its CLAUDE.md — both
+# measured). Cost is the descriptions only, ~1.4k tokens for the workspace.
 #
-#   --mcp-config carries a project's MCP servers. It does NOT carry its skills
-#                or agents. Cost is the tool schemas, ~5-6k tokens for the
-#                toolbelt's six servers — hence opt-in.
-#
-# Knowledge and tools are orthogonal. Pick what the session actually needs.
-#
-# Paths and MCP files come from the registry frontmatter (`path:`, `mcp:`),
-# so adding a project file is enough — nothing here to maintain in parallel.
+# Paths come from the registry frontmatter (`path:`), so adding a project file
+# is enough — nothing here to maintain in parallel. A project that exposes
+# neither agents nor skills is skipped: --add-dir would carry nothing.
 #
 # Usage:
-#   ezy                          agents + skills of every registered project
-#   ezy --tools                  ... plus the MCP servers projects declare
-#   ezy --no-dirs --tools        MCP only, no agents or skills surfaced
-#   ezy --only ezylive           one project
+#   ezy                     agents + skills of every registered project
+#   ezy --only ezylive      one project
+#   ezy --dry-run           print the command instead of running it
 set -euo pipefail
 
 workspace="$(cd "$(dirname "$0")/../.." && pwd)"
 registry="${workspace}/aikit/projects"
 
-only=""; want_tools=0; want_dirs=1
+only=""; dry=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --only)     only="${2:?--only needs a project name}"; shift 2 ;;
-    --tools)    want_tools=1; shift ;;
-    --no-dirs)  want_dirs=0; shift ;;
+    --dry-run)  dry=1; shift ;;
     *)          break ;;
   esac
 done
@@ -55,29 +52,21 @@ for f in "${registry}"/*.md; do
   path=$(field "$f" path)
   [ -n "$path" ] && [ -d "${workspace}/${path}" ] || continue
 
-  [ "$want_dirs" = 1 ] && args+=(--add-dir "${workspace}/${path}")
+  # Skip what --add-dir could not carry anyway.
+  agents_or_skills=0
+  for sub in .claude/agents .claude/skills; do
+    [ -d "${workspace}/${path}/${sub}" ] && agents_or_skills=1
+  done
+  [ "$agents_or_skills" = 1 ] || continue
 
-  if [ "$want_tools" = 1 ]; then
-    mcp=$(field "$f" mcp)
-    if [ -n "$mcp" ]; then
-      full="${workspace}/${path}/${mcp}"
-      if [ -f "$full" ]; then
-        args+=(--mcp-config "$full")
-      else
-        echo "ezy: ${name} declares mcp: ${mcp} but ${full} is missing —" >&2
-        echo "     run 'apm install' in ${path} to generate it." >&2
-      fi
-    fi
-  fi
+  args+=(--add-dir "${workspace}/${path}")
 done
 
-# --strict-mcp-config only when we brought our own: otherwise it would also
-# suppress the user-scope servers a bare session legitimately expects.
-if [ "$want_tools" = 1 ] && printf '%s\n' "${args[@]:-}" | grep -q -- '--mcp-config'; then
-  args+=(--strict-mcp-config)
-fi
-
-[ ${#args[@]} -gt 0 ] || { echo "ezy: nothing to wire under ${workspace}" >&2; exit 1; }
+[ ${#args[@]} -gt 0 ] || { echo "ezy: no project exposes agents or skills under ${workspace}" >&2; exit 1; }
 
 cd "$workspace"
+if [ "$dry" = 1 ]; then
+  printf 'cd %s && claude' "$workspace"; printf ' %q' "${args[@]}" "$@"; echo
+  exit 0
+fi
 exec claude "${args[@]}" "$@"

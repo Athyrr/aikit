@@ -17,15 +17,21 @@ anything the toolbelt's MCP servers answer. You cannot answer it from the code.
 
 An Agent-tool subagent runs **inside your session**. It inherits the MCP
 servers your session connected at startup; it cannot connect its own, and it
-cannot re-scope itself to a directory. Dispatching `aikit:explorer` "into" the
-toolbelt loads nothing.
+cannot re-scope itself to a directory. Dispatching `aikit:explorer` "into" a
+project loads none of that project's skills or agents.
 
-A **process** launched with `cwd = <project>` loads that project's `.mcp.json`,
-its skills and its agents natively — and the subagents *it* dispatches inherit
-them in turn. All measured.
+A **process** launched with `cwd = <perimeter>` loads that directory's
+`.mcp.json`, its skills and its agents natively — and the subagents *it*
+dispatches inherit them in turn. All measured.
 
-The consequence is the point: **your context never carries the toolbelt.** You
-see a conclusion, not forty tool calls.
+Two of those three now travel on their own, since the toolbelt is installed in
+the workspace: `.mcp.json` lookup walks **up** the tree, so any session in the
+workspace already holds the six servers. Skills do not travel — they are read
+from the session's own project root, and `ezyflow-tools` only exists at the
+workspace root.
+
+So what a process still buys you is precise: **the routing skills**, and a
+context you throw away. You see a conclusion, not forty tool calls.
 
 ## The shape of the plan
 
@@ -49,7 +55,9 @@ aikit/bin/scoped <project> <feature> @work/<project>/<feature>/brief.md
 
 The first call opens the session and prints its id; later calls resume it. The
 session id is kept in `work/<project>/<feature>/.session` — delete that file to
-start a clean perimeter.
+start a clean perimeter. The directory it runs in is the registry's
+`perimeter:`, falling back to `path:` — they differ when a project's tools are
+installed somewhere other than its own repository.
 
 Permissions come from the project's registry frontmatter (`allow:`, `deny:`),
 never from a blanket bypass. A tool that is neither allowed nor denied simply
@@ -80,7 +88,8 @@ edits code, and the toolbelt writes nothing back to the ecosystem.
 
 | Thought | Reality |
 |---|---|
-| "I'll just dispatch a subagent into the toolbelt" | Subagents inherit your session. They cannot re-scope. |
+| "I'll just dispatch a subagent into the toolbelt" | Subagents inherit your session. They cannot re-scope, so they get its MCP but never a project's skills. |
+| "I'll dispatch `aikit:explorer`, it has the MCP tools" | It does not. An agent that declares a `tools:` list sees no `mcp__*` tool at all — measured. |
 | "Faster to load the tools here" | Then forty tool calls land in your context and stay there. |
 | "I'll pass the whole conversation as context" | Send the question and the facts. History is not context. |
 | "It's blocked, I'll add --dangerously-skip-permissions" | The block is the registry telling you the perimeter is too narrow. Edit the registry. |

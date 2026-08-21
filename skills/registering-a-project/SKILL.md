@@ -32,7 +32,7 @@ skip the project.
 | `name` | yes | hook | identifier; must equal the filename |
 | `path` | yes | hook, `bin/ezy`, `bin/scoped` | directory, relative to the workspace root |
 | `summary` | yes | hook | one line; **the only always-on part** |
-| `mcp` | no | `bin/ezy`, `bin/scoped` | path to a `.mcp.json`, relative to `path` |
+| `perimeter` | no | `bin/scoped` | directory the scoped process runs in, relative to the workspace root; defaults to `path`. Set it when a project's tools are installed elsewhere — the toolbelt uses `.` |
 | `allow` | no | `bin/scoped` | space-separated tools pre-approved for an unattended process |
 | `deny` | no | `bin/scoped` | space-separated tools withheld from it |
 

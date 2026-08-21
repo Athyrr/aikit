@@ -5,10 +5,11 @@
 # Why a process and not a subagent: an Agent-tool subagent runs inside the
 # caller's session and inherits the MCP servers that session connected at
 # startup. It cannot connect its own, and it cannot re-scope to a directory.
-# A process launched with cwd = <project> loads that project's .mcp.json, its
-# skills and its agents natively — and the subagents IT dispatches inherit
-# them in turn (measured). That is the only way to keep the orchestrator's
-# context free of the toolbelt while still using it.
+# A process launched with cwd = <perimeter> loads that directory's .mcp.json,
+# its skills and its agents natively — and the subagents IT dispatches inherit
+# them in turn (measured). What that buys is not the tools, which .mcp.json
+# lookup already carries up the tree; it is that the forty tool calls of an
+# investigation land in a context you throw away.
 #
 # The session persists: the first call creates it, later calls resume it, so a
 # plan's task 1 can open the perimeter and tasks 2..n can work inside it
@@ -41,8 +42,13 @@ field() {
   ' "$fiche"
 }
 
+# `perimeter:` overrides `path:` when a project's tools do not live in its own
+# repository. The toolbelt is the case: apm installs it into the workspace, so
+# its perimeter is the workspace root while its path stays the maintenance
+# clone. Defaults to `path:`.
 path=$(field path)
-dir="${workspace}/${path}"
+perimeter=$(field perimeter)
+dir="${workspace}/${perimeter:-$path}"
 [ -d "$dir" ] || { echo "scoped: ${dir} does not exist" >&2; exit 2; }
 
 instruction="$*"
