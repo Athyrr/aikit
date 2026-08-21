@@ -53,6 +53,11 @@ BEFORE claiming any status or expressing satisfaction:
 Skip any step = lying, not verifying
 ```
 
+Once step 5 passes, close the artifact: set `status: done` and `updated` in
+`work/<project>/<feature>/spec.md`. It is the only thing that tells the vault
+this feature is finished; a passing test suite nobody recorded leaves it
+looking in flight.
+
 ## Common Failures
 
 | Claim | Requires | Not Sufficient |

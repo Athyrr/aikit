@@ -33,7 +33,7 @@ travelling with the branch. It has to say what it describes:
 project: ezylive
 feature: filtre-transporteur
 phase: spec
-status: draft | agreed | superseded
+status: draft | agreed | done | superseded
 branch: ezylive-next-gen
 base_sha: 0171b92
 created: 2026-08-20
@@ -51,6 +51,12 @@ The verbatim quote is not decoration. Between here and a task brief the request
 is reformulated four times — spec, plan, brief, dispatch — and each
 reformulation is a chance to drift. Quoted once, it can be checked at every
 level. Carry it into each task brief too.
+
+`status` moves in one direction: `draft` until the human agrees, `agreed`
+while the work runs, `done` once phase 6 has produced a passing verdict,
+`superseded` when a later spec replaces this one. Nothing else marks a feature
+as finished — `work/` is an Obsidian vault and `aikit.base` reads exactly this
+field, so a spec left at `agreed` reads as still in flight forever.
 
 `base_sha` is the commit the spec was written against. Months later it is the
 only way to tell whether the spec describes the code you are looking at. On a
