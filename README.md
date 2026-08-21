@@ -18,17 +18,69 @@ is the failure it exists to prevent.
 
 ## The phases
 
-| # | Phase | Skill |
-|---|---|---|
-| 1 | Understand the need | `aikit:understanding-need` |
-| 2 | Specify | `aikit:brainstorming` → `aikit:writing-specs` |
-| 3 | Plan | `aikit:writing-plans` |
-| 4 | Split into tasks | `aikit:writing-plans` |
-| 5 | Execute | `aikit:subagent-driven-development` |
-| 6 | Verify | `aikit:verification-before-completion` |
+| # | Phase | Skill | Produces |
+|---|---|---|---|
+| 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
+| 2 | Specify | `aikit:brainstorming` → `aikit:writing-specs` | `spec.md` |
+| 2.5 | Impact | the project's domain expert, consultatively | `impact.md` |
+| 3 | Plan | `aikit:writing-plans` | `plan.md` |
+| 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
+| 5 | Execute | `aikit:subagent-driven-development` | code, one task at a time |
+| 6 | Verify | `aikit:verification-before-completion` | the registry's completion criterion, met |
 
-Cross-cutting: `aikit:checking-plan-drift` after every task,
-`aikit:handling-blockers` whenever something fails.
+Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
+`aikit:checking-plan-drift` after every task, `aikit:handling-blockers` whenever
+something fails, `aikit:delegating-to-a-perimeter` when a question needs a
+project's own tools.
+
+A **diagnostic** does not run these phases. It produces a `diagnostic-N.md` and
+stops; if it concludes that code must change, that finding becomes the input of
+a phase 1 on the target project.
+
+## The patterns
+
+The phases are the shape. These are the load-bearing ideas — each one exists
+because of a specific failure it prevents.
+
+**The artifact is the memory, not the conversation.** Every phase ends with a
+file. A conversation dies at compaction; `spec.md` does not. This is also why
+the SessionStart hook matches `compact`: the method survives the loss it exists
+to protect against.
+
+**Big reads happen in contexts that get thrown away.** A subagent reads the
+27,000-token document, returns a 300-token finding, and dies. The orchestrator
+holds the plan and the state, around 10k. Pass paths, not contents; the
+registry routes each task to the *section* it needs, never the whole file.
+
+**The nature of a failure decides the direction.**
+
+| What happened | Direction |
+|---|---|
+| Technical unknown | **down** — a bounded spike; the plan does not move |
+| Execution error | **down** — fix loop, bounded by a budget |
+| Unplanned dependency, task too large | **up** — finish the independents, re-plan |
+| Ambiguous or contradictory spec | **up** — stop, back to phase 2 with the human |
+
+Going down is cheap, going up is expensive, and retrying a wrong plan is the
+most expensive of all. **The retry budget is counted in the ledger, not in
+context** — a conversation that compacts forgets it is on its fourth attempt.
+
+**Drift is checked mechanically.** After each task, the files the task declared
+are confronted with `git diff --name-only`. This works *because* aiKit writes no
+artifact inside a repository: every file in a diff is production code by
+construction.
+
+**The reviewer is always a fresh instance** — never the agent that wrote the
+code. An author re-reads their intention, not their text.
+
+**A perimeter is a process, not a subagent.** A subagent runs inside its
+caller's session: it cannot re-scope to another directory or load a project's
+skills. Only a process launched with the right working directory can — and what
+that buys is not the tools but the forty tool calls landing in a context that
+gets discarded.
+
+**Phases 1 and 2 are never delegated.** A subagent cannot ask a question, and a
+delegated spec is an invented spec.
 
 ## The archetypes
 
@@ -53,7 +105,9 @@ ezytail-workspace/
 │   ├── skills/       the skills
 │   └── projects/     the registry: one file per project
 ├── work/             the artifacts — local, never versioned, Obsidian vault
-│   └── <project>/<feature>/{spec,plan,tasks,status}.md
+│   ├── Accueil.md    the onboarding page: the process, read for a human
+│   ├── aikit.base    the dashboard, over every artifact's frontmatter
+│   └── <project>/<feature>/{spec,impact,plan,ledger,diagnostic-N}.md
 └── <the project repositories>
 ```
 
