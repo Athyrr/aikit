@@ -1,9 +1,16 @@
 # aiKit
 
-Agentic method for the Ezytail workspace. Derived from
-[superpowers](https://github.com/obra/superpowers) (MIT, Jesse Vincent),
-detached from it: no upstream remote, no merges. Compare and cherry-pick by
-hand when you feel like it.
+An agentic method for Claude Code: a plugin that turns a request into a spec, a
+plan, reviewed tasks and a verified result — without the orchestrating session
+ever filling up.
+
+**aiKit is not a harness.** The harness is Claude Code — it owns the tools, the
+context window, the model calls and the permission system. aiKit ships prompts,
+agent definitions and one hook that the harness consumes.
+
+Derived from [superpowers](https://github.com/obra/superpowers) (MIT, Jesse
+Vincent) and detached from it: there is no merge path back, by design. Compare
+and cherry-pick by hand when you feel like it.
 
 ## What it does
 
@@ -98,8 +105,11 @@ question.
 
 ## Where things live
 
+The method is versioned. The artifacts are not — they belong to the workspace
+that uses the method, never to the method itself.
+
 ```
-ezytail-workspace/
+<workspace>/
 ├── aikit/            this repository — the method, versioned
 │   ├── hooks/        the SessionStart injection
 │   ├── skills/       the skills
@@ -118,7 +128,7 @@ in a project never shows a method artifact.
 ## Install
 
 ```bash
-claude plugin marketplace add ~/ezytail-workspace/aikit --scope user
+claude plugin marketplace add <workspace>/aikit --scope user
 claude plugin install aikit@aikit-local --scope user
 ```
 
@@ -130,7 +140,44 @@ session's directory, so outside the workspace only the method is injected.
 Install in one scope only. Two scopes means two entries, and `bin/deploy`
 updates one of them while the other keeps running.
 
-## Launch
+## Iterating on the method
+
+Installing a plugin **copies** it into
+`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`, and
+`claude plugin update` compares *versions*, not content — without a bump it
+reports "already at the latest version" and the stale copy keeps running.
+
+```bash
+aikit/bin/deploy [patch|minor|major] "message"
+```
+
+bumps both manifests, checks the hook still emits valid JSON, validates,
+commits, resyncs and updates. **Takes effect in a new session.**
+
+One exception: `projects/*.md` is read from the source tree by the hook, so a
+registry edit is live in the next session with no deploy.
+
+## Differences from superpowers
+
+- renamed throughout (`aikit:` prefix), single harness (Claude Code only)
+- artifacts moved out of the repositories into `work/`
+- per-project registry injected at session start
+- failure-direction rule (down = spike/fix loop, up = re-plan/re-spec)
+- retry budget written to the ledger, not held in context
+- multi-harness ports, CI, upstream docs and the remote brand image removed
+
+aiKit will be versioned and published. It is not private workspace tooling that
+happens to live in a repository.
+
+## This deployment — the Ezytail workspace
+
+> Everything below is specific to one workspace, not to the method. It is kept
+> in one block so that publishing aiKit is a section move, not a rewrite. The
+> same boundary question applies to `projects/*.md`, which describes private
+> infrastructure from inside the repository — settle it before the first public
+> push.
+
+### Launch
 
 `claude` on its own is enough for most work. The launcher exists for one
 thing only — surfacing the **agents and skills of the other repositories**,
@@ -158,29 +205,3 @@ Nothing is denied in `ezytail-workspace/.claude/settings.json`. The four
 destructive natseyes tools are held back by the ordinary permission prompt in
 an interactive session, and by the registry's `allow:` list in an unattended
 one — see `projects/ezyflow-tool-belt.md`.
-
-## Iterating on the method
-
-Installing a plugin **copies** it into
-`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`, and
-`claude plugin update` compares *versions*, not content — without a bump it
-reports "already at the latest version" and the stale copy keeps running.
-
-```bash
-aikit/bin/deploy [patch|minor|major] "message"
-```
-
-bumps both manifests, checks the hook still emits valid JSON, validates,
-commits, resyncs and updates. **Takes effect in a new session.**
-
-One exception: `projects/*.md` is read from the source tree by the hook, so a
-registry edit is live in the next session with no deploy.
-
-## Differences from superpowers
-
-- renamed throughout (`aikit:` prefix), single harness (Claude Code only)
-- artifacts moved out of the repositories into `work/`
-- per-project registry injected at session start
-- failure-direction rule (down = spike/fix loop, up = re-plan/re-spec)
-- retry budget written to the ledger, not held in context
-- multi-harness ports, CI, upstream docs and the remote brand image removed
