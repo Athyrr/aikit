@@ -88,8 +88,13 @@ methode charge sans erreur. Tant qu'elle n'a pas eu lieu, le verdict honnete est
   Les agents de domaine d'un projet ne le portent pas.
 - Pour un agent, le `name:` du frontmatter et le nom de fichier doivent
   **rester egaux**. Les 6 le sont aujourd'hui.
-- **Un changement de plugin ne prend effet qu'en session neuve.** Seule
-  exception : `projects/*.md`, lu depuis la source par le hook, donc live.
+- **Un changement de plugin ne prend effet qu'en session neuve — mais rien
+  d'autre ne le filtre.** `aikit-local` est un marketplace `directory` pointant
+  sur cet arbre : le harness charge le plugin depuis l'arbre, jamais depuis la
+  copie de `~/.claude/plugins/cache/`. Une edition non commitee part en
+  production a la session suivante. Mesure du 2026-09-06 : ce cache est fige
+  sur `6556902` et n'a pas `skills/handling-secrets/`, alors que le preambule
+  injecte cite `aikit:handling-secrets` — present seulement ici, non suivi.
 - `skills/using-aikit/SKILL.md` est injecte **en entier** a chaque session et
   apres chaque compaction. Le plafond de ~125 lignes n'est pas cosmetique.
 - **Scope user uniquement.** Deux scopes = deux copies dont une seule se met a

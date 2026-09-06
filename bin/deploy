@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Deploy the working tree into the installed plugin.
+# Bump the version, validate, commit, resync the install copy.
 #
-# Installing a plugin COPIES it into ~/.claude/plugins/cache/<marketplace>/
-# <plugin>/<version>/, and `claude plugin update` compares VERSIONS, not
-# content: without a bump it reports "already at the latest version" and the
-# stale copy keeps running. So a deploy is: bump, commit, resync, update.
+# NOTE (2026-09-06): this script does NOT decide what runs. aikit-local is a
+# `directory` marketplace, so the harness loads the plugin from this working
+# tree; the copy under ~/.claude/plugins/cache/ sat frozen at 0.8.6 while the
+# tree was live. The bump and commit are bookkeeping and the two `claude
+# plugin` calls are a leftover from the copy-install model. What ships an edit
+# is the next session start.
 #
-# The registry (projects/*.md) is exempt — the hook reads it from the source
-# tree, so a registry edit is live in the next session with no deploy.
+# It also under-gates: `claude plugin validate .` reads no SKILL.md and no
+# agents/*.md. The two --strict gates are in projects/aikit.md, section 5.
 #
 # Usage: bin/deploy [patch|minor|major]   (default: patch)
 set -euo pipefail

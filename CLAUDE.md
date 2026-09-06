@@ -36,9 +36,14 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   claude plugin validate ./skills --strict
   claude plugin validate ./agents --strict
   ```
-- A plugin change only takes effect in a **new** session. One exception:
-  `projects/*.md` is read from the source tree by the hook, so a registry edit
-  is live next session with no deploy.
+- **A plugin change only takes effect in a new session — but nothing else
+  gates it.** `aikit-local` is a `directory` marketplace pointing at this
+  working tree, so the harness loads the plugin from the tree itself, never
+  from the copy under `~/.claude/plugins/cache/`. Uncommitted edits ship at the
+  next session start. Measured 2026-09-06: that cache is frozen at `6556902`
+  and carries no `skills/handling-secrets/`, yet the preamble injected into a
+  session names `aikit:handling-secrets` — a line that exists only here, in an
+  untracked file. `bin/deploy` bumps and commits; it does not decide what runs.
 
 ## It will not stay standalone
 

@@ -46,8 +46,9 @@ spec touch, what are the traps, how would you cut it?* It writes no code.
 
 Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` on any
-failure, `aikit:delegating-to-a-perimeter` when a question needs a project's
-own MCP servers.
+failure, `aikit:handling-secrets` before writing config or committing anything
+that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
+a project's own MCP servers.
 
 ## What loads where
 
