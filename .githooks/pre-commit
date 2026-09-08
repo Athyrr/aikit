@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Refuse a commit that would fail the method's own gates.
+#
+# Armed per clone: `git config core.hooksPath .githooks`. Gate 8 of
+# scripts/doctor is what makes that arming visible instead of assumed.
+set -uo pipefail
+repo="$(git rev-parse --show-toplevel)"
+exec "${repo}/scripts/doctor"
