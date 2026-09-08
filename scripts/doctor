@@ -29,11 +29,15 @@ json_ok() {
 }
 
 # A grep gate passes when it finds NOTHING.
+#
+# This file is dropped from its own gates: it spells out the forbidden patterns,
+# so it always contains them — a linter does not lint its own rule definitions.
+# Anchored to this one path, not to scripts/: every sibling stays in scope.
 gate_empty() {
   local label=$1; shift
   echo "→ $label"
   local out
-  out=$("$@" 2>/dev/null) || true
+  out=$("$@" 2>/dev/null | grep -Ev '^(\./)?scripts/doctor:') || true
   if [ -n "$out" ]; then
     echo "$out" | sed 's/^/    /'
     echo "  ✗ FAILED"
