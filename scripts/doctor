@@ -12,7 +12,10 @@
 # Usage: scripts/doctor
 set -uo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || {
+  echo "✗ cannot cd to the repository root from '$0' — no gate ran" >&2
+  exit 1
+}
 fail=0
 run() { echo "→ $1"; shift; "$@" || { echo "  ✗ FAILED"; fail=1; }; }
 
@@ -33,11 +36,24 @@ json_ok() {
 # This file is dropped from its own gates: it spells out the forbidden patterns,
 # so it always contains them — a linter does not lint its own rule definitions.
 # Anchored to this one path, not to scripts/: every sibling stays in scope.
+#
+# grep exits 1 when it finds nothing — a green gate — and >1 when it could not
+# look at all, e.g. a SCOPE path that no longer exists. Those must never read
+# alike: a gate that read nothing would otherwise report success. PIPESTATUS[0]
+# is the gate's own grep, upstream of the self-exclusion filter; it is carried
+# out of the command substitution, where the outer shell cannot see it.
 gate_empty() {
   local label=$1; shift
   echo "→ $label"
-  local out
-  out=$("$@" 2>/dev/null | grep -Ev '^(\./)?scripts/doctor:') || true
+  local out rc
+  out=$("$@" 2>/dev/null | grep -Ev '^(\./)?scripts/doctor:'; exit "${PIPESTATUS[0]}")
+  rc=$?
+  if [ "$rc" -gt 1 ]; then
+    echo "  ✗ DID NOT RUN — could not read its scope (grep exit $rc)"
+    "$@" 2>&1 >/dev/null | sed 's/^/    /'
+    fail=1
+    return
+  fi
   if [ -n "$out" ]; then
     echo "$out" | sed 's/^/    /'
     echo "  ✗ FAILED"
