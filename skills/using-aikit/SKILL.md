@@ -34,9 +34,9 @@ exists, the method is unchanged — its facts come from the project's own docs.
 | # | Phase | Skill | Produces |
 |---|---|---|---|
 | 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
-| 2 | Specify | `aikit:brainstorming` then `aikit:writing-specs` | `work/<project>/<feature>/spec.md` |
-| 2.5 | Impact | dispatch the project's domain expert, consultatively | `work/<project>/<feature>/impact.md` |
-| 3 | Plan | `aikit:writing-plans` | `work/<project>/<feature>/plan.md` |
+| 2 | Specify | `aikit:brainstorming` then `aikit:writing-specs` | `vault/<project>/<feature>/spec.md` |
+| 2.5 | Impact | dispatch the project's domain expert, consultatively | `vault/<project>/<feature>/impact.md` |
+| 3 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md` |
 | 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
 | 5 | Execute | `aikit:subagent-driven-development` | code, and `sdd/` next to the plan |
 | 6 | Verify | `aikit:verification-before-completion` | the project's completion criterion, met |
@@ -68,7 +68,7 @@ ask a question, and a delegated spec is an invented spec.
 file. Never chain two phases in one context hoping to remember the first.
 
 **aiKit writes nothing inside the project repositories** except the code
-changes themselves. Specs, plans, ledgers and scratch all live under `work/`
+changes themselves. Specs, plans, ledgers and scratch all live under `vault/`
 at the workspace root — an **Obsidian vault**: invoke `obsidian:obsidian-markdown`
 before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`.
 

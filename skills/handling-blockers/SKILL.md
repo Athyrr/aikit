@@ -41,11 +41,11 @@ Project domain agents are **not** prefixed: `api-expert`, `schema-expert`,
 
 A spike answers one question. It is not a smaller version of the task.
 
-- **One question, written down before starting.** "Does the Reflex connector
-  emit a correlation id on partial shipments?" — not "look into shipments".
+- **One question, written down before starting.** "Does the upload endpoint
+  emit a correlation id on partial batches?" — not "look into uploads".
 - **Bounded**: a stated budget of attempts or tool calls, agreed before dispatch.
 - **Produces a finding, not code.** Write it to
-  `work/<project>/<feature>/sdd/<plan>/spike-<slug>.md`: the question, what was
+  `vault/<project>/<feature>/sdd/<plan>/spike-<slug>.md`: the question, what was
   tried, what was observed (with file paths, line numbers, command output), the
   answer, and what it implies for the task.
 - Any code written during a spike is thrown away. If the spike's code looks
@@ -90,7 +90,7 @@ Going up does not mean stopping everything.
    plan delivered is better than a plan abandoned mid-flight, and the finished
    work narrows what the next plan has to cover.
 2. Do not start any task that touches the broken assumption.
-3. Write the loop report to `work/<project>/<feature>/status.md`:
+3. Write the loop report to `vault/<project>/<feature>/status.md`:
 
 ```markdown
 ## Loop 2 — stopped at execution, going up to planning

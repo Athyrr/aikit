@@ -4,7 +4,7 @@
 # progress ledger. Print its absolute path.
 #
 # It sits next to the plan, under the feature's artifact directory:
-#   work/<project>/<feature>/sdd/<plan-basename>/
+#   vault/<project>/<feature>/sdd/<plan-basename>/
 #
 # Two consequences, both deliberate:
 #   - aiKit writes NOTHING inside the project repositories. Only the code

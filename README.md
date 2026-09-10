@@ -18,7 +18,7 @@ A SessionStart hook injects, at every startup, `/clear` and **after every
 compaction**, two things:
 
 1. the full text of `skills/using-aikit/SKILL.md` — the method itself;
-2. a table of the current workspace's projects, built from `aikit/projects/*.md`
+2. a table of the current workspace's projects, built from `vault/projects/*.md`
    found by walking up from the session's directory — the router.
 
 The compaction matcher is the point: the method survives context loss, which
@@ -110,21 +110,24 @@ registry are not — they belong to the workspace that uses the method, never to
 the method itself.
 
 ```
-~/aikit/               this repository — the method, installed --scope user
-  hooks/               the SessionStart injection
-  skills/              the skills
-  agents/              the six archetypes
-  projects/            a skeleton and an example — NOT a real registry
+~/ezytail-workspace/aikit/    a clone of the method — the SOURCE, not the plugin
+  hooks/                      the SessionStart injection
+  skills/                     the skills
+  agents/                     the six archetypes
+  scripts/                    deploy and doctor — NOT on the Bash tool's PATH
+  bin/                        ezy and scoped — these ARE on the PATH
 
-<workspace>/           any project or group of projects you work in
-  aikit/projects/      the registry: one file per project (private, per-workspace)
-  work/                the artifacts — local, never versioned, an Obsidian vault
+<workspace>/                  any project or group of projects you work in
+  vault/                      a clone of the workspace's vault (an Obsidian vault)
+    projects/                 the registry: one file per project
     <project>/<feature>/{spec,impact,plan,ledger,diagnostic-N}.md
   <the project repositories>
+
+~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS
 ```
 
 The hook finds the registry by walking **up** from the session's directory,
-looking for `aikit/projects/*.md`. So the method travels everywhere while the
+looking for `vault/projects/*.md`. So the method travels everywhere while the
 registry stays bound to one workspace — and the two never live in the same
 repository.
 
@@ -137,17 +140,20 @@ in a project never shows a method artifact.
 On any machine, once, at user scope:
 
 ```bash
-git clone https://github.com/Athyrr/aikit ~/aikit
-claude plugin marketplace add ~/aikit --scope user
-claude plugin install aikit@aikit-local --scope user
+claude plugin marketplace add git@github.com:Athyrr/aikit.git
+claude plugin install aikit@aikit-marketplace --scope user
 ```
+
+Register the marketplace over **SSH**. The docs state that background refreshes
+disable credential helpers, so a private marketplace registered over HTTPS
+fails to auto-update.
 
 `--scope user` makes the method available from any repository on the machine —
 it is a way of working, not workspace data. Install in **one scope only**: two
 scopes means two entries, and an update touches one while the other keeps
 running.
 
-To make a workspace routable, give it a registry — `aikit/projects/<name>.md`
+To make a workspace routable, give it a registry — `vault/projects/<name>.md`
 per project. See `aikit:registering-a-project` and the example under
 `projects/`.
 
@@ -159,22 +165,22 @@ Installing a plugin **copies** it into
 reports "already at the latest version" and the stale copy keeps running.
 
 ```bash
-bin/deploy [patch|minor|major] "message"
+scripts/deploy [patch|minor|major] "message"
 ```
 
-from the clone bumps both manifests, checks the hook still emits valid JSON,
-validates, commits, resyncs the marketplace and updates. **Takes effect in a
-new session.** Run `scripts/doctor` any time to check the eight gates — the
-three real validations among them — without deploying.
+from the clone bumps both manifests, runs the eight gates, commits, pushes,
+refreshes the marketplace and updates the install. **Takes effect in a new
+session.** Run `scripts/doctor` any time for the gates without deploying, and
+`claude --plugin-dir .` to load the working tree into one session only.
 
-The registry is exempt: `aikit/projects/*.md` lives in the workspace and is read
-from disk by the hook, so a registry edit is live in the next session with no
-deploy.
+The registry is exempt: `vault/projects/*.md` lives in the workspace's vault
+and is read from disk by the hook, so a registry edit is live in the next
+session with no deploy.
 
 ## Differences from superpowers
 
 - renamed throughout (`aikit:` prefix), single harness (Claude Code only)
-- artifacts moved out of the repositories into `work/`
+- artifacts moved out of the repositories into `vault/`
 - per-workspace registry injected at session start, found by ancestry
 - failure-direction rule (down = spike/fix loop, up = re-plan/re-spec)
 - retry budget written to the ledger, not held in context

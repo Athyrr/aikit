@@ -65,7 +65,7 @@ verified on a check that never ran.
 ## Why this works at all
 
 Because aiKit writes nothing inside the project repositories. Specs, plans,
-ledgers and scratch all live under `work/`, so **every file in the diff is
+ledgers and scratch all live under `vault/`, so **every file in the diff is
 production code by construction**. Method artifacts can never show up as false
 drift.
 

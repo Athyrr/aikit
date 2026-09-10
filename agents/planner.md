@@ -44,7 +44,7 @@ verification in one line, it is too big — split it.
 
 ## Report
 
-Anything you write under `work/` is a note in an Obsidian vault — invoke
+Anything you write under `vault/` is a note in an Obsidian vault — invoke
 `obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
 properties.
 

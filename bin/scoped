@@ -21,7 +21,7 @@
 # nobody is there to approve it.
 #
 # The workspace is found by walking UP from the current directory looking for
-# `aikit/projects/*.md`, exactly as the SessionStart hook does — so this works
+# `vault/projects/*.md`, exactly as the SessionStart hook does — so this works
 # whether the method is a sibling clone or installed at user scope.
 #
 # Usage:
@@ -32,7 +32,7 @@ set -euo pipefail
 find_workspace() {
   local probe="${CLAUDE_PROJECT_DIR:-$PWD}"
   while [ -n "$probe" ] && [ "$probe" != "/" ]; do
-    if compgen -G "${probe}/aikit/projects/*.md" > /dev/null 2>&1; then
+    if compgen -G "${probe}/vault/projects/*.md" > /dev/null 2>&1; then
       printf '%s' "$probe"; return 0
     fi
     probe="$(dirname "$probe")"
@@ -41,10 +41,10 @@ find_workspace() {
 }
 
 workspace="$(find_workspace)" || {
-  echo "scoped: no workspace registry found by walking up from ${PWD} (expected <workspace>/aikit/projects/*.md)" >&2
+  echo "scoped: no workspace registry found by walking up from ${PWD} (expected <workspace>/vault/projects/*.md)" >&2
   exit 1
 }
-registry="${workspace}/aikit/projects"
+registry="${workspace}/vault/projects"
 
 [ $# -ge 3 ] || { echo "usage: scoped <project> <feature> <instruction...>" >&2; exit 2; }
 project=$1; feature=$2; shift 2
@@ -74,9 +74,9 @@ if [ "${instruction:0:1}" = "@" ]; then
   instruction=$(cat "$f")
 fi
 
-work="${workspace}/work/${project}/${feature}"
-mkdir -p "$work"
-marker="${work}/.session"
+vault="${workspace}/vault/${project}/${feature}"
+mkdir -p "$vault"
+marker="${vault}/.session"
 
 args=()
 read -r -a allow <<< "$(field allow)"
@@ -89,7 +89,11 @@ if [ -s "$marker" ]; then
   args+=(--resume "$sid")
   echo "scoped: resuming ${project} session ${sid}" >&2
 else
-  sid=$(python3 -c "import uuid; print(uuid.uuid4())")
+  if command -v uuidgen > /dev/null 2>&1; then          sid=$(uuidgen)
+  elif [ -r /proc/sys/kernel/random/uuid ]; then        sid=$(cat /proc/sys/kernel/random/uuid)
+  elif command -v node > /dev/null 2>&1; then           sid=$(node -e 'console.log(crypto.randomUUID())')
+  else                                                  sid=$(python3 -c "import uuid; print(uuid.uuid4())")
+  fi
   printf '%s' "$sid" > "$marker"
   args+=(--session-id "$sid")
   echo "scoped: opening ${project} perimeter, session ${sid}" >&2

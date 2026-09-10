@@ -33,21 +33,21 @@ registry_dir=""
 workspace_root=""
 probe="${CLAUDE_PROJECT_DIR:-$PWD}"
 while [ -n "$probe" ] && [ "$probe" != "/" ]; do
-    if compgen -G "${probe}/aikit/projects/*.md" > /dev/null 2>&1; then
-        registry_dir="${probe}/aikit/projects"
+    if compgen -G "${probe}/vault/projects/*.md" > /dev/null 2>&1; then
+        registry_dir="${probe}/vault/projects"
         workspace_root="$probe"
         break
     fi
     probe="$(dirname "$probe")"
 done
 # No fallback to the plugin's bundled copy on purpose. The method is generic and
-# travels everywhere; the registry is one workspace's data. Injecting Ezytail's
-# project table into an unrelated repository would order the agent to route work
-# to projects that are not there.
+# travels everywhere; the registry is one workspace's data. Injecting one
+# workspace's project table into an unrelated repository would order the agent
+# to route work to projects that are not there.
 
 registry=""
 if [ -z "$registry_dir" ]; then
-    registry=$'\n\n## No project registry here\n\nThis session is outside a workspace that carries one (`<workspace>/aikit/projects/`). The method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
+    registry=$'\n\n## No project registry here\n\nThis session is outside a workspace that carries one (`<workspace>/vault/projects/`). The method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
 elif [ -n "$registry_dir" ]; then
     rows=""
     for f in "${registry_dir}"/*.md; do

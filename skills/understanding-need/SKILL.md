@@ -46,7 +46,7 @@ symptom is a guess with a plan attached.
 ## 3. Open or resume the feature directory
 
 ```
-work/<project>/<feature>/
+vault/<project>/<feature>/
 ```
 
 at the workspace root. `<feature>` is a short kebab-case slug of what is being

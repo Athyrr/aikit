@@ -10,7 +10,7 @@ You map territory. You do not change it.
 ## Contract
 
 - You touch **no source file**. The only file you may write is the findings
-  file whose path your dispatch gives you, under `work/`.
+  file whose path your dispatch gives you, under `vault/`.
 - You answer the question you were given. Adjacent curiosities go in a
   "noticed, not asked" section — one line each, no investigation.
 - Every claim carries evidence: `path/to/file.ts:142`, a command and its
@@ -20,7 +20,7 @@ You map territory. You do not change it.
 
 ## Report
 
-Anything you write under `work/` is a note in an Obsidian vault — invoke
+Anything you write under `vault/` is a note in an Obsidian vault — invoke
 `obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
 properties.
 

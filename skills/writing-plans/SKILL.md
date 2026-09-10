@@ -15,7 +15,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** If working in an isolated worktree, it should have been created via the `aikit:using-git-worktrees` skill at execution time.
 
-**Save plans to:** `work/<project>/<feature>/plan.md`
+**Save plans to:** `vault/<project>/<feature>/plan.md`
 - (User preferences for plan location override this default)
 
 ## Scope Check
@@ -180,7 +180,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 After saving the plan, offer execution choice:
 
-**"Plan complete and saved to `work/<project>/<feature>/plan.md`. Two execution options:**
+**"Plan complete and saved to `vault/<project>/<feature>/plan.md`. Two execution options:**
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 

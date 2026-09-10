@@ -13,7 +13,7 @@
 # neither agents nor skills is skipped: --add-dir would carry nothing.
 #
 # The workspace is found by walking UP from the current directory looking for
-# `aikit/projects/*.md`, exactly as the SessionStart hook does.
+# `vault/projects/*.md`, exactly as the SessionStart hook does.
 #
 # Usage:
 #   ezy                       agents + skills of every registered project
@@ -24,7 +24,7 @@ set -euo pipefail
 find_workspace() {
   local probe="${CLAUDE_PROJECT_DIR:-$PWD}"
   while [ -n "$probe" ] && [ "$probe" != "/" ]; do
-    if compgen -G "${probe}/aikit/projects/*.md" > /dev/null 2>&1; then
+    if compgen -G "${probe}/vault/projects/*.md" > /dev/null 2>&1; then
       printf '%s' "$probe"; return 0
     fi
     probe="$(dirname "$probe")"
@@ -33,10 +33,10 @@ find_workspace() {
 }
 
 workspace="$(find_workspace)" || {
-  echo "ezy: no workspace registry found by walking up from ${PWD} (expected <workspace>/aikit/projects/*.md)" >&2
+  echo "ezy: no workspace registry found by walking up from ${PWD} (expected <workspace>/vault/projects/*.md)" >&2
   exit 1
 }
-registry="${workspace}/aikit/projects"
+registry="${workspace}/vault/projects"
 
 only=""; dry=0
 while [ $# -gt 0 ]; do

@@ -5,7 +5,7 @@ description: Use when adding a project to the workspace registry or editing an e
 
 # Registering a Project
 
-One file per project, at `<workspace>/aikit/projects/<name>.md`. It is **data,
+One file per project, at `<workspace>/vault/projects/<name>.md`. It is **data,
 not plugin code**: the hook reads it from the source tree, so an edit is live in
 the next session with no deploy.
 
@@ -85,7 +85,7 @@ awk 'NR>=A && NR<=B' FILE | wc -c                                  # a section
 
 ## Adding one
 
-1. Create `<workspace>/aikit/projects/<name>.md`, frontmatter first.
+1. Create `<workspace>/vault/projects/<name>.md`, frontmatter first.
 2. Measure the project's docs; write the routing table.
 3. Establish the completion criterion by **running it**, not by reading a README.
 4. Check the hook picks it up:

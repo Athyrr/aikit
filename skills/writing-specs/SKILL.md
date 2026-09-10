@@ -17,7 +17,7 @@ request you have not explored.
 ## Where it goes
 
 ```
-work/<project>/<feature>/spec.md
+vault/<project>/<feature>/spec.md
 ```
 
 Never inside a project repository. Artifacts are local and unversioned by
@@ -55,7 +55,7 @@ level. Carry it into each task brief too.
 `status` moves in one direction: `draft` until the human agrees, `agreed`
 while the work runs, `done` once phase 6 has produced a passing verdict,
 `superseded` when a later spec replaces this one. Nothing else marks a feature
-as finished — `work/` is an Obsidian vault and `aikit.base` reads exactly this
+as finished — `vault/` is an Obsidian vault and `aikit.base` reads exactly this
 field, so a spec left at `agreed` reads as still in flight forever.
 
 `base_sha` is the commit the spec was written against. Months later it is the
@@ -88,7 +88,7 @@ mark the affected scope out-of-scope for this pass.
 Set `status: agreed`, then run **phase 2.5** before planning: dispatch the
 project's domain expert consultatively — *"here is the spec: which files does
 it touch, what are the traps, how would you cut it? Write no code."* — and have
-it write `work/<project>/<feature>/impact.md`.
+it write `vault/<project>/<feature>/impact.md`.
 
 The expert answers what a document cannot: a judgement on **this** spec. Skip
 2.5 only where the registry lists no domain expert. Then continue to

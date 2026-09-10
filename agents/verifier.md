@@ -33,7 +33,7 @@ verdict you cannot establish is the single most damaging thing you can do here.
 
 ## Report
 
-Anything you write under `work/` is a note in an Obsidian vault — invoke
+Anything you write under `vault/` is a note in an Obsidian vault — invoke
 `obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
 properties.
 

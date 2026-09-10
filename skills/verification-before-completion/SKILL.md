@@ -22,7 +22,7 @@ If you haven't run the verification command in this message, you cannot claim it
 ## The Command Is Not Yours To Invent
 
 **The command that proves the claim is written in the project's registry file**
-(`aikit/projects/<name>.md`, "Completion criterion"). Run that one, as written.
+(`vault/projects/<name>.md`, "Completion criterion"). Run that one, as written.
 An equivalent-looking substitute is not evidence — `dotnet test` from the wrong
 directory, or a per-tool suite run from the repository root, fails or passes for
 reasons that have nothing to do with the work.
@@ -54,7 +54,7 @@ Skip any step = lying, not verifying
 ```
 
 Once step 5 passes, close the artifact: set `status: done` and `updated` in
-`work/<project>/<feature>/spec.md`. It is the only thing that tells the vault
+`vault/<project>/<feature>/spec.md`. It is the only thing that tells the vault
 this feature is finished; a passing test suite nobody recorded leaves it
 looking in flight.
 

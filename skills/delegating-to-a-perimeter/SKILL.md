@@ -49,12 +49,12 @@ established — routing, vocabulary, server ids — without paying discovery aga
 ## How
 
 ```bash
-aikit/bin/scoped <project> <feature> "<instruction>"
-aikit/bin/scoped <project> <feature> @work/<project>/<feature>/brief.md
+scoped <project> <feature> "<instruction>"
+scoped <project> <feature> @vault/<project>/<feature>/brief.md
 ```
 
 The first call opens the session and prints its id; later calls resume it. The
-session id is kept in `work/<project>/<feature>/.session` — delete that file to
+session id is kept in `vault/<project>/<feature>/.session` — delete that file to
 start a clean perimeter. The directory it runs in is the registry's
 `perimeter:`, falling back to `path:` — they differ when a project's tools are
 installed somewhere other than its own repository.
@@ -72,11 +72,11 @@ environment, what has already been ruled out. Not your session's history.
 
 **Require back**: the conclusion in three lines, the two or three pieces of
 evidence that carry it, and the path of a full trace written to
-`work/<project>/<feature>/diagnostic-N.md`. Everything else stays over there.
+`vault/<project>/<feature>/diagnostic-N.md`. Everything else stays over there.
 
 That trace carries the same frontmatter as any artifact — `project`, `feature`,
 `created`, `updated`, plus `phase: diagnostic` and `status: done` once the
-conclusion holds. `work/` is a vault; a note without those properties is
+conclusion holds. `vault/` is a vault; a note without those properties is
 invisible to it.
 
 Tell it to use the project's own routing skills — the ones that route to the
