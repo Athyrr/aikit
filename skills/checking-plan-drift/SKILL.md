@@ -57,8 +57,8 @@ safe. Fix the plan.
 
 ## Projects with no repository
 
-`ezyflow-delivery-board` has no git repository, so there is no diff to compare
-against and this check is unavailable. Compare against the declared list by
+A project with no git repository has no diff to compare against, so this check
+is unavailable. Compare against the declared list by
 hand, or record the gap explicitly in `status.md`. Do not report a task as
 verified on a check that never ran.
 

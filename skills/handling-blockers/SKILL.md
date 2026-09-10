@@ -36,8 +36,8 @@ Never spend a retry on a failure that belongs upward. Two questions settle it:
 archetypes. The `aikit:` prefix is part of the name: a dispatch on bare `aikit:spike`
 fails with "subagent_type does not exist".
 
-Project domain agents are **not** prefixed: `next_expert`, `ezy-api-expert`,
-`extension_expert`, `designer`.
+Project domain agents are **not** prefixed: `api-expert`, `schema-expert`,
+`ui-expert`, `docs-expert`.
 
 A spike answers one question. It is not a smaller version of the task.
 
@@ -98,7 +98,7 @@ Going up does not mean stopping everything.
 **Done:** Tasks 1, 2, 5 (commits abc1234, def5678, 9012abc)
 **Not started:** Tasks 3, 4 — both depend on the consumer naming decision
 **What broke:** Task 3 needs a consumer name the plan derives by rule; the
-rule does not hold for `Odoo.PriceSink` (registry trap, ezyflow-ng).
+rule does not hold for `Billing.PriceSink` (registry trap, example-service).
 **Re-enter at:** planning — the naming step needs its own task, before 3 and 4.
 **Open question for the human:** none / <the question>
 ```

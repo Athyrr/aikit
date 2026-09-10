@@ -18,7 +18,7 @@ reading the code invents file paths, and invented paths make every later drift
 check meaningless.
 
 **Read documentation in slices.** The registry file carries a routing table:
-this kind of task → that section, with its cost. `ezyflow-ng/EVENT_CHAINS.md`
+this kind of task → that section, with its cost. `example-service/EVENT_FLOWS.md`
 is 27,400 tokens; the slice you need is rarely above 4,000. Opening the file
 whole spends your budget on text that has nothing to do with the spec.
 
@@ -32,7 +32,7 @@ whole spends your budget on text that has nothing to do with the spec.
   share a file, say so explicitly and sequence them.
 - **Dependencies are stated**, task to task, in the task itself.
 - If the project registry names a domain expert for the area a task touches,
-  name it in the task (`Agent: next_expert`). The orchestrator dispatches it
+  name it in the task (`Agent: api-expert`). The orchestrator dispatches it
   instead of the generic implementer.
 - **No placeholders.** Exact values, copied verbatim from the spec.
 

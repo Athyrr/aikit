@@ -59,9 +59,9 @@ full report pasted instead of its path, a diff read inline.
 Never open a large doc whole. The project's registry file carries a routing
 table: *this kind of task → that section*. Read the slice.
 
-`ezyflow-ng/EVENT_CHAINS.md` is 27,400 tokens, but its sections run from 165 to
-3,981. A task on Shopify orders needs `Convention de Subject Keys` plus
-`1. Chaînes de Commandes Shopify` — about 4,600. Six times less, for strictly
+`example-service/EVENT_FLOWS.md` is 27,400 tokens, but its sections run from 165
+to 3,981. A task on inbound orders needs `Subject Key Convention` plus
+`1. Inbound Order Flows` — about 4,600. Six times less, for strictly
 more relevance.
 
 If the section you need is not in the routing table, read the table of contents

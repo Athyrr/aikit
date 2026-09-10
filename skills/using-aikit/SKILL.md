@@ -82,7 +82,7 @@ before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.
 
-When a task names a domain expert (`Agent: next_expert`), dispatch it instead
+When a task names a domain expert (`Agent: api-expert`), dispatch it instead
 of the generic implementer, **overriding its model to opus** for implementation
 work: experts carry their own tier and it is often lower.
 

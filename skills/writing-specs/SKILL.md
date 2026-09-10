@@ -30,11 +30,11 @@ travelling with the branch. It has to say what it describes:
 
 ```markdown
 ---
-project: ezylive
-feature: filtre-transporteur
+project: example-service
+feature: carrier-filter
 phase: spec
 status: draft | agreed | done | superseded
-branch: ezylive-next-gen
+branch: feature/carrier-filter
 base_sha: 0171b92
 created: 2026-08-20
 updated: 2026-08-20

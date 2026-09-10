@@ -1,7 +1,7 @@
 # Working on aiKit itself
 
-This repository *is* the method. Editing it changes how every session in the
-workspace behaves, including this one.
+This repository *is* the method. Editing it changes how every aiKit session
+behaves, including this one.
 
 **aiKit is a plugin, not a harness.** The harness is Claude Code — it owns the
 tools, the context window, the model calls, the permission system and the
@@ -14,13 +14,12 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   real session. Cut before you add.
 - `skills/using-aikit/SKILL.md` is injected **in full** at every session start
   and after every compaction. Adding ten lines there taxes every session
-  forever. Keep it under ~125 lines (it is at 120, and ~1,600 tokens).
+  forever. Keep it under ~125 lines (~1,600 tokens).
 - **Any agent carrying a `tools:` list must include `Skill` in it.** A `tools:`
   list is exhaustive: without `Skill` an agent cannot invoke a single skill —
-  not even the one its own body tells it to follow. `agents/planner.md` said
-  "Follow `aikit:writing-plans`" for eight versions while being unable to.
-  `agents/implementer.md` carries **no** `tools:` list, deliberately — that is
-  the only way to reach the toolbelt's MCP tools — so it inherits everything.
+  not even the one its own body tells it to follow. `agents/implementer.md`
+  carries **no** `tools:` list, deliberately — that is the only way to reach a
+  project's MCP tools — so it inherits everything.
 - Use `aikit:writing-skills` when creating or editing a skill.
 - The completion criterion lives in `projects/aikit.md`, like every other
   project's. Run it; do not invent an equivalent.
@@ -36,14 +35,14 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   claude plugin validate ./skills --strict
   claude plugin validate ./agents --strict
   ```
-- **A plugin change only takes effect in a new session — but nothing else
-  gates it.** `aikit-local` is a `directory` marketplace pointing at this
-  working tree, so the harness loads the plugin from the tree itself, never
-  from the copy under `~/.claude/plugins/cache/`. Uncommitted edits ship at the
-  next session start. Measured 2026-09-06: that cache is frozen at `6556902`
-  and carries no `skills/handling-secrets/`, yet the preamble injected into a
-  session names `aikit:handling-secrets` — a line that exists only here, in an
-  untracked file. `bin/deploy` bumps and commits; it does not decide what runs.
+- **A plugin change only takes effect in a new session, and only after it is
+  published.** `aikit-marketplace` is a `github` marketplace: the harness runs a
+  copy pinned to a version under `~/.claude/plugins/cache/`, never this working
+  tree. Editing a file here changes nothing until `scripts/deploy` has bumped,
+  committed and pushed. `/reload-plugins` reloads skills, agents and hooks
+  without restarting; only the SessionStart preamble needs `startup|clear|compact`
+  — and `/clear` is one of those. `claude --plugin-dir .` loads this tree for one
+  session, taking precedence over the installed copy.
 
 ## It will not stay standalone
 
@@ -61,19 +60,19 @@ is private workspace tooling — two consequences, both binding now:
 ## Agents
 
 - **The dispatch name carries the prefix**: `aikit:planner`, not `planner`.
-  A bare name fails with "subagent_type does not exist". Project domain agents
-  (`next_expert`, …) are not prefixed — they come from their own repository.
+  A bare name fails with "subagent_type does not exist". A project's own domain
+  agents are not prefixed — they come from its repository.
 - **Renaming resolves differently for agents and skills.** For an agent, the
   frontmatter `name:` wins and the filename is cosmetic. For a skill, the model
   sees the *directory* name — but the old frontmatter `name:` keeps resolving as
   a typed command, so a directory-only rename leaves a working ghost that passes
   every grep. **Always move the directory (or file) and the frontmatter `name:`
-  together.** All six agents currently agree.
+  together.**
 - **A `tools:` list in an agent's frontmatter excludes MCP tools.** Measured:
-  `aikit:explorer`, restricted to `Glob, Grep, Read, Bash, Write, TodoWrite,
-  Skill`, sees no `mcp__*` tool at all, while `general-purpose` (tools `*`)
-  inherits every connected server. So an agent that must reach the toolbelt
-  cannot declare a `tools:` list — omit it and constrain by instruction.
+  an agent restricted to `Glob, Grep, Read, Bash, Write, TodoWrite, Skill` sees
+  no `mcp__*` tool at all, while one with tools `*` inherits every connected
+  server. So an agent that must reach a project's MCP servers cannot declare a
+  `tools:` list — omit it and constrain by instruction.
 - Subagents **inherit** the session's MCP connections. They never establish
   their own. What the launcher wired is what they get.
 - The six archetypes are the *product* of this repository, not its experts.

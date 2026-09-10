@@ -7,9 +7,9 @@
 # startup. It cannot connect its own, and it cannot re-scope to a directory.
 # A process launched with cwd = <perimeter> loads that directory's .mcp.json,
 # its skills and its agents natively — and the subagents IT dispatches inherit
-# them in turn (measured). What that buys is not the tools, which .mcp.json
-# lookup already carries up the tree; it is that the forty tool calls of an
-# investigation land in a context you throw away.
+# them in turn. What that buys is not the tools, which .mcp.json lookup already
+# carries up the tree; it is that the forty tool calls of an investigation land
+# in a context you throw away.
 #
 # The session persists: the first call creates it, later calls resume it, so a
 # plan's task 1 can open the perimeter and tasks 2..n can work inside it
@@ -20,12 +20,30 @@
 # nothing else — a tool that is neither allowed nor denied simply blocks, since
 # nobody is there to approve it.
 #
+# The workspace is found by walking UP from the current directory looking for
+# `aikit/projects/*.md`, exactly as the SessionStart hook does — so this works
+# whether the method is a sibling clone or installed at user scope.
+#
 # Usage:
 #   scoped <project> <feature> <instruction...>
 #   scoped <project> <feature> @path/to/prompt.md
 set -euo pipefail
 
-workspace="$(cd "$(dirname "$0")/../.." && pwd)"
+find_workspace() {
+  local probe="${CLAUDE_PROJECT_DIR:-$PWD}"
+  while [ -n "$probe" ] && [ "$probe" != "/" ]; do
+    if compgen -G "${probe}/aikit/projects/*.md" > /dev/null 2>&1; then
+      printf '%s' "$probe"; return 0
+    fi
+    probe="$(dirname "$probe")"
+  done
+  return 1
+}
+
+workspace="$(find_workspace)" || {
+  echo "scoped: no workspace registry found by walking up from ${PWD} (expected <workspace>/aikit/projects/*.md)" >&2
+  exit 1
+}
 registry="${workspace}/aikit/projects"
 
 [ $# -ge 3 ] || { echo "usage: scoped <project> <feature> <instruction...>" >&2; exit 2; }
@@ -43,9 +61,7 @@ field() {
 }
 
 # `perimeter:` overrides `path:` when a project's tools do not live in its own
-# repository. The toolbelt is the case: apm installs it into the workspace, so
-# its perimeter is the workspace root while its path stays the maintenance
-# clone. Defaults to `path:`.
+# repository. Defaults to `path:`.
 path=$(field path)
 perimeter=$(field perimeter)
 dir="${workspace}/${perimeter:-$path}"

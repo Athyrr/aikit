@@ -1,28 +1,41 @@
 #!/usr/bin/env bash
 # Launch a Claude session at the workspace root, wired from the registry.
 #
-# The toolbelt is NOT wired here. It is installed in the workspace itself
-# (`apm install Ezytail/ezyflow-tool-belt --target claude`), so its six MCP
-# servers and its seven routing skills are already there — and the MCP servers
-# even reach a session opened in a sub-repository, because .mcp.json lookup
-# walks up the tree. Measured, 2026-08-21. Nothing to pass.
-#
-# What a launcher still has to carry is the other projects' **agents and
-# skills**: those do NOT travel up or down. `--add-dir <project>` surfaces
-# them (it carries neither that project's .mcp.json nor its CLAUDE.md — both
-# measured). Cost is the descriptions only, ~1.4k tokens for the workspace.
+# A launcher's one job is to surface the **agents and skills of the other
+# projects**: those do NOT travel up or down the tree on their own.
+# `--add-dir <project>` surfaces them (it carries neither that project's
+# .mcp.json nor its CLAUDE.md). MCP servers, by contrast, need no flag —
+# .mcp.json lookup already walks up the tree, so a server declared at the
+# workspace root reaches any session opened below it.
 #
 # Paths come from the registry frontmatter (`path:`), so adding a project file
 # is enough — nothing here to maintain in parallel. A project that exposes
 # neither agents nor skills is skipped: --add-dir would carry nothing.
 #
+# The workspace is found by walking UP from the current directory looking for
+# `aikit/projects/*.md`, exactly as the SessionStart hook does.
+#
 # Usage:
-#   ezy                     agents + skills of every registered project
-#   ezy --only ezylive      one project
-#   ezy --dry-run           print the command instead of running it
+#   ezy                       agents + skills of every registered project
+#   ezy --only <project>      one project
+#   ezy --dry-run             print the command instead of running it
 set -euo pipefail
 
-workspace="$(cd "$(dirname "$0")/../.." && pwd)"
+find_workspace() {
+  local probe="${CLAUDE_PROJECT_DIR:-$PWD}"
+  while [ -n "$probe" ] && [ "$probe" != "/" ]; do
+    if compgen -G "${probe}/aikit/projects/*.md" > /dev/null 2>&1; then
+      printf '%s' "$probe"; return 0
+    fi
+    probe="$(dirname "$probe")"
+  done
+  return 1
+}
+
+workspace="$(find_workspace)" || {
+  echo "ezy: no workspace registry found by walking up from ${PWD} (expected <workspace>/aikit/projects/*.md)" >&2
+  exit 1
+}
 registry="${workspace}/aikit/projects"
 
 only=""; dry=0

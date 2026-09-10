@@ -10,8 +10,8 @@ description: Use when a question needs a project's own MCP servers or skills - o
 ## When
 
 The question needs a project's **own tools or knowledge**: the live state of an
-order, why a delivery is stuck, whether a merged fix is actually deployed,
-anything the toolbelt's MCP servers answer. You cannot answer it from the code.
+order, why a job is stuck, whether a merged fix is actually deployed,
+anything a project's MCP servers answer. You cannot answer it from the code.
 
 ## Why a process, and not a subagent
 
@@ -24,13 +24,13 @@ A **process** launched with `cwd = <perimeter>` loads that directory's
 `.mcp.json`, its skills and its agents natively — and the subagents *it*
 dispatches inherit them in turn. All measured.
 
-Two of those three now travel on their own, since the toolbelt is installed in
-the workspace: `.mcp.json` lookup walks **up** the tree, so any session in the
-workspace already holds the six servers. Skills do not travel — they are read
-from the session's own project root, and `ezyflow-tools` only exists at the
-workspace root.
+MCP servers may already reach you: `.mcp.json` lookup walks **up** the tree, so
+a server declared at a workspace root is present in any session opened below it.
+Skills do not travel that way — they are read from the session's **own** project
+root, so a project's routing skills exist only when the session is opened inside
+it.
 
-So what a process still buys you is precise: **the routing skills**, and a
+So what a process still buys you is precise: **the project's own skills**, and a
 context you throw away. You see a conclusion, not forty tool calls.
 
 ## The shape of the plan
@@ -79,21 +79,21 @@ That trace carries the same frontmatter as any artifact — `project`, `feature`
 conclusion holds. `work/` is a vault; a note without those properties is
 invisible to it.
 
-Tell it to use the project's own routing skills — on the toolbelt,
-`ezyflow-tools` routes to the right server and `ezy-expert` holds the domain
-vocabulary. A perimeter agent that ignores them is guessing at tool names.
+Tell it to use the project's own routing skills — the ones that route to the
+right server and hold the domain vocabulary. A perimeter agent that ignores
+them is guessing at tool names.
 
 ## When the diagnosis says the code must change
 
 It stops being a diagnosis. Write the finding to the feature's spec input and
 re-enter at phase 1 for the **target** project — the perimeter agent never
-edits code, and the toolbelt writes nothing back to the ecosystem.
+edits code, and a diagnosis writes nothing back to the systems it inspects.
 
 ## Red flags
 
 | Thought | Reality |
 |---|---|
-| "I'll just dispatch a subagent into the toolbelt" | Subagents inherit your session. They cannot re-scope, so they get its MCP but never a project's skills. |
+| "I'll just dispatch a subagent into the perimeter" | Subagents inherit your session. They cannot re-scope, so they get its MCP but never a project's skills. |
 | "I'll dispatch `aikit:explorer`, it has the MCP tools" | It does not. An agent that declares a `tools:` list sees no `mcp__*` tool at all — measured. |
 | "Faster to load the tools here" | Then forty tool calls land in your context and stay there. |
 | "I'll pass the whole conversation as context" | Send the question and the facts. History is not context. |
