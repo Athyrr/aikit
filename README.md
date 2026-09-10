@@ -114,7 +114,7 @@ the method itself.
   hooks/                      the SessionStart injection
   skills/                     the skills
   agents/                     the six archetypes
-  scripts/                    deploy and doctor — NOT on the Bash tool's PATH
+  scripts/                    doctor — and deploy after task 10; NOT on the PATH
   bin/                        ezy and scoped — these ARE on the PATH
 
 <workspace>/                  any project or group of projects you work in
@@ -137,10 +137,17 @@ in a project never shows a method artifact.
 
 ## Install
 
+> [!WARNING]
+> **This section and *Iterating on the method* describe the target montage, not
+> this tree.** Neither piece exists yet: this repository has no remote (task 15
+> creates it), and `scripts/` holds only `doctor` (task 10 creates
+> `scripts/deploy`). Task 13, step 1b rewrites both sections, and this warning
+> dies with them.
+
 On any machine, once, at user scope:
 
 ```bash
-claude plugin marketplace add git@github.com:Athyrr/aikit.git
+claude plugin marketplace add git@github.com:Athyrr/aikit.git   # this remote: task 15
 claude plugin install aikit@aikit-marketplace --scope user
 ```
 
@@ -165,7 +172,7 @@ Installing a plugin **copies** it into
 reports "already at the latest version" and the stale copy keeps running.
 
 ```bash
-scripts/deploy [patch|minor|major] "message"
+scripts/deploy [patch|minor|major] "message"   # this script: task 10
 ```
 
 from the clone bumps both manifests, runs the eight gates, commits, pushes,
