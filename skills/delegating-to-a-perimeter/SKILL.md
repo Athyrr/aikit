@@ -76,8 +76,8 @@ evidence that carry it, and the path of a full trace written to
 
 That trace carries the same frontmatter as any artifact — `project`, `feature`,
 `created`, `updated`, plus `phase: diagnostic` and `status: done` once the
-conclusion holds. `vault/` is a vault; a note without those properties is
-invisible to it.
+conclusion holds. The artifact directory is an Obsidian vault, not a scratch
+folder: a note without those properties is invisible to every query in it.
 
 Tell it to use the project's own routing skills — the ones that route to the
 right server and hold the domain vocabulary. A perimeter agent that ignores

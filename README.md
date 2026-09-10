@@ -110,7 +110,7 @@ registry are not — they belong to the workspace that uses the method, never to
 the method itself.
 
 ```
-~/ezytail-workspace/aikit/    a clone of the method — the SOURCE, not the plugin
+~/<workspace>/aikit/          a clone of the method — the SOURCE, not the plugin
   hooks/                      the SessionStart injection
   skills/                     the skills
   agents/                     the six archetypes
@@ -154,8 +154,8 @@ scopes means two entries, and an update touches one while the other keeps
 running.
 
 To make a workspace routable, give it a registry — `vault/projects/<name>.md`
-per project. See `aikit:registering-a-project` and the example under
-`projects/`.
+per project. `aikit:registering-a-project` carries the frontmatter contract the
+tooling parses and the six sections a registry file must hold.
 
 ## Iterating on the method
 
