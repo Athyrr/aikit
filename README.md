@@ -164,8 +164,8 @@ bin/deploy [patch|minor|major] "message"
 
 from the clone bumps both manifests, checks the hook still emits valid JSON,
 validates, commits, resyncs the marketplace and updates. **Takes effect in a
-new session.** Run `bin/doctor` any time to check the three real validation
-gates without deploying.
+new session.** Run `scripts/doctor` any time to check the eight gates — the
+three real validations among them — without deploying.
 
 The registry is exempt: `aikit/projects/*.md` lives in the workspace and is read
 from disk by the hook, so a registry edit is live in the next session with no

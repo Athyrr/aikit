@@ -35,6 +35,27 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   claude plugin validate ./skills --strict
   claude plugin validate ./agents --strict
   ```
+
+> [!warning] The next bullet is not true yet — read this one first
+> It describes the **target** montage. Until **task 17 of the `distribution`
+> chantier** switches it, the montage measured in
+> `~/.claude/plugins/known_marketplaces.json` is the opposite:
+>
+> ```json
+> "aikit-local": {
+>   "source": { "source": "directory", "path": "<the absolute path of THIS repository>" },
+>   "installLocation": "<the same path again>"
+> }
+> ```
+>
+> A `directory` marketplace whose install location **is this working tree**. So
+> today the harness loads the plugin from these very files, and nothing —
+> no bump, no commit, no push — stands between an editor and production:
+> **every saved edit is live for every session in the workspace at the next
+> `startup`, `/clear` or compaction.** Edit `skills/using-aikit/SKILL.md`,
+> `hooks/session-start` or any `agents/*.md` as if it were already deployed,
+> because it is. Delete this callout in task 17, with the montage it describes.
+
 - **A plugin change only takes effect in a new session, and only after it is
   published.** `aikit-marketplace` is a `github` marketplace: the harness runs a
   copy pinned to a version under `~/.claude/plugins/cache/`, never this working
