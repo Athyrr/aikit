@@ -1,14 +1,14 @@
 {
-  "name": "aikit-local",
-  "description": "Local marketplace for the aiKit method",
+  "name": "aikit-marketplace",
+  "description": "Marketplace for the aiKit method",
   "owner": {
     "name": "Adam Adhar"
   },
   "plugins": [
     {
       "name": "aikit",
-      "description": "aiKit - agentic method for the Ezytail workspace",
-      "version": "0.8.8",
+      "description": "aiKit - an agentic method for Claude Code",
+      "version": "0.9.0",
       "source": "./",
       "author": {
         "name": "Adam Adhar"

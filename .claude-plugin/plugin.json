@@ -1,7 +1,7 @@
 {
   "name": "aikit",
-  "description": "aiKit - agentic method for the Ezytail workspace: understand, specify, plan, split, execute, verify - with per-project registry and a failure-direction rule",
-  "version": "0.8.8",
+  "description": "aiKit - an agentic method for Claude Code: understand, specify, plan, split, execute, verify - with a per-workspace project registry and a failure-direction rule",
+  "version": "0.9.0",
   "author": {
     "name": "Adam Adhar"
   },
@@ -11,6 +11,6 @@
     "skills",
     "tdd",
     "debugging",
-    "ezytail"
+    "agents"
   ]
 }
