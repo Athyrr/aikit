@@ -41,6 +41,25 @@ le processus.
 **Ne jamais lire l'ensemble des skills** : `skills/*/SKILL.md` totalise
 **43 791** tokens. La ligne que vous cherchez est dans une seule d'entre elles.
 
+### Chantiers ouverts, dans le vault
+
+| Chantier | Etat | Ou |
+|---|---|---|
+| **Deployer sur le cluster Ezytail** — skill a specifier | matiere premiere, jamais specifie | `work/aikit/deploiement-cluster/status.md` |
+| **distribution** — trois depots, marketplace `github`, le plugin installe cesse d'etre l'arbre de travail | en execution, tache 5 sur 20 | `work/aikit/distribution/status.md` |
+| **normalisation-vault** — structure du vault, et le vault comme RAG ou non | matiere premiere, jamais specifie | `work/aikit/normalisation-vault/matiere-premiere.md` |
+| **flowscope** — visualiseur des runs d'agents | construit hors methode, en pause | `work/aikit/flowscope/status.md` |
+
+**Deploiement cluster** : releve d'un deploiement reel (Helm + Flux + Secret)
+fait a la main les 2026-09-08 et 2026-09-09, avec la boucle de verification qui
+a servi, les sept pieges mesures, et les six questions que la phase 2 doit
+trancher. Premier livrable probable : la fiche registre `ezytail-k8s`, qui
+n'existe pas.
+
+**distribution** : le seul en execution. Son `status.md` porte les decisions a
+ne pas rouvrir et les faits deja mesures — le lire avant toute question sur les
+depots, le marketplace ou la separation des vaults.
+
 ## 4. Domain agents
 
 | Agent | Owns | Does not own | Model |

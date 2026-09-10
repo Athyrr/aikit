@@ -1,7 +1,7 @@
 ---
 name: backlog-board
 path: ezy-pilotage-prod
-summary: « Ezy pilotage prod » - tableau de bord de production du flux sortant (Next.js) remplacant la notification Discord EZT011 - les 4 collecteurs tournent contre la production, l'ecran a ete refondu au cycle 3 - depot prive Ezytail/ezy-pilotage-prod
+summary: « Ezy pilotage prod » - tableau de bord de production du flux sortant (Next.js) remplacant la notification Discord EZT011 - deploye sur k8s-recette (chart Helm + Flux) mais branche sur les sources de PRODUCTION - 2 collecteurs sur 4 echouent, le cluster n'atteint pas Ketra - depot prive Ezytail/ezy-pilotage-prod
 ---
 
 # backlog-board
@@ -20,7 +20,8 @@ summary: « Ezy pilotage prod » - tableau de bord de production du flux sortant
 | Git root | `ezy-pilotage-prod/` |
 | Base branch | `main` |
 | Remote | `Ezytail/ezy-pilotage-prod` — **privé** |
-| Dernier cycle | 3 — écran refondu, fusionné le 2026-09-06 (`0cbc4a9`) |
+| Dernier cycle | 5 — déploiement Kubernetes, 2026-09-09 (`2e3664a`) |
+| Tourne sur | **k8s-recette**, ns `ezy-pilotage-prod` — sources de **production** |
 
 **Le dépôt existe depuis le 2026-09-06** (cycle 3). Il est privé, et doit le
 rester : il porte des chiffres de production, des noms d'activités clientes et
@@ -41,8 +42,10 @@ notamment.
 
 ## Load before working
 
-Les documents vivent dans le vault, **pas dans le dépôt** :
-`work/backlog-board/mvp-localhost/`. Total des 8 documents : **~36 275 tokens**.
+Les documents vivent dans le vault, **pas dans le dépôt**, sous
+`work/backlog-board/`. Le gros est dans `mvp-localhost/` (8 documents,
+**~36 275 tokens**) ; l'industrialisation a ses propres dossiers,
+`ci-docker-vault/` (cycle 4) et `deploiement-k8s-recette/` (cycle 5).
 N'en ouvrir aucun en entier sans raison.
 
 | The task touches | Read | ~tok |
@@ -55,6 +58,8 @@ N'en ouvrir aucun en entier sans raison.
 | secrets, authentification, CI/CD | `security.md` | 2 482 |
 | ce qui attend une **décision métier**, plus affiché à l'écran | `questions-metier.md` | ~1 900 |
 | la recette du probe WinRM, les façons connues d'échouer | `spike-winrm.md` | 2 742 |
+| **déployer, dépanner un pod, toucher au chart, au HelmRelease ou au Secret** | `../deploiement-k8s-recette/deploiement.md` | ~2 400 |
+| la CI, l'image Docker, le Vault | `../ci-docker-vault/spec.md` | ~5 200 |
 
 `spec.md` fait **14 302 tokens** — jamais en entier. Ses sections :
 
@@ -158,3 +163,22 @@ zéro.
 
 **`npm run lint` appelle `eslint .` directement**, pas `next lint`, déprécié
 depuis Next 15.3. La configuration est en flat config (`eslint.config.mjs`).
+
+**En Kubernetes, `env` masque `envFrom` en silence.** Le chart rend `app.*` en
+`env:` et le Secret `ezy-pilotage-prod-secrets` en `envFrom:`. Une clé reposée
+sous `app:` dans le HelmRelease reprend la main sur le Secret sans le moindre
+avertissement — c'était le cas de six endpoints jusqu'au 2026-09-09.
+
+**Flux ne suit que `master` de `Ezytail/k8s-deployments`.** Un commit poussé sur
+une branche de feature est invisible pour le cluster, et rien ne le signale.
+
+**`app.ketra.env: production` doit rester explicite dans le HelmRelease.** Le
+chart épinglé (`1.2.0`) porte le défaut `prod`, que `targetEnv()` ne reconnaît
+pas : la valeur est ignorée en silence et c'est l'hôte qui tranche. Le correctif
+du chart (PR #10) n'est pas la version déployée.
+
+**Deux collecteurs sur quatre sont morts en production.** `ketra-db` et
+`daily-snapshot` échouent sur un délai TLS vers `10.201.0.14:5986` : le cluster
+n'a pas de route vers la VM Ketra. Le chemin Node lui-même fonctionne, il a été
+prouvé le 2026-09-04 depuis la machine de développement. Ne pas rechercher un
+défaut applicatif.
