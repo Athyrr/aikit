@@ -37,7 +37,7 @@ write_version() {
       ]) { const d=JSON.parse(fs.readFileSync(p,"utf8")); f(d);
            fs.writeFileSync(p, JSON.stringify(d,null,2)+"\n"); }
     ' "$v"
-  else
+  elif command -v python3 > /dev/null 2>&1; then
     python3 - "$v" <<'PY'
 import json, sys
 v = sys.argv[1]
@@ -50,6 +50,8 @@ for path, mutate in (
     json.dump(d, open(path, 'w'), indent=2)
     open(path, 'a').write('\n')
 PY
+  else
+    echo "deploy: neither node nor python3 on PATH" >&2; exit 1
   fi
 }
 
@@ -66,7 +68,19 @@ write_version "$next"
 echo "→ ${current} → ${next}"
 
 # --- the gates, all eight, before anything leaves the machine --------------
-scripts/doctor || { echo "✗ gates failed — nothing pushed, version bumped in place" >&2; exit 1; }
+#
+# The bump happens BEFORE the gates on purpose: what gets validated is the
+# state that would ship, manifests included. But a red gate must not leave the
+# bump behind — a second run would then bump twice, off a number that was never
+# released. Rewriting $current through write_version undoes exactly this
+# script's own edit, and nothing else: no git command, so any manifest change
+# the user had made before running deploy survives.
+scripts/doctor || {
+  write_version "$current"
+  echo "✗ gates failed — nothing committed, nothing pushed." >&2
+  echo "  version restored to ${current}: the tree is as you left it, rerun once the gates are green." >&2
+  exit 1
+}
 
 # --- commit, push, publish -------------------------------------------------
 git add -A
@@ -76,5 +90,11 @@ echo "→ pousse sur $(git remote get-url origin)"
 
 claude plugin marketplace update aikit-marketplace
 claude plugin update aikit@aikit-marketplace --scope user
-claude plugin list | grep -A2 'aikit@aikit-marketplace'
+# Confirmation display only — it must never decide the exit status. Under
+# `set -euo pipefail` a grep that matches nothing exits 1 and would fail the
+# script AFTER a bump, a commit, a push and a publish that all succeeded:
+# a release tool crying failure invites a replay of a deploy already done.
+# So it reports what it did not find instead of dying of it.
+claude plugin list | grep -A2 'aikit@aikit-marketplace' \
+  || echo "→ aikit@aikit-marketplace introuvable dans la liste — verifier l'installation" >&2
 echo "→ deploye. Prend effet dans une NOUVELLE session."
