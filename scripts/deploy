@@ -136,10 +136,20 @@ git add -A
 if git diff --cached --quiet; then
   echo "→ rien a committer"
 else
+  # Same restoration as the red gate above, for the same reason: nothing left
+  # the machine, so the bump must not survive. Without it "corrige la cause,
+  # puis relance" would be a trap — the rerun would read ${next} out of
+  # plugin.json and publish the one after it, skipping a version that never
+  # existed. Restored, the advice is true again, and it stops contradicting the
+  # landing assertion below. The two are opposite on purpose and the difference
+  # is real: here nothing was published, so rerun; there something was, so do
+  # not. `write_version`, never `git checkout` — after a refused commit the
+  # index still differs from HEAD, which makes a checkout wronger still.
   git commit -q -m "${next}${2:+ - $2}" || {
+    write_version "$current"
     echo "✗ commit REFUSE — hook pre-commit, signature GPG, index.lock ?" >&2
-    echo "  rien n'a ete pousse, rien n'a ete publie. La version ${next} est dans les" >&2
-    echo "  manifestes mais hors de l'historique : corrige la cause, puis relance." >&2
+    echo "  rien n'a ete commite, rien n'a ete pousse, rien n'a ete publie." >&2
+    echo "  version restauree a ${current} : corrige la cause, puis relance deploy." >&2
     exit 1
   }
 fi
