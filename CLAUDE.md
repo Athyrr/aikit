@@ -21,8 +21,9 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   carries **no** `tools:` list, deliberately — that is the only way to reach a
   project's MCP tools — so it inherits everything.
 - Use `aikit:writing-skills` when creating or editing a skill.
-- The completion criterion lives in `projects/aikit.md`, like every other
-  project's. Run it; do not invent an equivalent.
+- The completion criterion lives in the workspace registry file
+  `<workspace>/vault/projects/aikit.md`, like every other project's. That file
+  is **not** shipped with the plugin. Run it; do not invent an equivalent.
 - After touching `hooks/session-start`, verify it still emits valid JSON:
   ```bash
   CLAUDE_PLUGIN_ROOT=$PWD bash hooks/session-start | python3 -m json.tool > /dev/null
@@ -79,15 +80,13 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
 ## It will not stay standalone
 
 aiKit will be versioned and published. Do not write as though this repository
-is private workspace tooling — two consequences, both binding now:
+is private workspace tooling.
 
-- **Keep workspace-specific facts out of the method surface.** Skills, agents
-  and `README.md` describe the method. Paths, project names, MCP servers and
-  infrastructure belong in `projects/*.md`, which is data.
-- **`projects/*.md` is the unresolved boundary.** Those files describe private
-  infrastructure — NATS streams, internal services, repository layouts — and
-  they currently sit inside the repository that will be published. Settle how
-  they are separated *before* the first public push, not after.
+**Keep workspace-specific facts out of the method surface.** Skills, agents and
+`README.md` describe the method. Paths, project names, MCP servers and
+infrastructure belong in the registry — `<workspace>/vault/projects/*.md`, which
+is data and lives in the workspace, never in this repository. Gate 7 of
+`scripts/doctor` measures it.
 
 ## Agents
 
@@ -109,7 +108,8 @@ is private workspace tooling — two consequences, both binding now:
   their own. What the launcher wired is what they get.
 - The six archetypes are the *product* of this repository, not its experts.
   For questions about harness mechanics — name resolution, install scope, hook
-  behaviour — the domain expert is `claude-code-guide`. See `projects/aikit.md`.
+  behaviour — the domain expert is `claude-code-guide`. See the workspace
+  registry file `<workspace>/vault/projects/aikit.md`, outside this repository.
 
 ## Attribution
 
