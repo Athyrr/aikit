@@ -34,8 +34,10 @@ if %ERRORLEVEL% equ 0 (
     exit /b %ERRORLEVEL%
 )
 
-REM No bash found - exit silently rather than error
-REM (plugin still works, just without SessionStart context injection)
+REM No bash found. Say so in the transcript AND in the model's context, then
+REM exit 0 so the session still starts. Never exit 2 here: on SessionStart an
+REM exit 2 blocks startup, and a "deny" decision does the same.
+echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<EXTREMELY_IMPORTANT>aiKit could NOT load: no bash found. Git for Windows is a hard prerequisite. The method is NOT active in this session.</EXTREMELY_IMPORTANT>","systemMessage":"aiKit: no bash found, preamble not injected"}}
 exit /b 0
 CMDBLOCK
 
