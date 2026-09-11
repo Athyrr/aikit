@@ -26,29 +26,69 @@ read_version() {
   fi
 }
 
+# Both manifests are parsed BEFORE either is written. plugin.json wins over
+# marketplace.json at install time, so a run that bumped the first and then died
+# on a malformed second would leave them divergent — and divergent manifests are
+# exactly the state the installer ignores in silence. Writing one file is the
+# failure this script exists to prevent; writing half of one pair is the same
+# failure wearing a crash for a disguise.
 write_version() {
   local v=$1
   if command -v node > /dev/null 2>&1; then
     node -e '
       const fs=require("fs"), v=process.argv[1];
-      for (const [p,f] of [
-        [".claude-plugin/plugin.json",      d => d.version = v],
-        [".claude-plugin/marketplace.json", d => d.plugins[0].version = v],
-      ]) { const d=JSON.parse(fs.readFileSync(p,"utf8")); f(d);
-           fs.writeFileSync(p, JSON.stringify(d,null,2)+"\n"); }
+      const out=[
+        [".claude-plugin/plugin.json",      d => { d.version = v; }],
+        [".claude-plugin/marketplace.json", d => { d.plugins[0].version = v; }],
+      ].map(([p,f]) => { const d=JSON.parse(fs.readFileSync(p,"utf8")); f(d);
+                         return [p, JSON.stringify(d,null,2)+"\n"]; });
+      for (const [p,s] of out) fs.writeFileSync(p,s);
     ' "$v"
   elif command -v python3 > /dev/null 2>&1; then
     python3 - "$v" <<'PY'
 import json, sys
+# ensure_ascii=False, or this branch escapes every non-ASCII character while the
+# node branch writes it raw — same input, two different files, and the diff a
+# deploy produces would depend on which interpreter the machine happened to have.
 v = sys.argv[1]
+out = []
 for path, mutate in (
     ('.claude-plugin/plugin.json',      lambda d: d.update(version=v)),
     ('.claude-plugin/marketplace.json', lambda d: d['plugins'][0].update(version=v)),
 ):
-    d = json.load(open(path))
+    with open(path, encoding='utf-8') as fh:
+        d = json.load(fh)
     mutate(d)
-    json.dump(d, open(path, 'w'), indent=2)
-    open(path, 'a').write('\n')
+    out.append((path, json.dumps(d, indent=2, ensure_ascii=False) + '\n'))
+for path, text in out:
+    with open(path, 'w', encoding='utf-8') as fh:
+        fh.write(text)
+PY
+  else
+    echo "deploy: neither node nor python3 on PATH" >&2; exit 1
+  fi
+}
+
+# What the harness has actually installed, user scope — empty if nothing is.
+# This file, not the script's own optimism, is the record of what will load.
+installed_version() {
+  local f="${HOME}/.claude/plugins/installed_plugins.json"
+  [ -f "$f" ] || { echo ""; return 0; }
+  if command -v node > /dev/null 2>&1; then
+    node -e '
+      const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+      const e=((d.plugins||{})["aikit@aikit-marketplace"])||[];
+      const u=e.find(x => x.scope === "user");
+      console.log(u ? u.version : "");
+    ' "$f"
+  elif command -v python3 > /dev/null 2>&1; then
+    python3 - "$f" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding='utf-8') as fh:
+    d = json.load(fh)
+e = d.get('plugins', {}).get('aikit@aikit-marketplace', [])
+u = next((x for x in e if x.get('scope') == 'user'), None)
+print(u['version'] if u else '')
 PY
   else
     echo "deploy: neither node nor python3 on PATH" >&2; exit 1
@@ -84,9 +124,29 @@ scripts/doctor || {
 
 # --- commit, push, publish -------------------------------------------------
 git add -A
-git commit -q -m "${next}${2:+ - $2}" || echo "→ rien a committer"
+
+# `git commit` exits 1 for "nothing to commit" AND for "a hook refused this",
+# a failed GPG signature, a stale index.lock. Collapsing the two into one
+# `|| echo "rien a committer"` is how a refused commit became a deploy that
+# reported success: nothing committed, nothing pushed, `plugin update` answering
+# "already at the latest version", and a green message at the end. From Task 14
+# on, .githooks/pre-commit runs scripts/doctor, so this path is live on every
+# deploy — and it is the second doctor run, the one nobody is watching, whose
+# refusal would be swallowed. `git diff --cached --quiet` tells the two apart.
+if git diff --cached --quiet; then
+  echo "→ rien a committer"
+else
+  git commit -q -m "${next}${2:+ - $2}" || {
+    echo "✗ commit REFUSE — hook pre-commit, signature GPG, index.lock ?" >&2
+    echo "  rien n'a ete pousse, rien n'a ete publie. La version ${next} est dans les" >&2
+    echo "  manifestes mais hors de l'historique : corrige la cause, puis relance." >&2
+    exit 1
+  }
+fi
+
 git push
-echo "→ pousse sur $(git remote get-url origin)"
+upstream=$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo '')
+echo "→ pousse sur ${upstream:-(upstream non configure)} ($(git remote get-url "${upstream%%/*}" 2>/dev/null || echo 'remote inconnu'))"
 
 claude plugin marketplace update aikit-marketplace
 claude plugin update aikit@aikit-marketplace --scope user
@@ -97,4 +157,23 @@ claude plugin update aikit@aikit-marketplace --scope user
 # So it reports what it did not find instead of dying of it.
 claude plugin list | grep -A2 'aikit@aikit-marketplace' \
   || echo "→ aikit@aikit-marketplace introuvable dans la liste — verifier l'installation" >&2
+
+# --- did it actually land? -------------------------------------------------
+#
+# Everything above can succeed one command at a time and still deploy nothing:
+# a commit swallowed, a push landing on a branch the marketplace does not serve,
+# `plugin update` answering "already at the latest version" with nobody reading.
+# installed_plugins.json is the only record of what the harness will load, so it
+# is the only thing worth asserting. A tool whose whole premise is "the old one
+# lied" must check its own claim.
+got=$(installed_version)
+if [ "$got" != "$next" ]; then
+  echo "✗ PAS deploye. installed_plugins.json donne '${got:-aucune installation}', attendu ${next}." >&2
+  echo "  Le bump, le commit et le push ont pu reussir sans que rien n'atterrisse :" >&2
+  echo "  verifier que la branche poussee est celle que le marketplace sert, puis" >&2
+  echo "  rejouer les deux commandes 'claude plugin' seules — ne PAS relancer deploy," >&2
+  echo "  qui bumperait une seconde fois a partir d'un numero deja pousse." >&2
+  exit 1
+fi
+echo "→ installe : aikit@aikit-marketplace ${got} (installed_plugins.json)"
 echo "→ deploye. Prend effet dans une NOUVELLE session."
