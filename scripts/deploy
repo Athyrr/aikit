@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Bump the version, run the eight gates, commit, push, publish.
+#
+# The plugin the harness runs is a COPY pinned to a version under
+# ~/.claude/plugins/cache/. Editing this tree changes nothing until this script
+# has run — that separation is the point of the montage, not a side effect.
+#
+# `claude plugin update` compares VERSIONS, not content. Without the bump it
+# reports "already at the latest version" and the stale copy keeps running.
+#
+# Usage: scripts/deploy [patch|minor|major] "message"
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+part=${1:-patch}
+case "$part" in patch|minor|major) ;; *) echo "usage: scripts/deploy [patch|minor|major] \"message\"" >&2; exit 2 ;; esac
+
+# --- version arithmetic, without requiring python3 -------------------------
+read_version() {
+  if command -v node > /dev/null 2>&1; then
+    node -e 'console.log(JSON.parse(require("fs").readFileSync(".claude-plugin/plugin.json","utf8")).version)'
+  elif command -v python3 > /dev/null 2>&1; then
+    python3 -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])"
+  else
+    echo "deploy: neither node nor python3 on PATH" >&2; exit 1
+  fi
+}
+
+write_version() {
+  local v=$1
+  if command -v node > /dev/null 2>&1; then
+    node -e '
+      const fs=require("fs"), v=process.argv[1];
+      for (const [p,f] of [
+        [".claude-plugin/plugin.json",      d => d.version = v],
+        [".claude-plugin/marketplace.json", d => d.plugins[0].version = v],
+      ]) { const d=JSON.parse(fs.readFileSync(p,"utf8")); f(d);
+           fs.writeFileSync(p, JSON.stringify(d,null,2)+"\n"); }
+    ' "$v"
+  else
+    python3 - "$v" <<'PY'
+import json, sys
+v = sys.argv[1]
+for path, mutate in (
+    ('.claude-plugin/plugin.json',      lambda d: d.update(version=v)),
+    ('.claude-plugin/marketplace.json', lambda d: d['plugins'][0].update(version=v)),
+):
+    d = json.load(open(path))
+    mutate(d)
+    json.dump(d, open(path, 'w'), indent=2)
+    open(path, 'a').write('\n')
+PY
+  fi
+}
+
+current=$(read_version)
+IFS=. read -r maj min pat <<< "$current"
+case "$part" in
+  major) maj=$((maj+1)); min=0; pat=0 ;;
+  minor) min=$((min+1)); pat=0 ;;
+  patch) pat=$((pat+1)) ;;
+esac
+next="${maj}.${min}.${pat}"
+
+write_version "$next"
+echo "→ ${current} → ${next}"
+
+# --- the gates, all eight, before anything leaves the machine --------------
+scripts/doctor || { echo "✗ gates failed — nothing pushed, version bumped in place" >&2; exit 1; }
+
+# --- commit, push, publish -------------------------------------------------
+git add -A
+git commit -q -m "${next}${2:+ - $2}" || echo "→ rien a committer"
+git push
+echo "→ pousse sur $(git remote get-url origin)"
+
+claude plugin marketplace update aikit-marketplace
+claude plugin update aikit@aikit-marketplace --scope user
+claude plugin list | grep -A2 'aikit@aikit-marketplace'
+echo "→ deploye. Prend effet dans une NOUVELLE session."
