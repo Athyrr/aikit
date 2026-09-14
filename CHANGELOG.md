@@ -3,6 +3,21 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.9.1
+- `scripts/deploy` pousse vers la ref amont explicite
+  (`git push "$remote" HEAD:"$ref"`) au lieu d'un `git push` nu : `push.default`
+  vaut `simple` partout ou personne ne l'a configure, et `simple` refuse un push
+  dont le nom de la branche amont differe du nom de la branche locale. Le
+  deploiement mourait donc apres le bump et apres le commit, sans chemin de
+  rejeu — la version commitee mais jamais publiee, et un second run bumpant a
+  partir d'un numero deja consomme.
+- Le remote et la branche sortent de `branch.<x>.remote` et `branch.<x>.merge`,
+  jamais d'un decoupage de `@{upstream}` : git accepte un remote dont le nom
+  porte un `/`, et `merge` porte deja le ref complet cote distant.
+- L'amont est resolu avant la premiere ecriture : un amont absent, ou une HEAD
+  detachee, fait echouer deploy sans consommer de version ni laisser de commit
+  orphelin.
+
 ## 0.9.0
 - Plugin distribue depuis `git@github.com:Athyrr/aikit.git` via un marketplace
   `github` prive en SSH : editer l'arbre ne publie plus rien, `scripts/deploy`
