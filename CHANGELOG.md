@@ -3,6 +3,19 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.9.0
+- Plugin distribue depuis `git@github.com:Athyrr/aikit.git` via un marketplace
+  `github` prive en SSH : editer l'arbre ne publie plus rien, `scripts/deploy`
+  publie.
+- Le registre (`projects/*.md`) sort du plugin et vit dans le vault de l'espace,
+  sous `<espace>/vault/projects/`. La sonde du hook suit.
+- Les artefacts s'appellent `vault/`, plus `work/`.
+- `bin/` n'accueille que des commandes d'execution ; `deploy` et `doctor`
+  passent dans `scripts/`, hors du `PATH`.
+- `scripts/doctor` porte huit portes, dont trois greps de cible et la
+  verification de `core.hooksPath` ; `.githooks/pre-commit` les execute.
+- Windows : `"shell": "bash"` retire, l'echec « aucun bash » devient bruyant.
+
 ## 0.8.7
 - Registry extracted from the method repository: `projects/` now ships a
   skeleton and one example only; a workspace carries its own registry.
