@@ -36,41 +36,11 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   claude plugin validate ./agents --strict
   ```
 
-> [!warning] The next bullet is not true yet — read this one first
-> It describes the **target** montage. Until **task 17 of the `distribution`
-> chantier** switches it, the montage measured in
-> `~/.claude/plugins/known_marketplaces.json` is the opposite:
->
-> ```json
-> "aikit-local": {
->   "source": { "source": "directory", "path": "<the absolute path of THIS repository>" },
->   "installLocation": "<the same path again>"
-> }
-> ```
->
-> A `directory` marketplace whose install location **is this working tree**. So
-> today the harness loads the plugin from these very files, and nothing —
-> no bump, no commit, no push — stands between an editor and production:
-> **every saved edit is live for every session in the workspace at the next
-> `startup`, `/clear` or compaction.** Edit `skills/using-aikit/SKILL.md`,
-> `hooks/session-start` or any `agents/*.md` as if it were already deployed,
-> because it is.
->
-> `installed_plugins.json` appears to contradict this — it names an
-> `installPath` of `cache/aikit-local/aikit/0.8.6`, pinned to `6556902`. That
-> directory exists and is stale: it carries 21 skills and no
-> `handling-secrets/`, which every session nonetheless exposes. The file of
-> record is `known_marketplaces.json` → `installLocation`; the cache entry is
-> bookkeeping left over from the copy-install model.
->
-> Delete this callout in **task 18**, right after proof 8 — not in task 17,
-> which flips the montage but declares an empty diff in every working tree.
-
 - **A plugin change only takes effect in a new session, and only after it is
-  published** — *target state; see the warning above*. `aikit-marketplace` is a
-  `github` marketplace: the harness runs a copy pinned to a version under
-  `~/.claude/plugins/cache/`, never this working tree. Editing a file here
-  changes nothing until `scripts/deploy` has bumped, committed and pushed.
+  published**. `aikit-marketplace` is a `github` marketplace: the harness runs
+  a copy pinned to a version under `~/.claude/plugins/cache/`, never this
+  working tree. Editing a file here changes nothing until `scripts/deploy` has
+  bumped, committed and pushed.
   `/reload-plugins` reloads skills, agents and hooks without restarting; only
   the SessionStart preamble needs `startup|clear|compact` — and `/clear` is one
   of those. `claude --plugin-dir .` loads this tree for one session, taking
