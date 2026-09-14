@@ -21,16 +21,15 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   carries **no** `tools:` list, deliberately — that is the only way to reach a
   project's MCP tools — so it inherits everything.
 - Use `aikit:writing-skills` when creating or editing a skill.
-- The completion criterion lives in the workspace registry file
-  `<workspace>/vault/projects/aikit.md`, like every other project's. That file
-  is **not** shipped with the plugin. Run it; do not invent an equivalent.
+- The completion criterion is `scripts/doctor`, in this repository — see
+  **Completion criterion** below. Run it; do not invent an equivalent.
 - After touching `hooks/session-start`, verify it still emits valid JSON:
   ```bash
   CLAUDE_PLUGIN_ROOT=$PWD bash hooks/session-start | python3 -m json.tool > /dev/null
   ```
 - **`claude plugin validate .` validates the marketplace manifest and nothing
-  else** — it reads no `SKILL.md` and no `agents/*.md`. The real gates are three
-  commands, not one:
+  else** — it reads no `SKILL.md` and no `agents/*.md`. That is why gates 1-3
+  are three separate commands, not one:
   ```bash
   claude plugin validate .                  # manifest only
   claude plugin validate ./skills --strict
@@ -77,6 +76,45 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   of those. `claude --plugin-dir .` loads this tree for one session, taking
   precedence over the installed copy.
 
+## Completion criterion
+
+No test suite. One command, from the repository root, carrying **eight gates**:
+
+```bash
+scripts/doctor
+```
+
+It prints `GATES_PASS` and exits 0 when all eight pass; it exits 1 otherwise,
+naming each gate that fell.
+
+| # | Gate |
+|---|---|
+| 1 | `claude plugin validate .` — the marketplace manifest ONLY |
+| 2 | `claude plugin validate ./skills --strict` — the skills |
+| 3 | `claude plugin validate ./agents --strict` — the archetypes |
+| 4 | `hooks/session-start` emits valid JSON |
+| 5 | no path left naming the vault's former directory |
+| 6 | no probe left pointing at the plugin's former bundled registry |
+| 7 | no workspace fact left in the tree — five hard-coded brand strings |
+| 8 | `core.hooksPath` is `.githooks` |
+
+Gates 1-4 check form. Gates 5-7 check the target rather than the shape: they
+catch what no manifest validation can see. Gate 8 is **local** git config — it
+does not clone, push or inherit, so a fresh clone must arm it once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+That is the whole point of gate 8, making the arming visible instead of assumed.
+Once armed, `.githooks/pre-commit` runs all eight before every commit, and a red
+gate refuses it.
+
+**What it does not prove, and says so itself** — `A NEW session is still
+required to prove the method loads.` A plugin change only takes effect in a new
+session, so until a fresh one has loaded the method without error, the honest
+verdict is `GATES_PASS`, never `PASS`.
+
 ## It will not stay standalone
 
 aiKit will be versioned and published. Do not write as though this repository
@@ -85,8 +123,13 @@ is private workspace tooling.
 **Keep workspace-specific facts out of the method surface.** Skills, agents and
 `README.md` describe the method. Paths, project names, MCP servers and
 infrastructure belong in the registry — `<workspace>/vault/projects/*.md`, which
-is data and lives in the workspace, never in this repository. Gate 7 of
-`scripts/doctor` measures it.
+is data and lives in the workspace, never in this repository.
+
+Gate 7 of `scripts/doctor` catches part of this, and only part: it greps the
+tree for **five hard-coded brand strings**, nothing else. A private
+infrastructure fact that avoids those five words passes green. It is a tripwire
+for the obvious cases, never proof that the surface is clean — that judgement
+stays yours.
 
 ## Agents
 

@@ -18,14 +18,19 @@ preamble=$(cat "${PLUGIN_ROOT}/skills/using-aikit/SKILL.md" 2>&1 || echo "Error 
 # Each projects/<name>.md carries a YAML frontmatter with at least:
 #   name, path, summary
 #
-# The registry is workspace DATA, not plugin code. It is read from the live
-# source directory first, because installing a plugin COPIES it into
-# ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ pinned to a commit:
-# the bundled copy goes stale the moment you edit a project file. Reading the
-# source means a registry edit takes effect in the very next session, with no
-# reinstall. The bundled copy stays as a fallback.
+# The registry is workspace DATA, not plugin code. It is read from the
+# workspace and ONLY from the workspace, because installing a plugin COPIES it
+# into ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ pinned to a
+# commit: a bundled copy would go stale the moment you edit a project file.
+# Reading the workspace means a registry edit takes effect in the very next
+# session, with no reinstall.
 #
-# Missing or empty registry degrades to nothing injected.
+# There is NO bundled copy, and no fallback to one. The plugin ships no registry
+# directory at all — see the comment just below the probe for why that is
+# deliberate, and do not reintroduce one.
+#
+# Finding no registry degrades to a short "no registry here" note — never to a
+# project table, and never to a failure.
 # Walk up from the session's directory: aiKit may be launched from inside any
 # project of the workspace, not only from its root. The registry is found by
 # ancestry, never by assuming the cwd is the workspace.
