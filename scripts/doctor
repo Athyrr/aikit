@@ -61,7 +61,7 @@ gate_empty() {
   fi
 }
 
-SCOPE=(skills agents hooks bin scripts README.md CLAUDE.md)
+SCOPE=(skills agents hooks bin scripts README.md CLAUDE.md SETUP.md)
 
 run "1 manifest"        claude plugin validate .
 run "2 skills (strict)" claude plugin validate ./skills --strict
