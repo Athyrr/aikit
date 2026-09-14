@@ -15,6 +15,43 @@ cd "$(dirname "$0")/.."
 part=${1:-patch}
 case "$part" in patch|minor|major) ;; *) echo "usage: scripts/deploy [patch|minor|major] \"message\"" >&2; exit 2 ;; esac
 
+# --- where the push will go, resolved BEFORE anything is written -----------
+#
+# A bare `git push` obeys push.default, which is `simple` on every machine
+# where nobody set it — and `simple` REFUSES a push whose upstream branch does
+# not carry the name of the local branch. A tree whose `master` tracks
+# `origin/main` therefore dies on `fatal: The upstream branch of your current
+# branch does not match the name of your current branch`, exit 128, at the push
+# — AFTER the bump and AFTER the commit, with no replay path: the version is in
+# the history but not on the remote, and a second run would bump from a number
+# already consumed. The first real deploy only got through because of a
+# `git config --local push.default upstream` typed by hand, which lives in
+# .git/config, is neither cloned nor pushed, and no gate measures. So the
+# destination is named explicitly and push.default no longer has a say.
+#
+# The remote and the branch come from the config, not from cutting
+# `@{upstream}` at a slash: that string is "<remote>/<branch>" and git ACCEPTS
+# a remote whose name contains a slash — measured, a remote `grp/sub` tracking
+# `feature/deep` yields `grp/sub/feature/deep`, where ${u%%/*} gives `grp` and
+# ${u#*/} gives `sub/feature/deep`, both wrong. branch.<name>.merge already
+# holds the full ref on the remote side, refs/heads/<branch>: the destination,
+# with nothing to guess.
+#
+# Resolved here, before the first write, on purpose. A missing upstream is
+# knowable now, and failing now costs nothing: no bump to undo, no commit to
+# strand. Discovering it at the push would consume a version for good.
+local_branch=$(git symbolic-ref --quiet --short HEAD || echo '')
+push_remote=$(git config --get "branch.${local_branch}.remote" || echo '')
+push_ref=$(git config --get "branch.${local_branch}.merge" || echo '')
+if [ -z "$push_remote" ] || [ -z "$push_ref" ]; then
+  echo "✗ no upstream for '${local_branch:-detached HEAD}' — nothing bumped, nothing committed." >&2
+  echo "  deploy will not publish what it cannot push. Set the upstream first:" >&2
+  echo "    git branch --set-upstream-to=origin/<branch> ${local_branch:-<branch>}" >&2
+  echo "  then rerun deploy." >&2
+  exit 1
+fi
+push_dest="${push_remote}/${push_ref#refs/heads/}"
+
 # --- version arithmetic, without requiring python3 -------------------------
 read_version() {
   if command -v node > /dev/null 2>&1; then
@@ -154,9 +191,10 @@ else
   }
 fi
 
-git push
-upstream=$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo '')
-echo "→ pousse sur ${upstream:-(upstream non configure)} ($(git remote get-url "${upstream%%/*}" 2>/dev/null || echo 'remote inconnu'))"
+# Explicit refspec, resolved at the top of this script: HEAD goes to the branch
+# the upstream config names, whatever push.default happens to be here.
+git push "$push_remote" HEAD:"$push_ref"
+echo "→ pousse sur ${push_dest} ($(git remote get-url "$push_remote" 2>/dev/null || echo "$push_remote"))"
 
 claude plugin marketplace update aikit-marketplace
 claude plugin update aikit@aikit-marketplace --scope user
