@@ -110,12 +110,12 @@ registry are not — they belong to the workspace that uses the method, never to
 the method itself.
 
 ```
-~/<workspace>/aikit/          a clone of the method — the SOURCE, not the plugin
+<anywhere>/aikit/             a clone of the method — the SOURCE, not the plugin
   hooks/                      the SessionStart injection
   skills/                     the skills
   agents/                     the six archetypes
-  scripts/                    doctor — and deploy after task 10; NOT on the PATH
-  bin/                        ezy and scoped — these ARE on the PATH
+  scripts/                    doctor and deploy — NOT on the Bash tool's PATH
+  bin/                        ezy and scoped — these ARE on it
 
 <workspace>/                  any project or group of projects you work in
   vault/                      a clone of the workspace's vault (an Obsidian vault)
@@ -123,7 +123,7 @@ the method itself.
     <project>/<feature>/{spec,impact,plan,ledger,diagnostic-N}.md
   <the project repositories>
 
-~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS
+~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS after task 17
 ```
 
 The hook finds the registry by walking **up** from the session's directory,
@@ -137,32 +137,26 @@ in a project never shows a method artifact.
 
 ## Install
 
-> [!WARNING]
-> **This section and *Iterating on the method* describe the target montage, not
-> this tree.** Neither piece exists yet: this repository has no remote (task 15
-> creates it), and `scripts/` holds only `doctor` (task 10 creates
-> `scripts/deploy`). Task 13, step 1b rewrites both sections, and this warning
-> dies with them.
-
 On any machine, once, at user scope:
 
 ```bash
 claude plugin marketplace add git@github.com:Athyrr/aikit.git   # this remote: task 15
-claude plugin install aikit@aikit-marketplace --scope user
+claude plugin install aikit@aikit-marketplace --scope user      # this marketplace: task 17
 ```
 
-Register the marketplace over **SSH**. The docs state that background refreshes
-disable credential helpers, so a private marketplace registered over HTTPS
-fails to auto-update.
-
-`--scope user` makes the method available from any repository on the machine —
-it is a way of working, not workspace data. Install in **one scope only**: two
-scopes means two entries, and an update touches one while the other keeps
-running.
+Register the marketplace over **SSH**, and install in **one scope only** — two
+scopes means two copies, and an update touches one while the other keeps
+running. `--scope user` makes the method available from any repository on the
+machine: it is a way of working, not workspace data. **You do not clone this
+repository to use the method.**
 
 To make a workspace routable, give it a registry — `vault/projects/<name>.md`
 per project. `aikit:registering-a-project` carries the frontmatter contract the
 tooling parses and the six sections a registry file must hold.
+
+**[`SETUP.md`](SETUP.md) is the full procedure** — prerequisites (Git for
+Windows is a hard one), why SSH rather than HTTPS, wiring a workspace's vault,
+and the development loop below. That text lives there, once.
 
 ## Iterating on the method
 
@@ -172,13 +166,14 @@ Installing a plugin **copies** it into
 reports "already at the latest version" and the stale copy keeps running.
 
 ```bash
-scripts/deploy [patch|minor|major] "message"   # this script: task 10
+scripts/deploy [patch|minor|major] "message"
 ```
 
 from the clone bumps both manifests, runs the eight gates, commits, pushes,
 refreshes the marketplace and updates the install. **Takes effect in a new
 session.** Run `scripts/doctor` any time for the gates without deploying, and
 `claude --plugin-dir .` to load the working tree into one session only.
+[`SETUP.md`](SETUP.md) §4 has the whole loop, from clone to merge.
 
 The registry is exempt: `vault/projects/*.md` lives in the workspace's vault
 and is read from disk by the hook, so a registry edit is live in the next
