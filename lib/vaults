@@ -106,8 +106,10 @@ fiche_field() {  # fiche_field <fichier> <clef>
 # repertoire de travail. Un depot dont le projet vit dans un sous-repertoire se
 # decrit donc `repo: <cle>` + `dir: <sous-repertoire>`, vrai sur toutes les
 # machines. Appariement :
-#   - repo: apparie      -> <depot trouve>/<dir> si dir: est donne
-#   - repo: absent/rate  -> <racine>/<dir>, ou a defaut <racine>/<nom>
+#   - repo: apparie, sans dir:            -> le depot trouve
+#   - repo: apparie, dir: s'y trouve      -> <depot trouve>/<dir>
+#   - repo: apparie, dir: ne s'y trouve pas -> absent (fiche cassee, ca se voit)
+#   - repo: absent ou n'apparie pas       -> <racine>/<dir>, a defaut <racine>/<nom>
 resolve_projects() {
   local vname="${1:-}" vpath roots=() scanned f name kind repo dir summary hit state r
   vpath="$(vault_path "$vname")"
@@ -126,14 +128,17 @@ resolve_projects() {
 
     if [ -n "$repo" ]; then
       hit="$(printf '%s\n' "$scanned" | awk -F'\t' -v k="$repo" '$1==k {print $2; exit}')"
-      # dir: affine A L'INTERIEUR du depot trouve. S'il ne s'y trouve pas, le
-      # depot reste le meilleur resultat vrai : on ne rend jamais un chemin
-      # inexistant marque `present`.
-      if [ -n "$hit" ] && [ -n "$dir" ] && [ -d "$hit/$dir" ]; then
-        hit="$hit/$dir"
-      fi
     fi
-    if [ -z "$hit" ]; then
+
+    if [ -n "$hit" ] && [ -n "$dir" ]; then
+      # repo: apparie ET dir: est declare : le projet est dans ce depot, ou il
+      # n'est nulle part. Aucun repli -- ni sur la racine du depot, ni sur les
+      # racines de recherche. La colonne 4 dit ou est le PROJET, pas ou est le
+      # depot : rendre l'enveloppe affirmerait "il est ici" sans le savoir, et
+      # un consommateur ouvrirait son perimetre sur le mauvais repertoire.
+      # Un dir: qui ne resout pas est une fiche cassee, et ca doit se voir.
+      if [ -d "$hit/$dir" ]; then hit="$hit/$dir"; else hit=""; fi
+    elif [ -z "$hit" ]; then
       local probe="${dir:-$name}" root
       for root in "${roots[@]+"${roots[@]}"}"; do
         [ -d "$root/$probe" ] && { hit="$root/$probe"; break; }

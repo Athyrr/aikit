@@ -49,6 +49,8 @@ fiche travail     "repo: github.com/acme/depot-enveloppe" "dir: dedans" \
 fiche url-ssh     "repo: github.com/acme/par-ssh"     "summary: remote en ssh://"
 fiche dir-absent  "repo: github.com/acme/par-ssh" "dir: pas-la" \
                   "summary: dir declare mais absent du depot"
+fiche dir-piege   "repo: github.com/acme/par-ssh" "dir: sans-git" \
+                  "summary: dir: absent du depot mais present sous une racine"
 # Sans clef summary : la 5e colonne doit retomber sur "-", pas disparaitre.
 fiche sans-summary "repo: github.com/acme/avec-remote"
 
@@ -99,8 +101,10 @@ is "par nom de repertoire"     "depot|present|$ROOT/sans-git"        "$(r sans-g
 is "dir: explicite"            "depot|present|$ROOT/enveloppe/dedans" "$(r enveloppe)"
 is "repo: puis dir: affine dedans" \
    "depot|present|$ROOT/depot-enveloppe/dedans"                      "$(r travail)"
-is "dir: absent du depot -> le depot trouve" \
-   "depot|present|$ROOT/par-ssh"                                     "$(r dir-absent)"
+is "dir: declare mais absent du depot -> absent" \
+   "depot|absent|-"                                                  "$(r dir-absent)"
+is "et aucun repli sur les racines de recherche" \
+   "depot|absent|-"                                                  "$(r dir-piege)"
 is "non clone ici -> absent"   "depot|absent|-"                      "$(r fantome)"
 is "kind: conception"          "conception|absent|-"                 "$(r idee)"
 
