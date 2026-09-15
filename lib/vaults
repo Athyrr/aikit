@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Resolution des vaults et des projets. SOURCE, jamais execute.
+#
+# Remplace la fonction find_workspace() qui etait triplicee dans
+# hooks/session-start, bin/ezy et bin/scoped. Il n'y a plus de remontee
+# d'ancetres : les chemins du fichier de vaults sont absolus.
+#
+# Format du fichier, un enregistrement par ligne :
+#     vault <nom> <chemin>
+#     root  <nom> <chemin>
+# Le chemin est TOUJOURS le dernier champ, donc `read -r kind name path` lui
+# donne tout le reste de la ligne : une espace dans le chemin passe sans
+# guillemets. Plusieurs lignes `root` pour un meme vault s'accumulent.
+
+vaults_config_path() { printf '%s' "${AIKIT_VAULTS:-$HOME/.config/aikit/vaults}"; }
+
+_vaults_read() {  # _vaults_read <mot-cle> [nom]
+  local conf want_kind="$1" want_name="${2:-}" kind name path
+  conf="$(vaults_config_path)"
+  [ -r "$conf" ] || return 0
+  while read -r kind name path || [ -n "$kind" ]; do
+    case "$kind" in ''|'#'*) continue ;; esac
+    [ "$kind" = "$want_kind" ] || continue
+    [ -z "$want_name" ] || [ "$name" = "$want_name" ] || continue
+    [ -n "$path" ] || continue
+    printf '%s\t%s\n' "$name" "$path"
+  done < "$conf"
+}
+
+vaults_list() { _vaults_read vault; }
+vault_roots() { _vaults_read root "$1" | cut -f2; }
+
+vault_path() {  # vault_path <nom>
+  _vaults_read vault "$1" | cut -f2 | head -1
+}
+
+# Normalise une URL de remote en <hote>/<org>/<depot>, ssh comme https.
+_normalize_remote() {
+  local u="$1"
+  u="${u%.git}"
+  u="${u#git@}"; u="${u#ssh://}"; u="${u#https://}"; u="${u#http://}"
+  u="${u/://}"          # git@github.com:org/repo -> github.com//org/repo
+  u="${u//\/\///}"      # ecrase le double slash
+  printf '%s' "$u"
+}
+
+# vaults_scan <racine…> -> <hote/org/depot>\t<chemin absolu>, un depot par ligne.
+# Profondeur 3 volontaire : une racine correctement declaree se scanne en ~18 ms.
+vaults_scan() {
+  local root d url
+  for root in "$@"; do
+    [ -d "$root" ] || continue
+    while IFS= read -r d; do
+      d="${d%/.git}"
+      url="$(git -C "$d" remote get-url origin 2>/dev/null)" || continue
+      [ -n "$url" ] || continue
+      printf '%s\t%s\n' "$(_normalize_remote "$url")" "$d"
+    done < <(find "$root" -maxdepth 3 -name .git -type d 2>/dev/null)
+  done
+}
+
+fiche_field() {  # fiche_field <fichier> <clef>
+  awk -v key="$2" '
+    /^---[[:space:]]*$/ { fm++; next }
+    fm == 1 && $0 ~ "^" key ":" {
+      sub("^" key ":[[:space:]]*", ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit
+    }
+    fm >= 2 { exit }
+  ' "$1"
+}
+
+# resolve_projects <nom-du-vault>
+#   -> <nom>\t<kind>\t<present|absent>\t<chemin ou ->\t<summary>
+#
+# Appariement, dans l'ordre : repo: -> dir: -> nom de repertoire.
+resolve_projects() {
+  local vname="$1" vpath roots=() scanned f name kind repo dir summary hit state
+  vpath="$(vault_path "$vname")"
+  [ -n "$vpath" ] && [ -d "$vpath/projects" ] || return 0
+  while IFS= read -r r; do roots+=("$r"); done < <(vault_roots "$vname")
+  scanned="$(vaults_scan "${roots[@]+"${roots[@]}"}")"
+
+  for f in "$vpath"/projects/*.md; do
+    [ -e "$f" ] || continue
+    name="$(fiche_field "$f" name)";  [ -n "$name" ] || name="$(basename "$f" .md)"
+    kind="$(fiche_field "$f" kind)";  [ -n "$kind" ] || kind="depot"
+    repo="$(fiche_field "$f" repo)"
+    dir="$(fiche_field "$f" dir)"
+    summary="$(fiche_field "$f" summary)"; [ -n "$summary" ] || summary="-"
+    hit=""
+
+    if [ -n "$repo" ]; then
+      hit="$(printf '%s\n' "$scanned" | awk -F'\t' -v k="$repo" '$1==k {print $2; exit}')"
+    fi
+    if [ -z "$hit" ]; then
+      local probe="${dir:-$name}" root
+      for root in "${roots[@]+"${roots[@]}"}"; do
+        [ -d "$root/$probe" ] && { hit="$root/$probe"; break; }
+      done
+    fi
+
+    [ -n "$hit" ] && state="present" || { state="absent"; hit="-"; }
+    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$state" "$hit" "$summary"
+  done
+}

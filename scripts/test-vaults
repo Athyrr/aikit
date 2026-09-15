@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Tests de lib/vaults. Aucune dependance reseau, aucune fixture versionnee.
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+. lib/vaults
+
+pass=0; fail=0
+ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
+ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
+is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
+
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+
+# --- fixtures ---------------------------------------------------------------
+# Une espace dans le chemin du vault, DELIBEREMENT : c'est le cas reel.
+VAULT="$TMP/Mon Espace/levault"
+ROOT="$TMP/code"
+mkdir -p "$VAULT/projects" "$ROOT"
+
+mkrepo() {  # mkrepo <dir> <remote-url>
+  mkdir -p "$ROOT/$1" && git -C "$ROOT/$1" init -q
+  [ -n "${2:-}" ] && git -C "$ROOT/$1" remote add origin "$2"
+}
+mkrepo avec-remote  "git@github.com:acme/avec-remote.git"
+mkrepo autre-nom    "https://github.com/acme/renomme.git"
+mkdir -p "$ROOT/sans-git" "$ROOT/enveloppe/dedans"
+
+fiche() {  # fiche <nom> <lignes de frontmatter...>
+  { echo "---"; echo "name: $1"; shift; printf '%s\n' "$@"; echo "---"; } \
+    > "$VAULT/projects/${FICHE_NAME:-$1}.md"
+}
+fiche avec-remote "repo: github.com/acme/avec-remote" "summary: par remote ssh"
+fiche par-https   "repo: github.com/acme/renomme"     "summary: par remote https"
+fiche sans-git                                        "summary: par nom de repertoire"
+fiche enveloppe   "dir: enveloppe/dedans"             "summary: par dir explicite"
+fiche fantome                                         "summary: pas clone ici"
+fiche idee        "kind: conception"                  "summary: sans depot du tout"
+
+CONF="$TMP/vaults"
+{ echo "# commentaire ignore"
+  echo ""
+  echo "vault espace $VAULT"
+  echo "root  espace $ROOT"
+} > "$CONF"
+export AIKIT_VAULTS="$CONF"
+
+# --- assertions -------------------------------------------------------------
+echo "vaults_list"
+is "un seul vault, chemin avec espace intact" \
+   "espace	$VAULT" "$(vaults_list)"
+
+echo "vault_roots"
+is "la racine declaree" "$ROOT" "$(vault_roots espace)"
+
+echo "vaults_scan"
+is "apparie ssh et https sur la meme forme normalisee" \
+   "github.com/acme/avec-remote	$ROOT/avec-remote
+github.com/acme/renomme	$ROOT/autre-nom" \
+   "$(vaults_scan "$ROOT" | sort)"
+
+echo "resolve_projects"
+r() { resolve_projects espace | awk -F'\t' -v n="$1" '$1==n {print $2"|"$3"|"$4}'; }
+is "par remote ssh"            "depot|present|$ROOT/avec-remote"     "$(r avec-remote)"
+is "par remote https"          "depot|present|$ROOT/autre-nom"       "$(r par-https)"
+is "par nom de repertoire"     "depot|present|$ROOT/sans-git"        "$(r sans-git)"
+is "dir: explicite"            "depot|present|$ROOT/enveloppe/dedans" "$(r enveloppe)"
+is "non clone ici -> absent"   "depot|absent|-"                      "$(r fantome)"
+is "kind: conception"          "conception|absent|-"                 "$(r idee)"
+
+echo
+echo "$pass passes, $fail echecs"
+[ "$fail" = 0 ]
