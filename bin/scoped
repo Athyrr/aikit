@@ -20,52 +20,49 @@
 # nothing else — a tool that is neither allowed nor denied simply blocks, since
 # nobody is there to approve it.
 #
-# The workspace is found by walking UP from the current directory looking for
-# `vault/projects/*.md`, exactly as the SessionStart hook does — so this works
-# whether the method is a sibling clone or installed at user scope.
+# The project is located by `lib/vaults`: the declared vaults are searched, and
+# their fiches matched to the clones actually on this machine. No ancestor walk,
+# so no risk of opening a perimeter on whichever parallel clone happened to sit
+# above the current directory.
 #
 # Usage:
 #   scoped <project> <feature> <instruction...>
 #   scoped <project> <feature> @path/to/prompt.md
 set -euo pipefail
 
-find_workspace() {
-  local probe="${CLAUDE_PROJECT_DIR:-$PWD}"
-  while [ -n "$probe" ] && [ "$probe" != "/" ]; do
-    if compgen -G "${probe}/vault/projects/*.md" > /dev/null 2>&1; then
-      printf '%s' "$probe"; return 0
-    fi
-    probe="$(dirname "$probe")"
-  done
-  return 1
-}
-
-workspace="$(find_workspace)" || {
-  echo "scoped: no workspace registry found by walking up from ${PWD} (expected <workspace>/vault/projects/*.md)" >&2
-  exit 1
-}
-registry="${workspace}/vault/projects"
+LIB="$(cd "$(dirname "$0")/.." && pwd)/lib/vaults"
+. "$LIB"
 
 [ $# -ge 3 ] || { echo "usage: scoped <project> <feature> <instruction...>" >&2; exit 2; }
 project=$1; feature=$2; shift 2
 
-fiche="${registry}/${project}.md"
-[ -f "$fiche" ] || { echo "scoped: no registry entry for '${project}'" >&2; exit 2; }
+# Un projet `absent` n'est pas une erreur du registre — mais on ne lance pas une
+# session dans un repertoire qui n'est pas la. C'est le seul point ou ce lanceur
+# differe de bin/ezy, qui saute le projet et continue : ici il n'y a rien
+# d'autre a faire, la demande porte sur CE projet.
+found=""; fiche=""; vault_dir=""
+while IFS=$'\t' read -r vname vpath; do
+  while IFS=$'\t' read -r name _ state path _; do
+    [ "$name" = "$project" ] || continue
+    [ "$state" = "present" ] || { echo "scoped: '${project}' est au registre mais pas clone ici" >&2; exit 2; }
+    found="$path"; fiche="${vpath}/projects/${project}.md"; vault_dir="${vpath}/${project}/${feature}"
+  done < <(resolve_projects "$vname")
+  [ -n "$found" ] && break
+done < <(vaults_list)
+[ -n "$found" ] || { echo "scoped: aucune fiche '${project}' dans les vaults declares" >&2; exit 2; }
 
-field() {
-  awk -v key="$1" '
-    /^---[[:space:]]*$/ { fm++; next }
-    fm == 1 && $0 ~ "^" key ":" { sub("^" key ":[[:space:]]*", ""); print; exit }
-    fm >= 2 { exit }
-  ' "$fiche"
-}
+# resolve_projects rend le `name:` du frontmatter, qui peut differer du nom de
+# fichier ; la fiche se nomme alors autrement que ce qu'on vient de chercher.
+# Sans ce garde, fiche_field ouvrirait un fichier absent et awk tuerait le
+# script sous `set -e`, avec son message et pas le notre.
+[ -f "$fiche" ] || { echo "scoped: fiche introuvable: ${fiche}" >&2; exit 2; }
 
-# `perimeter:` overrides `path:` when a project's tools do not live in its own
-# repository. Defaults to `path:`.
-path=$(field path)
-perimeter=$(field perimeter)
-dir="${workspace}/${perimeter:-$path}"
-[ -d "$dir" ] || { echo "scoped: ${dir} does not exist" >&2; exit 2; }
+# `perimeter:` est relatif AU PROJET LOCALISE, et vaut `.` par defaut. Un projet
+# dont les outils vivent au parent de son clone ecrit `perimeter: ..` — vrai sur
+# toutes les machines, puisque l'ancre est le clone, plus une racine.
+perimeter="$(fiche_field "$fiche" perimeter)"
+dir="$(cd "${found}/${perimeter:-.}" 2>/dev/null && pwd)" \
+  || { echo "scoped: perimetre introuvable: ${found}/${perimeter:-.}" >&2; exit 2; }
 
 instruction="$*"
 if [ "${instruction:0:1}" = "@" ]; then
@@ -74,13 +71,12 @@ if [ "${instruction:0:1}" = "@" ]; then
   instruction=$(cat "$f")
 fi
 
-vault="${workspace}/vault/${project}/${feature}"
-mkdir -p "$vault"
-marker="${vault}/.session"
+mkdir -p "$vault_dir"
+marker="${vault_dir}/.session"
 
 args=()
-read -r -a allow <<< "$(field allow)"
-read -r -a deny  <<< "$(field deny)"
+read -r -a allow <<< "$(fiche_field "$fiche" allow)"
+read -r -a deny  <<< "$(fiche_field "$fiche" deny)"
 [ ${#allow[@]} -gt 0 ] && args+=(--allowed-tools "${allow[@]}")
 [ ${#deny[@]}  -gt 0 ] && args+=(--disallowed-tools "${deny[@]}")
 
