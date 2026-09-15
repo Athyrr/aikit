@@ -145,6 +145,62 @@ grep -qi workspace hooks/session-start \
   && ko "le mot workspace a disparu du hook" "" "workspace present" \
   || ok "le mot workspace a disparu du hook"
 
+echo "hook : vaults declares mais sans fiche"
+# Un vault declare qui ne rend aucune fiche ne doit JAMAIS se taire : la methode
+# se chargerait sans routeur et sans explication. Trois cas qui ne doivent pas
+# se lire pareil -- aucun vault declare / declares mais aucun ne porte de fiche /
+# certains resolvent et d'autres non.
+hookreg() {  # hookreg <fichier de vaults> -> le bloc que le hook ajoute
+  local out ctx
+  out=$(AIKIT_VAULTS="$1" bash hooks/session-start) || return 1
+  ctx=$(printf '%s' "$out" | python3 -c \
+    "import json,sys;print(json.load(sys.stdin)['hookSpecificOutput']['additionalContext'])") \
+    || return 1
+  printf '%s' "${ctx#*"$pre"}"
+}
+
+# projects/ ABSENT : le repertoire du vault existe, mais rien dedans.
+ORPHELIN="$TMP/orphelin"; mkdir -p "$ORPHELIN"
+printf 'vault orphelin %s\n' "$ORPHELIN" > "$TMP/vaults-orphelin"
+# projects/ PRESENT mais VIDE : ce n'est pas la meme panne, ni le meme remede.
+VIDE="$TMP/videvault"; mkdir -p "$VIDE/projects"
+printf 'vault vide %s\n' "$VIDE" > "$TMP/vaults-vide"
+# Un vault qui resout ET un qui ne resout pas : les deux doivent apparaitre.
+{ echo "vault espace $VAULT"; echo "root  espace $ROOT"
+  echo "vault orphelin $ORPHELIN"; } > "$TMP/vaults-mixte"
+
+reg_orphelin=$(hookreg "$TMP/vaults-orphelin")
+case "$reg_orphelin" in
+  *"orphelin"*"${ORPHELIN}/projects"*) ok "un vault sans fiche est nomme, avec l'endroit cherche" ;;
+  *) ko "un vault sans fiche est nomme, avec l'endroit cherche" \
+        "orphelin + ${ORPHELIN}/projects" "${reg_orphelin:-vide}" ;;
+esac
+case "$reg_orphelin" in
+  *"No vault registered"*) ko "declare-mais-introuvable ne se lit pas comme aucun-vault" \
+                              "en-tete distinct" "la note 'No vault registered'" ;;
+  *"## No project registry found"*) ok "declare-mais-introuvable ne se lit pas comme aucun-vault" ;;
+  *) ko "declare-mais-introuvable ne se lit pas comme aucun-vault" \
+        "## No project registry found" "absent" ;;
+esac
+
+reg_vide=$(hookreg "$TMP/vaults-vide")
+case "$reg_vide" in
+  *"${VIDE}/projects"*"does not exist"*) \
+    ko "projects/ vide : la raison differe de projects/ absent" \
+       "ne pas affirmer l'inexistence" "\"does not exist\" sur un repertoire present" ;;
+  *"vide"*"${VIDE}/projects"*) ok "projects/ vide : la raison differe de projects/ absent" ;;
+  *) ko "projects/ vide : la raison differe de projects/ absent" \
+        "vide + ${VIDE}/projects" "${reg_vide:-vide}" ;;
+esac
+
+reg_mixte=$(hookreg "$TMP/vaults-mixte")
+case "$reg_mixte" in
+  *"## Vault: espace"*"| fantome |"*"orphelin"*) \
+    ok "un vault qui resout et un qui ne resout pas : les deux sortent" ;;
+  *) ko "un vault qui resout et un qui ne resout pas : les deux sortent" \
+        "la table de espace + la mention de orphelin" "${reg_mixte:-vide}" ;;
+esac
+
 echo
 echo "$pass passes, $fail echecs"
 [ "$fail" = 0 ]

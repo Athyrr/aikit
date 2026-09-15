@@ -31,6 +31,8 @@ preamble=$(cat "${PLUGIN_ROOT}/skills/using-aikit/SKILL.md" 2>&1 || echo "Error 
 
 registry=""
 vault_count=0
+resolved=0
+stranded=""
 while IFS=$'\t' read -r vname vpath; do
     [ -n "$vname" ] || continue
     vault_count=$((vault_count + 1))
@@ -41,7 +43,20 @@ while IFS=$'\t' read -r vname vpath; do
         [ "$kind" = "conception" ] && n="${n} *(conception)*"
         rows+="| ${n} | ${here} | ${summary} |"$'\n'
     done < <(resolve_projects "$vname")
-    [ -n "$rows" ] || continue
+    if [ -z "$rows" ]; then
+        # Un vault declare qui ne rend rien doit etre NOMME, avec ce qui manque
+        # et l'endroit regarde. Se taire ici rendrait un registre vide sans
+        # note : la methode se charge, le routeur est absent, et rien ne dit
+        # pourquoi -- c'est le cas le plus probable a la premiere installation,
+        # une ligne `vault` ecrite avant que le vault existe.
+        # Les deux pannes ne partagent pas leur remede, donc pas leur phrase :
+        # un repertoire absent se cree, un repertoire vide s'alimente.
+        if [ -d "${vpath}/projects" ]; then why="holds no \`*.md\` project file"
+        else                                why="does not exist"; fi
+        stranded+="- \`${vname}\` — \`${vpath}/projects\` ${why}"$'\n'
+        continue
+    fi
+    resolved=$((resolved + 1))
     registry+=$'\n\n## Vault: '"${vname}"$'\n\n'
     registry+=$'| project | ici | what it is |\n|---|---|---|\n'
     registry+="${rows}"
@@ -50,8 +65,18 @@ done < <(vaults_list)
 
 if [ "$vault_count" = 0 ]; then
     registry=$'\n\n## No vault registered on this machine\n\nDeclare one in `~/.config/aikit/vaults`:\n\n```\nvault work /path/to/the/vault\nroot  work /path/to/where/its/projects/are\n```\n\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
+elif [ "$resolved" = 0 ]; then
+    # Declare mais introuvable n'est PAS la meme chose qu'aucun vault declare :
+    # l'un est une erreur de chemin a corriger, l'autre une machine encore
+    # vierge. Les deux notes portent des titres differents, expres.
+    registry=$'\n\n## No project registry found\n\nThese vaults are declared in `~/.config/aikit/vaults`, but none of them carries a project registry:\n\n'"${stranded}"
+    registry+=$'\nFix the path, or create the missing `projects/` directory in the vault.\n'
+    registry+=$'\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
 else
     registry+=$'\nBefore working on a project, read `<vault>/projects/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. A project marked **absent d\'ici** is registered but not cloned on this machine. **Never work on a project whose registry file you have not read.**'
+    # Apres la regle, pas avant : un titre `##` place juste au-dessus avalerait
+    # la consigne de lecture, qui porte sur les tables et non sur ces vaults-la.
+    [ -z "$stranded" ] || registry+=$'\n\n## Declared, but carrying no project registry\n\n'"${stranded}"
 fi
 # ---------------------------------------------------------------------------
 
