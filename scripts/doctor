@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The method's completion criterion, eight gates, no deploy, no network state.
+# The method's completion criterion, nine gates, no deploy, no network state.
 #
 # `claude plugin validate .` checks the marketplace manifest ONLY — it reads no
 # SKILL.md and no agents/*.md. The two --strict invocations are what gate the
@@ -7,7 +7,9 @@
 #
 # Gates 5-7 are what the four form gates never catch: they validate the TARGET,
 # not the shape. Gate 8 is what makes the net exist on a machine other than the
-# one where somebody remembered to wire it.
+# one where somebody remembered to wire it. Gate 9 runs lib/vaults' own suite:
+# resolution runs at every session start, so its tests belong to the completion
+# criterion rather than beside it.
 #
 # Usage: scripts/doctor
 set -uo pipefail
@@ -61,7 +63,7 @@ gate_empty() {
   fi
 }
 
-SCOPE=(skills agents hooks bin scripts README.md CLAUDE.md SETUP.md)
+SCOPE=(skills agents hooks bin lib scripts README.md CLAUDE.md SETUP.md)
 
 run "1 manifest"        claude plugin validate .
 run "2 skills (strict)" claude plugin validate ./skills --strict
@@ -72,7 +74,11 @@ if ! CLAUDE_PLUGIN_ROOT=$PWD bash hooks/session-start | json_ok; then
   echo "  ✗ FAILED"; fail=1
 fi
 
-gate_empty "5 no 'work/' left"        grep -rn '\bwork/'        "${SCOPE[@]}"
+# Gate 5 is a TRIPWIRE, not a debt probe: ancestor-walk resolution is already
+# gone from the tree, and this is what refuses its return. `lib` is in SCOPE for
+# it — that is the file most likely to grow a workspace root again.
+gate_empty "5 no workspace-root resolution" \
+    grep -rnE 'find_workspace|workspace_root|\$\{workspace\}' "${SCOPE[@]}"
 gate_empty "6 no 'aikit/projects'"    grep -rn 'aikit/projects' "${SCOPE[@]}"
 gate_empty "7 no workspace facts"     grep -rniIE '(ezytail|natseyes|periscope|reflex|kube-vigie)' . \
     --exclude-dir=.git --exclude-dir=.omc --exclude-dir=.claude \
@@ -84,8 +90,16 @@ if [ "$(git config --get core.hooksPath || true)" != ".githooks" ]; then
   echo "  ✗ FAILED"; fail=1
 fi
 
+# Silent when green, the whole suite when red — and captured from ONE run, so
+# what gets printed is the run that actually failed.
+echo "→ 9 vault resolution tests"
+if ! vaults_out=$(scripts/test-vaults 2>&1); then
+  echo "$vaults_out" | sed 's/^/    /'
+  echo "  ✗ FAILED"; fail=1
+fi
+
 if [ "$fail" = 0 ]; then
-  echo "✓ eight gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
+  echo "✓ nine gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
 else
   echo "✗ one or more gates failed"
 fi
