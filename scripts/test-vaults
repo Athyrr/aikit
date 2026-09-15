@@ -21,9 +21,18 @@ mkrepo() {  # mkrepo <dir> <remote-url>
   mkdir -p "$ROOT/$1" && git -C "$ROOT/$1" init -q
   [ -n "${2:-}" ] && git -C "$ROOT/$1" remote add origin "$2"
 }
-mkrepo avec-remote  "git@github.com:acme/avec-remote.git"
-mkrepo autre-nom    "https://github.com/acme/renomme.git"
+mkrepo avec-remote     "git@github.com:acme/avec-remote.git"
+mkrepo autre-nom       "https://github.com/acme/renomme.git"
+# Un depot dont le repertoire de travail est un SOUS-REPERTOIRE : repo: et dir:
+# sont orthogonaux, dir: affine a l'interieur du depot trouve.
+mkrepo depot-enveloppe "git@github.com:acme/depot-enveloppe.git"
+mkdir -p "$ROOT/depot-enveloppe/dedans"
+# Un depot clone en ssh:// : forme que l'ancien depouillement cassait.
+mkrepo par-ssh         "ssh://git@github.com/acme/par-ssh.git"
 mkdir -p "$ROOT/sans-git" "$ROOT/enveloppe/dedans"
+# Une racine de recherche qui est un lien symbolique : find -P ne descend pas
+# dans un argument symlink, le scan rendait zero depot en silence.
+LINK="$TMP/lien-racine"; ln -s "$ROOT" "$LINK"
 
 fiche() {  # fiche <nom> <lignes de frontmatter...>
   { echo "---"; echo "name: $1"; shift; printf '%s\n' "$@"; echo "---"; } \
@@ -35,6 +44,13 @@ fiche sans-git                                        "summary: par nom de reper
 fiche enveloppe   "dir: enveloppe/dedans"             "summary: par dir explicite"
 fiche fantome                                         "summary: pas clone ici"
 fiche idee        "kind: conception"                  "summary: sans depot du tout"
+fiche travail     "repo: github.com/acme/depot-enveloppe" "dir: dedans" \
+                  "summary: repo localise le depot, dir affine dedans"
+fiche url-ssh     "repo: github.com/acme/par-ssh"     "summary: remote en ssh://"
+fiche dir-absent  "repo: github.com/acme/par-ssh" "dir: pas-la" \
+                  "summary: dir declare mais absent du depot"
+# Sans clef summary : la 5e colonne doit retomber sur "-", pas disparaitre.
+fiche sans-summary "repo: github.com/acme/avec-remote"
 
 CONF="$TMP/vaults"
 { echo "# commentaire ignore"
@@ -52,20 +68,47 @@ is "un seul vault, chemin avec espace intact" \
 echo "vault_roots"
 is "la racine declaree" "$ROOT" "$(vault_roots espace)"
 
+echo "_normalize_remote"
+is "ssh:// avec git@"      "github.com/acme/repo" \
+   "$(_normalize_remote 'ssh://git@github.com/acme/repo.git')"
+is "ssh:// avec port"      "gitlab.example.com/acme/repo" \
+   "$(_normalize_remote 'ssh://git@gitlab.example.com:2222/acme/repo.git')"
+is "https avec user@"      "bitbucket.org/acme/repo" \
+   "$(_normalize_remote 'https://user@bitbucket.org/acme/repo.git')"
+
 echo "vaults_scan"
-is "apparie ssh et https sur la meme forme normalisee" \
+is "apparie ssh, ssh:// et https sur la meme forme normalisee" \
    "github.com/acme/avec-remote	$ROOT/avec-remote
+github.com/acme/depot-enveloppe	$ROOT/depot-enveloppe
+github.com/acme/par-ssh	$ROOT/par-ssh
 github.com/acme/renomme	$ROOT/autre-nom" \
    "$(vaults_scan "$ROOT" | sort)"
+is "une racine symlink est scannee comme une vraie" \
+   "github.com/acme/avec-remote	$LINK/avec-remote
+github.com/acme/depot-enveloppe	$LINK/depot-enveloppe
+github.com/acme/par-ssh	$LINK/par-ssh
+github.com/acme/renomme	$LINK/autre-nom" \
+   "$(vaults_scan "$LINK" | sort)"
 
 echo "resolve_projects"
 r() { resolve_projects espace | awk -F'\t' -v n="$1" '$1==n {print $2"|"$3"|"$4}'; }
 is "par remote ssh"            "depot|present|$ROOT/avec-remote"     "$(r avec-remote)"
 is "par remote https"          "depot|present|$ROOT/autre-nom"       "$(r par-https)"
+is "par remote ssh://"         "depot|present|$ROOT/par-ssh"         "$(r url-ssh)"
 is "par nom de repertoire"     "depot|present|$ROOT/sans-git"        "$(r sans-git)"
 is "dir: explicite"            "depot|present|$ROOT/enveloppe/dedans" "$(r enveloppe)"
+is "repo: puis dir: affine dedans" \
+   "depot|present|$ROOT/depot-enveloppe/dedans"                      "$(r travail)"
+is "dir: absent du depot -> le depot trouve" \
+   "depot|present|$ROOT/par-ssh"                                     "$(r dir-absent)"
 is "non clone ici -> absent"   "depot|absent|-"                      "$(r fantome)"
 is "kind: conception"          "conception|absent|-"                 "$(r idee)"
+
+# La 5e colonne est lue par les consommateurs (tache 4 : read -r n kind state
+# path summary). Sans cette assertion, la retirer du printf ne casse rien.
+row() { resolve_projects espace | awk -F'\t' -v n="$1" '$1==n {print NF"|"$5}'; }
+is "cinq colonnes, summary comprise" "5|par remote ssh" "$(row avec-remote)"
+is "summary par defaut si la fiche n'en a pas" "5|-" "$(row sans-summary)"
 
 echo
 echo "$pass passes, $fail echecs"

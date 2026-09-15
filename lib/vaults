@@ -11,14 +11,23 @@
 # Le chemin est TOUJOURS le dernier champ, donc `read -r kind name path` lui
 # donne tout le reste de la ligne : une espace dans le chemin passe sans
 # guillemets. Plusieurs lignes `root` pour un meme vault s'accumulent.
+#
+# Tout est sourcé par des consommateurs en `set -euo pipefail` : aucune
+# fonction ne doit tuer l'hote sur une entree malformee ou un argument
+# manquant. Elle rend le vide et sort 0.
 
 vaults_config_path() { printf '%s' "${AIKIT_VAULTS:-$HOME/.config/aikit/vaults}"; }
 
 _vaults_read() {  # _vaults_read <mot-cle> [nom]
   local conf want_kind="$1" want_name="${2:-}" kind name path
   conf="$(vaults_config_path)"
-  [ -r "$conf" ] || return 0
+  # -f avant -r : [ -r ] est vrai d'un repertoire, et `read` sur un repertoire
+  # rend "Is a directory" puis laisse kind non assigne -> mort sous `set -u`.
+  [ -f "$conf" ] && [ -r "$conf" ] || return 0
   while read -r kind name path || [ -n "$kind" ]; do
+    # Le fichier decrit des chemins de disques Windows montes ; un editeur
+    # Windows y laisse des CRLF, et le \r se collerait au dernier champ.
+    kind="${kind%$'\r'}"; name="${name%$'\r'}"; path="${path%$'\r'}"
     case "$kind" in ''|'#'*) continue ;; esac
     [ "$kind" = "$want_kind" ] || continue
     [ -z "$want_name" ] || [ "$name" = "$want_name" ] || continue
@@ -28,24 +37,45 @@ _vaults_read() {  # _vaults_read <mot-cle> [nom]
 }
 
 vaults_list() { _vaults_read vault; }
-vault_roots() { _vaults_read root "$1" | cut -f2; }
+vault_roots() { _vaults_read root "${1:-}" | cut -f2; }
 
 vault_path() {  # vault_path <nom>
-  _vaults_read vault "$1" | cut -f2 | head -1
+  _vaults_read vault "${1:-}" | cut -f2 | head -1
 }
 
-# Normalise une URL de remote en <hote>/<org>/<depot>, ssh comme https.
+# Normalise une URL de remote en <hote>/<org>/<depot>, quelle que soit la forme
+# du clone : scp (git@hote:org/depot), ssh://, https://, http://, git://, avec
+# ou sans user@, avec ou sans port. Deux clones d'un meme depot par deux formes
+# differentes doivent rendre la MEME clef, sinon la fiche ne s'apparie jamais.
 _normalize_remote() {
-  local u="$1"
+  local u="$1" host rest
   u="${u%.git}"
-  u="${u#git@}"; u="${u#ssh://}"; u="${u#https://}"; u="${u#http://}"
-  u="${u/://}"          # git@github.com:org/repo -> github.com//org/repo
+  # Le schema d'abord : sinon le git@ de ssh://git@... survit au depouillement.
+  u="${u#ssh://}"; u="${u#git://}"; u="${u#https://}"; u="${u#http://}"
+  # user@ quelconque, et seulement dans l'autorite (avant le premier /).
+  case "${u%%/*}" in *@*) u="${u#*@}" ;; esac
+  host="${u%%:*}"
+  if [ "$host" != "$u" ]; then
+    rest="${u#*:}"
+    case "${rest%%/*}" in
+      # Tout chiffres -> c'est un port, on le jette. Sinon le ':' est le
+      # separateur de la forme scp et vaut un '/'.
+      ''|*[!0-9]*) u="$host/$rest" ;;
+      *)           u="$host/${rest#*/}" ;;
+    esac
+  fi
   u="${u//\/\///}"      # ecrase le double slash
   printf '%s' "$u"
 }
 
 # vaults_scan <racine…> -> <hote/org/depot>\t<chemin absolu>, un depot par ligne.
 # Profondeur 3 volontaire : une racine correctement declaree se scanne en ~18 ms.
+# La barre finale sur "$root/" est ce qui fait descendre `find` dans une racine
+# qui est un lien symbolique : sans elle, en mode -P, il rend zero depot en
+# silence, et l'appariement par repo: meurt alors que [ -d ] traverse les liens.
+# Mesure : c'est preferable a -L, qui suivrait AUSSI les liens rencontres plus
+# bas -- ici le vault est un lien vers un disque Windows monte, et -L le faisait
+# traverser a chaque demarrage de session (30 ms contre 0, et sans borne).
 vaults_scan() {
   local root d url
   for root in "$@"; do
@@ -55,7 +85,7 @@ vaults_scan() {
       url="$(git -C "$d" remote get-url origin 2>/dev/null)" || continue
       [ -n "$url" ] || continue
       printf '%s\t%s\n' "$(_normalize_remote "$url")" "$d"
-    done < <(find "$root" -maxdepth 3 -name .git -type d 2>/dev/null)
+    done < <(find "${root%/}/" -maxdepth 3 -name .git -type d 2>/dev/null)
   done
 }
 
@@ -72,9 +102,14 @@ fiche_field() {  # fiche_field <fichier> <clef>
 # resolve_projects <nom-du-vault>
 #   -> <nom>\t<kind>\t<present|absent>\t<chemin ou ->\t<summary>
 #
-# Appariement, dans l'ordre : repo: -> dir: -> nom de repertoire.
+# repo: et dir: sont ORTHOGONAUX : repo: localise le depot, dir: dit ou est le
+# repertoire de travail. Un depot dont le projet vit dans un sous-repertoire se
+# decrit donc `repo: <cle>` + `dir: <sous-repertoire>`, vrai sur toutes les
+# machines. Appariement :
+#   - repo: apparie      -> <depot trouve>/<dir> si dir: est donne
+#   - repo: absent/rate  -> <racine>/<dir>, ou a defaut <racine>/<nom>
 resolve_projects() {
-  local vname="$1" vpath roots=() scanned f name kind repo dir summary hit state r
+  local vname="${1:-}" vpath roots=() scanned f name kind repo dir summary hit state r
   vpath="$(vault_path "$vname")"
   [ -n "$vpath" ] && [ -d "$vpath/projects" ] || return 0
   while IFS= read -r r; do roots+=("$r"); done < <(vault_roots "$vname")
@@ -91,6 +126,12 @@ resolve_projects() {
 
     if [ -n "$repo" ]; then
       hit="$(printf '%s\n' "$scanned" | awk -F'\t' -v k="$repo" '$1==k {print $2; exit}')"
+      # dir: affine A L'INTERIEUR du depot trouve. S'il ne s'y trouve pas, le
+      # depot reste le meilleur resultat vrai : on ne rend jamais un chemin
+      # inexistant marque `present`.
+      if [ -n "$hit" ] && [ -n "$dir" ] && [ -d "$hit/$dir" ]; then
+        hit="$hit/$dir"
+      fi
     fi
     if [ -z "$hit" ]; then
       local probe="${dir:-$name}" root
