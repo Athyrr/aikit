@@ -74,7 +74,7 @@ fiche_field() {  # fiche_field <fichier> <clef>
 #
 # Appariement, dans l'ordre : repo: -> dir: -> nom de repertoire.
 resolve_projects() {
-  local vname="$1" vpath roots=() scanned f name kind repo dir summary hit state
+  local vname="$1" vpath roots=() scanned f name kind repo dir summary hit state r
   vpath="$(vault_path "$vname")"
   [ -n "$vpath" ] && [ -d "$vpath/projects" ] || return 0
   while IFS= read -r r; do roots+=("$r"); done < <(vault_roots "$vname")
