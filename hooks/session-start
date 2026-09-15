@@ -49,10 +49,14 @@ while IFS=$'\t' read -r vname vpath; do
         # note : la methode se charge, le routeur est absent, et rien ne dit
         # pourquoi -- c'est le cas le plus probable a la premiere installation,
         # une ligne `vault` ecrite avant que le vault existe.
-        # Les deux pannes ne partagent pas leur remede, donc pas leur phrase :
-        # un repertoire absent se cree, un repertoire vide s'alimente.
-        if [ -d "${vpath}/projects" ]; then why="holds no \`*.md\` project file"
-        else                                why="does not exist"; fi
+        # Les pannes ne partagent pas leur remede, donc pas leur phrase : un
+        # repertoire absent se cree, un vide s'alimente, un `projects` qui est
+        # un FICHIER se deplace. Annoncer « does not exist » d'une entree bien
+        # presente serait le petit mensonge d'a cote.
+        if   [ -d "${vpath}/projects" ]; then why="holds no \`*.md\` project file"
+        elif [ -e "${vpath}/projects" ] || [ -L "${vpath}/projects" ]; then
+                                              why="is not a directory"
+        else                                  why="does not exist"; fi
         stranded+="- \`${vname}\` — \`${vpath}/projects\` ${why}"$'\n'
         continue
     fi
@@ -76,7 +80,10 @@ else
     registry+=$'\nBefore working on a project, read `<vault>/projects/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. A project marked **absent d\'ici** is registered but not cloned on this machine. **Never work on a project whose registry file you have not read.**'
     # Apres la regle, pas avant : un titre `##` place juste au-dessus avalerait
     # la consigne de lecture, qui porte sur les tables et non sur ces vaults-la.
-    [ -z "$stranded" ] || registry+=$'\n\n## Declared, but carrying no project registry\n\n'"${stranded}"
+    # Meme remede que l'etat 2 : cette section FERME le contexte injecte, et
+    # apprendre qu'un vault est casse sans apprendre quoi en faire est une
+    # moitie d'information.
+    [ -z "$stranded" ] || registry+=$'\n\n## Declared, but carrying no project registry\n\n'"${stranded}"$'\nThese route nowhere until fixed: correct the path in `~/.config/aikit/vaults`, or create the vault\'s missing `projects/` directory.'
 fi
 # ---------------------------------------------------------------------------
 

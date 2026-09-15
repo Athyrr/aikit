@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Resolution des vaults et des projets. SOURCE, jamais execute.
 #
-# Remplace la fonction find_workspace() qui etait triplicee dans
-# hooks/session-start, bin/ezy et bin/scoped. Il n'y a plus de remontee
-# d'ancetres : les chemins du fichier de vaults sont absolus.
+# Remplace la remontee d'ancetres qui etait dupliquee dans trois fichiers --
+# hooks/session-start, bin/ezy et bin/scoped. Les chemins du fichier de vaults
+# sont absolus, plus rien ne se devine en remontant les repertoires.
 #
 # Format du fichier, un enregistrement par ligne :
 #     vault <nom> <chemin>
 #     root  <nom> <chemin>
 # Le chemin est TOUJOURS le dernier champ, donc `read -r kind name path` lui
 # donne tout le reste de la ligne : une espace dans le chemin passe sans
-# guillemets. Plusieurs lignes `root` pour un meme vault s'accumulent.
+# guillemets. Plusieurs lignes `root` pour un meme vault s'accumulent ; plusieurs
+# lignes `vault` pour un meme nom, non -- la premiere gagne, voir vaults_list.
 #
 # Tout est sourcé par des consommateurs en `set -euo pipefail` : aucune
 # fonction ne doit tuer l'hote sur une entree malformee ou un argument
@@ -36,7 +37,14 @@ _vaults_read() {  # _vaults_read <mot-cle> [nom]
   done < "$conf"
 }
 
-vaults_list() { _vaults_read vault; }
+# Un nom de vault est une CLEF : il ne sort qu'une fois, et c'est la premiere
+# ligne declaree qui gagne -- la meme regle que vault_path, qui fait `head -1`.
+# Sans cela un consommateur bouclant sur vaults_list rendait une section par
+# ligne, chacune etiquetee de SON chemin, alors que resolve_projects re-resout
+# par nom et rend donc toujours les fiches du premier : la seconde section
+# affirmait un chemin que rien n'avait regarde. Les racines, elles, s'accumulent
+# pour de bon -- un vault peut legitimement avoir plusieurs racines de recherche.
+vaults_list() { _vaults_read vault | awk -F'\t' '!vu[$1]++'; }
 vault_roots() { _vaults_read root "${1:-}" | cut -f2; }
 
 vault_path() {  # vault_path <nom>

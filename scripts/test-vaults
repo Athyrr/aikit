@@ -67,6 +67,24 @@ echo "vaults_list"
 is "un seul vault, chemin avec espace intact" \
    "espace	$VAULT" "$(vaults_list)"
 
+# Un nom declare DEUX FOIS : la boucle du hook prend vpath de vaults_list, mais
+# resolve_projects re-resout par nom (vault_path -> head -1). Sans deduplication
+# le rendu portait deux sections identiques, la seconde etiquetee du chemin B
+# alors que ses lignes viennent de A -- une affirmation non verifiee, exactement
+# ce que ce chantier existe pour interdire. Premiere ligne declaree gagne, comme
+# pour vault_path, et a la difference des racines qui s'accumulent.
+CONF_DBL="$TMP/vaults-double"
+{ echo "vault essai $TMP/A"; echo "vault essai $TMP/B"; echo "vault autre $TMP/C"
+  echo "root  essai $TMP/RA"; echo "root  essai $TMP/RB"; } > "$CONF_DBL"
+is "un nom declare deux fois ne sort qu'une fois, premiere ligne gagnante" \
+   "essai	$TMP/A
+autre	$TMP/C" "$(AIKIT_VAULTS="$CONF_DBL" vaults_list)"
+is "vaults_list et vault_path s'accordent sur le doublon" \
+   "$TMP/A" "$(AIKIT_VAULTS="$CONF_DBL" vault_path essai)"
+is "les racines, elles, s'accumulent toujours" \
+   "$TMP/RA
+$TMP/RB" "$(AIKIT_VAULTS="$CONF_DBL" vault_roots essai)"
+
 echo "vault_roots"
 is "la racine declaree" "$ROOT" "$(vault_roots espace)"
 
@@ -118,26 +136,32 @@ echo "hook"
 # Le hook est un CONSOMMATEUR de lib/vaults : il tourne dans un autre processus,
 # en `set -euo pipefail`, et sa sortie est du JSON lu par le harnais. AIKIT_VAULTS
 # est ce qui le rend testable ici.
-out=$(CLAUDE_PLUGIN_ROOT="$PWD" AIKIT_VAULTS="$CONF" bash hooks/session-start)
+out=$(AIKIT_VAULTS="$CONF" bash hooks/session-start)
 printf '%s' "$out" | python3 -m json.tool > /dev/null \
   && ok "le hook emet du JSON valide" \
   || ko "le hook emet du JSON valide" "JSON" "invalide"
 ctx=$(printf '%s' "$out" | python3 -c \
   "import json,sys;print(json.load(sys.stdin)['hookSpecificOutput']['additionalContext'])")
-case "$ctx" in
+# Le preambule est skills/using-aikit/SKILL.md ; on ne garde que le bloc que le
+# hook ajoute. Necessaire pour le mot `workspace` (SKILL.md le porte ailleurs),
+# et sain pour tout le reste : aucune assertion ne doit pouvoir etre satisfaite
+# par du texte de methode.
+pre=$(cat skills/using-aikit/SKILL.md)
+reg="${ctx#*"$pre"}"
+case "$reg" in
   *"## Vault: espace"*) ok "la table est etiquetee par vault" ;;
   *) ko "la table est etiquetee par vault" "## Vault: espace" "absent" ;;
 esac
-case "$ctx" in
-  *"| fantome |"*"absent"*) ok "un projet non clone est marque absent" ;;
-  *) ko "un projet non clone est marque absent" "ligne absente" "manquante" ;;
-esac
-# Le mot `workspace` doit disparaitre du BLOC QUE CE HOOK AJOUTE, pas de tout le
-# contexte injecte : le preambule est skills/using-aikit/SKILL.md, qui porte le
-# mot ailleurs et n'appartient pas a cette tache. On retire le preambule, puis on
-# cherche sans egard a la casse -- sinon "## Workspace projects" passerait.
-pre=$(cat skills/using-aikit/SKILL.md)
-reg="${ctx#*"$pre"}"
+# La LIGNE ENTIERE, pas `| fantome |` suivi d'un `absent` flottant : le bloc se
+# termine toujours par « A project marked **absent d'ici** is registered but not
+# cloned… », donc le mot est garanti APRES n'importe quelle ligne de table. Un
+# motif non ancre etait satisfait par ce boilerplate et restait vert meme avec
+# un `here="oui"` inconditionnel -- c'est-a-dire en ne testant rien.
+ligne() { printf '%s\n' "$reg" | grep -F "| $1 |" | head -1; }
+is "un projet non clone est marque absent d'ici" \
+   "| fantome | **absent d'ici** | pas clone ici |" "$(ligne fantome)"
+is "un projet clone est marque present" \
+   "| avec-remote | oui | par remote ssh |" "$(ligne avec-remote)"
 printf '%s' "$reg" | grep -qi workspace \
   && ko "le mot workspace a disparu de la table injectee" "" "workspace present" \
   || ok "le mot workspace a disparu de la table injectee"
@@ -169,6 +193,21 @@ printf 'vault vide %s\n' "$VIDE" > "$TMP/vaults-vide"
 { echo "vault espace $VAULT"; echo "root  espace $ROOT"
   echo "vault orphelin $ORPHELIN"; } > "$TMP/vaults-mixte"
 
+# Etat 1 : aucun vault declare. C'est l'etat de la PREMIERE INSTALLATION, et il
+# n'avait aucune assertion : une regression qui viderait cette branche serait
+# sortie verte partout.
+reg_aucun=$(hookreg /nonexistent-vaults-file)
+case "$reg_aucun" in
+  *"## No vault registered on this machine"*) ok "aucun vault declare : la note existe" ;;
+  *) ko "aucun vault declare : la note existe" \
+        "## No vault registered on this machine" "${reg_aucun:-vide}" ;;
+esac
+case "$reg_aucun" in
+  *"## No project registry found"*) ko "aucun-vault ne se lit pas comme declare-mais-introuvable" \
+        "pas d'en-tete 'No project registry found'" "les deux notes confondues" ;;
+  *) ok "aucun-vault ne se lit pas comme declare-mais-introuvable" ;;
+esac
+
 reg_orphelin=$(hookreg "$TMP/vaults-orphelin")
 case "$reg_orphelin" in
   *"orphelin"*"${ORPHELIN}/projects"*) ok "un vault sans fiche est nomme, avec l'endroit cherche" ;;
@@ -191,6 +230,19 @@ case "$reg_vide" in
   *"vide"*"${VIDE}/projects"*) ok "projects/ vide : la raison differe de projects/ absent" ;;
   *) ko "projects/ vide : la raison differe de projects/ absent" \
         "vide + ${VIDE}/projects" "${reg_vide:-vide}" ;;
+esac
+
+# Minor 5 : `projects` existe, mais c'est un FICHIER. Annoncer « does not exist »
+# serait le meme petit mensonge que celui entre absent et vide.
+FICHIER="$TMP/fichiervault"; mkdir -p "$FICHIER"; : > "$FICHIER/projects"
+printf 'vault fichier %s\n' "$FICHIER" > "$TMP/vaults-fichier"
+reg_fichier=$(hookreg "$TMP/vaults-fichier")
+case "$reg_fichier" in
+  *"does not exist"*) ko "projects/ present mais fichier : ne pas dire qu'il n'existe pas" \
+        "une raison qui ne ment pas" "does not exist" ;;
+  *"fichier"*"${FICHIER}/projects"*) ok "projects/ present mais fichier : ne pas dire qu'il n'existe pas" ;;
+  *) ko "projects/ present mais fichier : ne pas dire qu'il n'existe pas" \
+        "fichier + ${FICHIER}/projects" "${reg_fichier:-vide}" ;;
 esac
 
 reg_mixte=$(hookreg "$TMP/vaults-mixte")
