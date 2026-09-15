@@ -247,11 +247,89 @@ esac
 
 reg_mixte=$(hookreg "$TMP/vaults-mixte")
 case "$reg_mixte" in
-  *"## Vault: espace"*"| fantome |"*"orphelin"*) \
-    ok "un vault qui resout et un qui ne resout pas : les deux sortent" ;;
-  *) ko "un vault qui resout et un qui ne resout pas : les deux sortent" \
-        "la table de espace + la mention de orphelin" "${reg_mixte:-vide}" ;;
+  # La phrase de remede fait partie de la note : apprendre qu'un vault est casse
+  # sans apprendre quoi en faire est une moitie d'information, et rien ne la
+  # regardait -- une regression qui la reamputerait serait sortie verte.
+  *"## Vault: espace"*"| fantome |"*"orphelin"*"These route nowhere"*) \
+    ok "un vault qui resout et un qui ne resout pas : les deux sortent, avec le remede" ;;
+  *) ko "un vault qui resout et un qui ne resout pas : les deux sortent, avec le remede" \
+        "la table de espace + orphelin + la phrase de remede" "${reg_mixte:-vide}" ;;
 esac
+
+echo "bin/ezy"
+# Fixtures PROPRES aux lanceurs : un vault et une racine a eux. Ajouter un
+# depot sous $ROOT casserait les listes exactes de vaults_scan, et une fiche de
+# plus sous $VAULT changerait ce que les lanceurs voient sans qu'on le veuille.
+LVAULT="$TMP/lanceurs/vault"; LROOT="$TMP/lanceurs/code"
+mkdir -p "$LVAULT/projects" "$LROOT"
+lrepo() {  # lrepo <dir> <remote-url>
+  mkdir -p "$LROOT/$1" && git -C "$LROOT/$1" init -q
+  git -C "$LROOT/$1" remote add origin "$2"
+}
+lrepo porte-agents "git@github.com:acme/porte-agents.git"
+lrepo porte-skills "git@github.com:acme/porte-skills.git"
+lrepo muet         "git@github.com:acme/muet.git"
+mkdir -p "$LROOT/porte-agents/.claude/agents" "$LROOT/porte-skills/.claude/skills"
+lfiche() {  # lfiche <nom> <lignes de frontmatter...>
+  local n="$1"; shift
+  { echo "---"; echo "name: $n"; printf '%s\n' "$@"; echo "---"; } \
+    > "$LVAULT/projects/${n}.md"
+}
+lfiche fantome      "summary: au registre, pas clone ici"
+lfiche muet         "repo: github.com/acme/muet"         "summary: ni agents ni skills"
+lfiche porte-agents "repo: github.com/acme/porte-agents" "summary: porte des agents"
+lfiche porte-skills "repo: github.com/acme/porte-skills" "summary: porte des skills"
+LCONF="$TMP/vaults-lanceurs"
+{ echo "vault lanceurs $LVAULT"; echo "root  lanceurs $LROOT"; } > "$LCONF"
+
+# Un vault declare dont le chemin ne resout pas : lib/vaults rend le vide EN
+# SILENCE, c'est au lanceur de le dire.
+LCONF_BIDON="$TMP/vaults-bidon"
+printf 'vault bidon %s\n' "$TMP/pas-de-vault-ici" > "$LCONF_BIDON"
+
+has()   { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
+hasnt() { case "$3" in *"$2"*) ko "$1" "ne contient PAS [$2]" "$3" ;; *) ok "$1" ;; esac; }
+lance()    { local c="$1"; shift; AIKIT_VAULTS="$c" bash "$@" 2>/dev/null; }
+lanceerr() { local c="$1"; shift; AIKIT_VAULTS="$c" bash "$@" 2>&1 >/dev/null; }
+
+is "seuls les projets presents ET porteurs sortent, dans l'ordre des fiches" \
+   "claude --add-dir $LROOT/porte-agents --add-dir $LROOT/porte-skills" \
+   "$(lance "$LCONF" bin/ezy --dry-run)"
+# Le cd a disparu : il n'y a plus de racine ou se placer. Sans cette assertion,
+# le reintroduire ne casserait rien.
+hasnt "la commande imprimee ne porte plus aucun cd" \
+   "cd " "$(lance "$LCONF" bin/ezy --dry-run)"
+has "le repertoire d'execution est dit, sur stderr" \
+   "runs from" "$(lanceerr "$LCONF" bin/ezy --dry-run)"
+
+# Quatre echecs qui tombaient tous dans « no project exposes agents or skills »,
+# dont la faute de frappe -- le cas le plus frequent. Chacun doit nommer SA
+# cause, sinon le lecteur part fouiller des repertoires .claude/ pour un 'l'
+# en trop.
+has "--only sur une faute de frappe parle de frappe" \
+   "no project named 'porte-agentss'" \
+   "$(lanceerr "$LCONF" bin/ezy --only porte-agentss --dry-run)"
+has "--only sur un projet non clone le dit" \
+   "not cloned on this machine" \
+   "$(lanceerr "$LCONF" bin/ezy --only fantome --dry-run)"
+has "--only sur un projet sans agents ni skills le dit" \
+   "neither .claude/agents nor .claude/skills" \
+   "$(lanceerr "$LCONF" bin/ezy --only muet --dry-run)"
+has "--only sur un projet non clone ne parle PAS de .claude" \
+   "registered in vault 'lanceurs'" \
+   "$(lanceerr "$LCONF" bin/ezy --only fantome --dry-run)"
+hasnt "... et ne mentionne pas .claude/agents" \
+   ".claude/agents" "$(lanceerr "$LCONF" bin/ezy --only fantome --dry-run)"
+has "--vault inconnu nomme le fichier de vaults" \
+   "no vault named 'nope'" "$(lanceerr "$LCONF" bin/ezy --vault nope --dry-run)"
+has "aucun vault declare : la cause est le fichier, pas le projet" \
+   "no vault declared in" "$(lanceerr /nonexistent-vaults-file bin/ezy --dry-run)"
+has "un vault declare qui ne resout pas est nomme, avec l'endroit cherche" \
+   "bidon ($TMP/pas-de-vault-ici/projects)" \
+   "$(lanceerr "$LCONF_BIDON" bin/ezy --dry-run)"
+has "... et la cause n'est pas imputee aux projets" \
+   "no declared vault carries a project registry" \
+   "$(lanceerr "$LCONF_BIDON" bin/ezy --dry-run)"
 
 echo
 echo "$pass passes, $fail echecs"

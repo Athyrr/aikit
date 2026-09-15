@@ -37,32 +37,54 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-declared=0; matched=0
+declared=0; matched=0; rows=0; only_seen=0; only_why=""; stranded=""
 args=()
-while IFS=$'\t' read -r vname _; do
+while IFS=$'\t' read -r vname vpath; do
   declared=$((declared + 1))
   [ -z "$vault_only" ] || [ "$vname" = "$vault_only" ] || continue
   matched=$((matched + 1))
+  vrows=0
   while IFS=$'\t' read -r name _ state path _; do
-    [ "$state" = "present" ] || continue
+    vrows=$((vrows + 1))
     [ -z "$only" ] || [ "$name" = "$only" ] || continue
+    # Past this point the fiche is the one asked for — or --only is unset, in
+    # which case the two variables below are written and never read.
+    only_seen=1
+    if [ "$state" != "present" ]; then
+      only_why="registered in vault '${vname}', but not cloned on this machine"
+      continue
+    fi
+    only_why="cloned at ${path}, but exposes neither .claude/agents nor .claude/skills"
     for sub in .claude/agents .claude/skills; do
       [ -d "${path}/${sub}" ] && { args+=(--add-dir "$path"); break; }
     done
   done < <(resolve_projects "$vname")
+  rows=$((rows + vrows))
+  # A vault whose `projects/` does not resolve — wrong path, drive not mounted —
+  # yields nothing, and lib/vaults says nothing about it. Silence here would
+  # blame the project for a broken declaration.
+  [ "$vrows" != 0 ] || stranded="${stranded}${stranded:+, }${vname} (${vpath}/projects)"
 done < <(vaults_list)
 
-# Three ways to end up with nothing, three remedies: declare a vault, name one
-# that exists, or clone a project that carries agents or skills. One message
-# for the three would send every reader to the wrong file.
+# Nothing to open has six causes and six remedies: declare a vault, fix a vault
+# path, name a vault that exists, fix a typo, clone the project, or accept that
+# it carries nothing --add-dir could hand over. One message for the six would
+# send five readers to the wrong file.
 if [ ${#args[@]} -eq 0 ]; then
   if [ "$declared" = 0 ]; then
     echo "ezy: no vault declared in $(vaults_config_path)" >&2
   elif [ "$matched" = 0 ]; then
     echo "ezy: no vault named '${vault_only}' among the ${declared} declared in $(vaults_config_path)" >&2
+  elif [ "$rows" = 0 ]; then
+    echo "ezy: no declared vault carries a project registry" >&2
+  elif [ -n "$only" ] && [ "$only_seen" = 0 ]; then
+    echo "ezy: no project named '${only}' among the ${rows} registered — check the spelling" >&2
+  elif [ -n "$only" ]; then
+    echo "ezy: '${only}' is ${only_why}" >&2
   else
-    echo "ezy: no located project exposes agents or skills" >&2
+    echo "ezy: none of the ${rows} registered projects is both cloned here and carrying agents or skills" >&2
   fi
+  [ -z "$stranded" ] || echo "ezy:   (declared but carrying no project registry: ${stranded})" >&2
   exit 1
 fi
 
