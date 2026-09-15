@@ -3,7 +3,7 @@
 #
 # Injects two things into every session (startup, /clear, and after compaction):
 #   1. the full text of the using-aikit skill  -> the method itself
-#   2. a compact table of the workspace projects -> the router
+#   2. a compact table of the registered projects -> the router
 #
 # The compaction matcher is the point: the method survives context loss.
 
@@ -14,70 +14,44 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 preamble=$(cat "${PLUGIN_ROOT}/skills/using-aikit/SKILL.md" 2>&1 || echo "Error reading using-aikit skill")
 
-# --- project registry -------------------------------------------------------
-# Each projects/<name>.md carries a YAML frontmatter with at least:
-#   name, path, summary
+# --- vault registries -------------------------------------------------------
+# Plus de remontee d'ancetres : les vaults sont declares, par machine, dans
+# ~/.config/aikit/vaults (voir lib/vaults). Un projet que le scan ne trouve pas
+# reste au registre et sort ABSENT -- dire "pas ici" est une information,
+# pretendre qu'il est la est un mensonge.
 #
-# The registry is workspace DATA, not plugin code. It is read from the
-# workspace and ONLY from the workspace, because installing a plugin COPIES it
-# into ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ pinned to a
-# commit: a bundled copy would go stale the moment you edit a project file.
-# Reading the workspace means a registry edit takes effect in the very next
-# session, with no reinstall.
-#
-# There is NO bundled copy, and no fallback to one. The plugin ships no registry
-# directory at all — see the comment just below the probe for why that is
-# deliberate, and do not reintroduce one.
-#
-# Finding no registry degrades to a short "no registry here" note — never to a
-# project table, and never to a failure.
-# Walk up from the session's directory: aiKit may be launched from inside any
-# project of the workspace, not only from its root. The registry is found by
-# ancestry, never by assuming the cwd is the workspace.
-registry_dir=""
-workspace_root=""
-probe="${CLAUDE_PROJECT_DIR:-$PWD}"
-while [ -n "$probe" ] && [ "$probe" != "/" ]; do
-    if compgen -G "${probe}/vault/projects/*.md" > /dev/null 2>&1; then
-        registry_dir="${probe}/vault/projects"
-        workspace_root="$probe"
-        break
-    fi
-    probe="$(dirname "$probe")"
-done
-# No fallback to the plugin's bundled copy on purpose. The method is generic and
-# travels everywhere; the registry is one workspace's data. Injecting one
-# workspace's project table into an unrelated repository would order the agent
-# to route work to projects that are not there.
+# Le registre est de la DONNEE, jamais du code de plugin. Installer un plugin le
+# COPIE dans ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ fige sur
+# un commit : une copie embarquee serait perimee des la premiere edition d'une
+# fiche. Lire les vaults declares fait qu'une edition prend effet a la session
+# suivante, sans reinstallation. Le plugin n'embarque AUCUN registre, et il n'y
+# a aucun repli sur un tel registre : la methode est generique et voyage
+# partout, un registre est la donnee d'une machine.
+. "${PLUGIN_ROOT}/lib/vaults"
 
 registry=""
-if [ -z "$registry_dir" ]; then
-    registry=$'\n\n## No project registry here\n\nThis session is outside a workspace that carries one (`<workspace>/vault/projects/`). The method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
-elif [ -n "$registry_dir" ]; then
+vault_count=0
+while IFS=$'\t' read -r vname vpath; do
+    [ -n "$vname" ] || continue
+    vault_count=$((vault_count + 1))
     rows=""
-    for f in "${registry_dir}"/*.md; do
-        field() {
-            awk -v key="$1" '
-                /^---[[:space:]]*$/ { fm++; next }
-                fm == 1 && $0 ~ "^" key ":" {
-                    sub("^" key ":[[:space:]]*", "")
-                    gsub(/^["'"'"']|["'"'"']$/, "")
-                    print
-                    exit
-                }
-                fm >= 2 { exit }
-            ' "$f"
-        }
-        n=$(field name);    [ -n "$n" ] || n="$(basename "$f" .md)"
-        p=$(field path);    [ -n "$p" ] || p="?"
-        s=$(field summary); [ -n "$s" ] || s="-"
-        rows+="| ${n} | ${p} | ${s} |"$'\n'
-    done
-    registry=$'\n\n## Workspace projects\n\n'
-    registry+=$'| project | path | what it is |\n|---|---|---|\n'
+    while IFS=$'\t' read -r n kind state path summary; do
+        [ -n "$n" ] || continue
+        here="oui"; [ "$state" = "present" ] || here="**absent d'ici**"
+        [ "$kind" = "conception" ] && n="${n} *(conception)*"
+        rows+="| ${n} | ${here} | ${summary} |"$'\n'
+    done < <(resolve_projects "$vname")
+    [ -n "$rows" ] || continue
+    registry+=$'\n\n## Vault: '"${vname}"$'\n\n'
+    registry+=$'| project | ici | what it is |\n|---|---|---|\n'
     registry+="${rows}"
-    registry+=$'\nWorkspace root: `'"${workspace_root}"$'` — the `path` column is relative to it.\n'
-    registry+=$'\nBefore working on a project, read `'"${registry_dir}"$'/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. **Never work on a project whose registry file you have not read.**'
+    registry+=$'\nVault path: `'"${vpath}"$'`\n'
+done < <(vaults_list)
+
+if [ "$vault_count" = 0 ]; then
+    registry=$'\n\n## No vault registered on this machine\n\nDeclare one in `~/.config/aikit/vaults`:\n\n```\nvault work /path/to/the/vault\nroot  work /path/to/where/its/projects/are\n```\n\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
+else
+    registry+=$'\nBefore working on a project, read `<vault>/projects/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. A project marked **absent d\'ici** is registered but not cloned on this machine. **Never work on a project whose registry file you have not read.**'
 fi
 # ---------------------------------------------------------------------------
 
