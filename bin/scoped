@@ -28,41 +28,87 @@
 # Usage:
 #   scoped <project> <feature> <instruction...>
 #   scoped <project> <feature> @path/to/prompt.md
+#   scoped --dry-run <project> <feature> <instruction...>
 set -euo pipefail
 
 LIB="$(cd "$(dirname "$0")/.." && pwd)/lib/vaults"
 . "$LIB"
 
-[ $# -ge 3 ] || { echo "usage: scoped <project> <feature> <instruction...>" >&2; exit 2; }
+# --dry-run prints the command and the directory it would run in, instead of
+# running it. It is what makes this file testable: without it, a test has to
+# clone the script and patch out the `exec` — and a clone drifts.
+dry=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) dry=1; shift ;;
+    *)         break ;;
+  esac
+done
+
+[ $# -ge 3 ] || { echo "usage: scoped [--dry-run] <project> <feature> <instruction...>" >&2; exit 2; }
 project=$1; feature=$2; shift 2
 
-# Un projet `absent` n'est pas une erreur du registre — mais on ne lance pas une
-# session dans un repertoire qui n'est pas la. C'est le seul point ou ce lanceur
-# differe de bin/ezy, qui saute le projet et continue : ici il n'y a rien
-# d'autre a faire, la demande porte sur CE projet.
-found=""; fiche=""; vault_dir=""
+found=""; fiche=""; vault_dir=""; registered=""
+declared=0; resolved=0; stranded=""
 while IFS=$'\t' read -r vname vpath; do
+  declared=$((declared + 1))
+  vrows=0
   while IFS=$'\t' read -r name _ state path _; do
+    vrows=$((vrows + 1))
     [ "$name" = "$project" ] || continue
-    [ "$state" = "present" ] || { echo "scoped: '${project}' est au registre mais pas clone ici" >&2; exit 2; }
+    if [ "$state" != "present" ]; then
+      # Registered, but not cloned here. Remember which vault said so, and keep
+      # searching: the same project may be declared in a second vault that does
+      # hold the clone. Refusing on the first `absent` would refuse work that
+      # exists — and would disagree with bin/ezy, which finds it.
+      registered="${registered:-$vname}"
+      continue
+    fi
     found="$path"; fiche="${vpath}/projects/${project}.md"; vault_dir="${vpath}/${project}/${feature}"
+    break
   done < <(resolve_projects "$vname")
+  # A vault whose `projects/` does not resolve — wrong path, drive not mounted —
+  # yields nothing, and lib/vaults says nothing about it.
+  if [ "$vrows" = 0 ]; then
+    stranded="${stranded}${stranded:+, }${vname} (${vpath}/projects)"
+  else
+    resolved=$((resolved + 1))
+  fi
   [ -n "$found" ] && break
 done < <(vaults_list)
-[ -n "$found" ] || { echo "scoped: aucune fiche '${project}' dans les vaults declares" >&2; exit 2; }
 
-# resolve_projects rend le `name:` du frontmatter, qui peut differer du nom de
-# fichier ; la fiche se nomme alors autrement que ce qu'on vient de chercher.
-# Sans ce garde, fiche_field ouvrirait un fichier absent et awk tuerait le
-# script sous `set -e`, avec son message et pas le notre.
-[ -f "$fiche" ] || { echo "scoped: fiche introuvable: ${fiche}" >&2; exit 2; }
+# Four causes, four remedies: write the config file, fix a vault path, clone the
+# project, or register it. "No such fiche" for a missing config file sends the
+# reader hunting for a file that is very likely right in front of them.
+if [ -z "$found" ]; then
+  if [ "$declared" = 0 ]; then
+    echo "scoped: no vault declared in $(vaults_config_path)" >&2
+  elif [ "$resolved" = 0 ]; then
+    echo "scoped: no declared vault carries a project registry" >&2
+  elif [ -n "$registered" ]; then
+    # Deliberately different from bin/ezy, which skips an absent project and
+    # carries on: here the request names THIS project, so there is nothing else
+    # to do. But the refusal leaves only once every vault has been searched.
+    echo "scoped: '${project}' is registered in vault '${registered}', but not cloned on this machine" >&2
+  else
+    echo "scoped: no project named '${project}' in any declared vault" >&2
+  fi
+  [ -z "$stranded" ] || echo "scoped:   (declared but carrying no project registry: ${stranded})" >&2
+  exit 2
+fi
 
-# `perimeter:` est relatif AU PROJET LOCALISE, et vaut `.` par defaut. Un projet
-# dont les outils vivent au parent de son clone ecrit `perimeter: ..` — vrai sur
-# toutes les machines, puisque l'ancre est le clone, plus une racine.
+# resolve_projects returns the frontmatter `name:`, which may differ from the
+# file name; the fiche is then not where we just looked. Without this guard,
+# fiche_field would open a missing file and awk would kill the script under
+# `set -e`, with its message instead of ours.
+[ -f "$fiche" ] || { echo "scoped: no such registry file: ${fiche}" >&2; exit 2; }
+
+# `perimeter:` is relative TO THE LOCATED PROJECT, and defaults to `.`. A
+# project whose tools live in the parent of its clone writes `perimeter: ..` —
+# true on every machine, since the anchor is the clone, not a root.
 perimeter="$(fiche_field "$fiche" perimeter)"
 dir="$(cd "${found}/${perimeter:-.}" 2>/dev/null && pwd)" \
-  || { echo "scoped: perimetre introuvable: ${found}/${perimeter:-.}" >&2; exit 2; }
+  || { echo "scoped: no such perimeter: ${found}/${perimeter:-.}" >&2; exit 2; }
 
 instruction="$*"
 if [ "${instruction:0:1}" = "@" ]; then
@@ -71,8 +117,8 @@ if [ "${instruction:0:1}" = "@" ]; then
   instruction=$(cat "$f")
 fi
 
-mkdir -p "$vault_dir"
 marker="${vault_dir}/.session"
+[ "$dry" = 1 ] || mkdir -p "$vault_dir"
 
 args=()
 read -r -a allow <<< "$(fiche_field "$fiche" allow)"
@@ -90,10 +136,18 @@ else
   elif command -v node > /dev/null 2>&1; then           sid=$(node -e 'console.log(crypto.randomUUID())')
   else                                                  sid=$(python3 -c "import uuid; print(uuid.uuid4())")
   fi
-  printf '%s' "$sid" > "$marker"
+  # A dry run leaves no trace: writing the marker here would make the next real
+  # call --resume a session that was never created.
+  [ "$dry" = 1 ] || printf '%s' "$sid" > "$marker"
   args+=(--session-id "$sid")
   echo "scoped: opening ${project} perimeter, session ${sid}" >&2
 fi
 
+if [ "$dry" = 1 ]; then
+  # The cd is part of the printed command: unlike bin/ezy, this launcher really
+  # does move, and the perimeter is the whole point of reading the line.
+  printf 'cd %q && claude' "$dir"; printf ' %q' "${args[@]}"; printf ' -p %q\n' "$instruction"
+  exit 0
+fi
 cd "$dir"
 exec claude "${args[@]}" -p "$instruction"

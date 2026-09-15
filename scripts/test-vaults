@@ -331,6 +331,74 @@ has "... et la cause n'est pas imputee aux projets" \
    "no declared vault carries a project registry" \
    "$(lanceerr "$LCONF_BIDON" bin/ezy --dry-run)"
 
+echo "bin/scoped"
+# Ces fiches-la ne perturbent pas les assertions de bin/ezy ci-dessus : elles
+# pointent toutes sur `muet`, qui ne porte ni agents ni skills, ou sont absentes.
+lfiche perim-defaut "repo: github.com/acme/muet" "allow: Bash(git*) Read" \
+                    "deny: WebFetch" "summary: perimetre par defaut"
+lfiche perim-parent "repo: github.com/acme/muet" "perimeter: .." \
+                    "summary: les outils vivent au parent du clone"
+lfiche perim-casse  "repo: github.com/acme/muet" "perimeter: pas-la" \
+                    "summary: perimetre qui ne resout pas"
+
+is "perimetre par defaut : le clone lui-meme, avec allow/deny de la fiche" \
+   "cd $LROOT/muet && claude --allowed-tools Bash\\(git\\*\\) Read --disallowed-tools WebFetch --session-id SID -p bonjour" \
+   "$(lance "$LCONF" bin/scoped --dry-run perim-defaut chantier bonjour \
+      | sed -E 's/--session-id [0-9a-fA-F-]+/--session-id SID/')"
+# T16 fera passer un projet reel a `perimeter: ..` : son .mcp.json est au parent
+# de son clone. Sans cette assertion, rien ne tient ce changement de referentiel.
+has "perimeter: .. ouvre le parent du clone" \
+   "cd $LROOT && claude" \
+   "$(lance "$LCONF" bin/scoped --dry-run perim-parent chantier bonjour)"
+has "un perimetre qui ne resout pas est nomme" \
+   "no such perimeter: $LROOT/muet/pas-la" \
+   "$(lanceerr "$LCONF" bin/scoped --dry-run perim-casse chantier bonjour)"
+# Un essai a blanc qui ecrirait le marqueur ferait `--resume` sur une session
+# jamais creee au prochain appel reel.
+lance "$LCONF" bin/scoped --dry-run perim-defaut chantier bonjour > /dev/null
+[ -e "$LVAULT/perim-defaut/chantier/.session" ] \
+  && ko "un essai a blanc ne laisse aucune trace" "pas de marqueur" "marqueur ecrit" \
+  || ok "un essai a blanc ne laisse aucune trace"
+
+# --- Important 3 : la recherche va jusqu'au bout avant de refuser -------------
+# Le meme projet declare dans DEUX vaults, absent du premier et clone dans le
+# second. Refuser des le premier `absent` refusait du travail qui existe -- et
+# faisait diverger les deux lanceurs sur la meme entree.
+LVAULT2="$TMP/lanceurs/vault2"; LROOT2="$TMP/lanceurs/code2"
+mkdir -p "$LVAULT2/projects" "$LROOT2/deux-vaults/.claude/agents"
+lfiche deux-vaults "summary: absent de ce vault-ci"
+{ echo "---"; echo "name: deux-vaults"; echo "summary: clone ici"; echo "---"; } \
+  > "$LVAULT2/projects/deux-vaults.md"
+LCONF2="$TMP/vaults-deux"
+{ echo "vault lanceurs $LVAULT";  echo "root  lanceurs $LROOT"
+  echo "vault second   $LVAULT2"; echo "root  second   $LROOT2"; } > "$LCONF2"
+
+has "absent du premier vault, present dans le second : on ouvre le second" \
+   "cd $LROOT2/deux-vaults && claude" \
+   "$(lance "$LCONF2" bin/scoped --dry-run deux-vaults chantier bonjour)"
+is "et les deux lanceurs s'accordent sur cette entree" \
+   "claude --add-dir $LROOT2/deux-vaults" \
+   "$(lance "$LCONF2" bin/ezy --only deux-vaults --dry-run)"
+
+# --- les quatre causes d'un echec, distinctes --------------------------------
+has "au registre mais pas clone : le vault fautif est nomme" \
+   "'fantome' is registered in vault 'lanceurs', but not cloned" \
+   "$(lanceerr "$LCONF" bin/scoped --dry-run fantome chantier bonjour)"
+has "projet inconnu : on ne parle pas de clone" \
+   "no project named 'inconnu' in any declared vault" \
+   "$(lanceerr "$LCONF" bin/scoped --dry-run inconnu chantier bonjour)"
+# Le defaut signale : sans fichier de vaults, scoped envoyait chercher une fiche
+# que l'utilisateur a peut-etre sous les yeux.
+err_sansconf="$(lanceerr /nonexistent-vaults-file bin/scoped --dry-run porte-agents chantier bonjour)"
+has "aucun vault declare : la cause est le fichier de configuration" \
+   "no vault declared in" "$err_sansconf"
+hasnt "... et surtout pas une fiche manquante" \
+   "no project named" "$err_sansconf"
+err_bidon="$(lanceerr "$LCONF_BIDON" bin/scoped --dry-run porte-agents chantier bonjour)"
+has "un vault declare qui ne resout pas est nomme, avec l'endroit cherche" \
+   "bidon ($TMP/pas-de-vault-ici/projects)" "$err_bidon"
+hasnt "... et la cause n'est pas imputee au projet" "no project named" "$err_bidon"
+
 echo
 echo "$pass passes, $fail echecs"
 [ "$fail" = 0 ]
