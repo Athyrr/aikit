@@ -29,10 +29,12 @@ skip the project.
 
 | Field | Required | Read by | Meaning |
 |---|---|---|---|
-| `name` | yes | hook | identifier; must equal the filename |
-| `path` | yes | hook, `bin/ezy`, `bin/scoped` | directory, relative to the workspace root |
+| `name` | yes | hook | identifier; must equal the filename. The primary key: a repo can be renamed or transferred without the file moving |
+| `repo` | no | hook, `bin/ezy`, `bin/scoped` | normalized `host/org/repo`, ssh and https alike. Absent means the project has no repository |
+| `dir` | no | hook, launchers | where the working directory is. Relative to the **located repo root** when `repo` is set, to the search root otherwise; defaults to `name`. `repo` and `dir` are orthogonal — a project can need both (a repo whose working tree is a subdirectory) |
+| `kind` | no | hook | `depot` (implicit default) or `conception` |
 | `summary` | yes | hook | one line; **the only always-on part** |
-| `perimeter` | no | `bin/scoped` | directory the scoped process runs in, relative to the workspace root; defaults to `path`. Set it when a project's tools are installed somewhere other than its own repository (e.g. `.` for tools installed at the workspace root) |
+| `perimeter` | no | `bin/scoped` | directory the scoped process runs in, **relative to the located project**; defaults to `.` |
 | `allow` | no | `bin/scoped` | space-separated tools pre-approved for an unattended process |
 | `deny` | no | `bin/scoped` | space-separated tools withheld from it |
 
@@ -73,6 +75,31 @@ what verdict is honest: `GATES_PASS — human verification required`, never
 **6. Traps** — what silently breaks work here. A trap earns its place if
 someone competent would get it wrong without being told.
 
+## A project with no repository — `kind: conception`
+
+Phase 2 is exactly where projects that do not exist yet are born. A conception
+project is a project: same file, same six sections, three fields it cannot have.
+
+- **Section 1 Identity** states the absence and its cost: no worktree, no
+  `aikit:checking-plan-drift`, no rollback, no diff to review.
+- **Section 5 Completion criterion** carries no command. The criterion is **the
+  spec is agreed**; phase 6 reads as the human's review of `spec.md`. The honest
+  verdict is `SPEC ACTEE`, never `PASS`.
+- `repo:` is absent; the project is located by directory name, or by `dir:`.
+
+Its `summary:` is injected every session like any other. That is the point: a
+project nobody can route to is a project whose wrong description goes
+uncorrected.
+
+`dir` degrades rather than guesses. Both cases resolve to **absent**, never to
+an approximation:
+
+- a `dir` that does not exist inside the located repo — the fiche is wrong, and
+  a wrong fiche must be visible rather than silently resolve to the repo root;
+- an absolute `dir` — it is joined to the repo root, so it cannot match.
+
+Nothing is written to stderr: the hook runs at every session start.
+
 ## Costs are measured
 
 Every token figure in a registry file was measured, not estimated. A wrong
@@ -90,8 +117,8 @@ awk 'NR>=A && NR<=B' FILE | wc -c                                  # a section
 3. Establish the completion criterion by **running it**, not by reading a README.
 4. Check the hook picks it up:
    ```bash
-   CLAUDE_PROJECT_DIR=<workspace> CLAUDE_PLUGIN_ROOT=<workspace>/aikit \
-     bash <workspace>/aikit/hooks/session-start | python3 -m json.tool | grep <name>
+   AIKIT_VAULTS=~/.config/aikit/vaults CLAUDE_PLUGIN_ROOT=<aikit clone> \
+     bash <aikit clone>/hooks/session-start | python3 -m json.tool | grep <name>
    ```
 5. No deploy. The registry is read from source.
 
