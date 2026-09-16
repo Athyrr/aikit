@@ -1,6 +1,6 @@
 {
   "name": "aikit",
-  "description": "aiKit - an agentic method for Claude Code: understand, specify, plan, split, execute, verify - with a per-workspace project registry and a failure-direction rule",
+  "description": "aiKit - an agentic method for Claude Code: understand, specify, plan, split, execute, verify - with a per-vault project registry and a failure-direction rule",
   "version": "0.9.2",
   "author": {
     "name": "Adam Adhar"

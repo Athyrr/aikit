@@ -3,6 +3,27 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.10.0
+- **Le vault remplace le workspace comme unite d'association.** La remontee
+  d'ancetres (`find_workspace()`, dupliquee dans trois fichiers) disparait :
+  les vaults sont declares par machine dans `~/.config/aikit/vaults`, les
+  projets localises par scan et apparies par remote git normalise. `repo:`
+  remplace `path:` dans le contrat de la fiche registre ; `dir:` dit ou est
+  le repertoire de travail, oriente au depot localise quand `repo:` est
+  present.
+- **Un projet sans depot est un projet.** `kind: conception` declare
+  explicitement l'absence de depot, de branche et de critere de completion
+  mecanique, et son `summary:` est injecte comme n'importe quel autre.
+- **Neuvieme porte** : `scripts/doctor` lance desormais `scripts/test-vaults`,
+  la suite qui garde `lib/vaults` — code execute a chaque demarrage de
+  session.
+- Le piege « ne pas ouvrir de session aiKit dans le vault » (`SETUP.md`) est
+  supprime : il n'existe plus de remontee d'ancetres a tromper.
+- Contrat de frontmatter a deux niveaux dans le vault : `status.md`,
+  obligatoire, seule source de l'etat d'un chantier (`phase` orthogonal a
+  `status`) ; tout autre fichier de chantier porte un contrat minimal
+  (`project`, `feature`, `title`).
+
 ## 0.9.1
 - `scripts/deploy` pousse vers la ref amont explicite
   (`git push "$remote" HEAD:"$ref"`) au lieu d'un `git push` nu : `push.default`
