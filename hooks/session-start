@@ -95,7 +95,14 @@ escape_for_json() {
     # CHAQUE demarrage de session. Tabulation (011), LF (012) et CR (015) sont
     # exclus du filtre expres : ils sont echappes correctement juste en dessous,
     # et les supprimer casserait la mise en forme du preambule injecte.
-    s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')
+    #
+    # La sentinelle `x` n'est pas decorative : `$( )` depouille les sauts de
+    # ligne TERMINAUX, et ce sous-shell est le seul de la fonction qui voie
+    # encore de vrais `\n` -- apres les substitutions ci-dessous il n'en reste
+    # aucun, tous devenus deux caracteres, donc le `$( )` de l'appelant ne peut
+    # plus rien manger. Sans elle, un preambule finissant par une ligne vide la
+    # perdrait en silence.
+    s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037'; printf x); s=${s%x}
     s="${s//\\/\\\\}"
     s="${s//\"/\\\"}"
     s="${s//$'\n'/\\n}"

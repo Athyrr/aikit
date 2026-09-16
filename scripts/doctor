@@ -92,11 +92,35 @@ if [ "$(git config --get core.hooksPath || true)" != ".githooks" ]; then
   echo "  ✗ FAILED"; fail=1
 fi
 
-# Silent when green, the whole suite when red — and captured from ONE run, so
-# what gets printed is the run that actually failed.
+# Silent when green, and when red ONLY the failures and the count — captured
+# from ONE run, so what gets printed is the run that actually failed. The
+# suite prints ~80 lines when it falls, of which ~60 are green ticks: this is
+# the one gate whose red used to demand scrolling.
 echo "→ 9 vault resolution tests"
-if ! vaults_out=$(scripts/test-vaults 2>&1); then
-  echo "$vaults_out" | sed 's/^/    /'
+# Status captured on its own line: inside `if ! cmd`, $? is the status of the
+# negation, not of the suite — and the suite's own code is the only thing left
+# to report when it dies without printing.
+vaults_out=$(scripts/test-vaults 2>&1); vaults_rc=$?
+if [ "$vaults_rc" != 0 ]; then
+  # A ✗ opens a block that runs to the next assertion: its `attendu:` and
+  # `obtenu:` lines ARE the diagnosis, and an `obtenu:` often spans many lines.
+  # Ending the block on the next ✓ rather than on a closing bracket lets a
+  # section header slip in after a failure — one stray line, deliberately
+  # preferred to a cleverer rule that could truncate the diagnosis itself.
+  vaults_red=$(printf '%s\n' "$vaults_out" | awk '
+    /^  ✗ / { keep = 1 }
+    /^  ✓ / { keep = 0 }
+    / passes, .* echecs$/ { keep = 0; print; next }
+    keep')
+  # A suite that dies before its verdict — killed, or a syntax error — carries
+  # neither a ✗ nor a count. Fall back to everything it did print, and if that
+  # is nothing at all, say THAT: a red gate with an empty block teaches nobody.
+  [ -n "$vaults_red" ] || vaults_red="$vaults_out"
+  if [ -n "$vaults_red" ]; then
+    printf '%s\n' "$vaults_red" | sed 's/^/    /'
+  else
+    echo "    the suite printed nothing; it exited $vaults_rc before any verdict"
+  fi
   echo "  ✗ FAILED"; fail=1
 fi
 
