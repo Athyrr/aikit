@@ -18,11 +18,11 @@ A SessionStart hook injects, at every startup, `/clear` and **after every
 compaction**, two things:
 
 1. the full text of `skills/using-aikit/SKILL.md` — the method itself;
-2. a table of the current workspace's projects, built from `vault/projects/*.md`
-   found by walking up from the session's directory — the router.
+2. a table of every registered vault's projects, built from `<vault>/projects/*.md`
+   for each vault declared on this machine — the router.
 
 The compaction matcher is the point: the method survives context loss, which
-is the failure it exists to prevent. Outside a workspace that carries a
+is the failure it exists to prevent. Outside a vault that carries a
 registry, only the method is injected — the routing step simply has nothing to
 route to.
 
@@ -106,7 +106,7 @@ when a plan task names one, it is dispatched instead of the generic
 ## Where things live
 
 The method is versioned and installed once per machine. The artifacts and the
-registry are not — they belong to the workspace that uses the method, never to
+registry are not — they belong to the vault that uses the method, never to
 the method itself.
 
 ```
@@ -117,19 +117,19 @@ the method itself.
   scripts/                    doctor and deploy — NOT on the Bash tool's PATH
   bin/                        ezy and scoped — these ARE on it
 
-<workspace>/                  any project or group of projects you work in
-  vault/                      a clone of the workspace's vault (an Obsidian vault)
-    projects/                 the registry: one file per project
-    <project>/<feature>/{spec,impact,plan,ledger,diagnostic-N}.md
-  <the project repositories>
+~/.config/aikit/vaults         which vaults this machine knows, and where
+<vault>/                      a clone of a vault (an Obsidian vault)
+  projects/                   the registry: one file per project
+  <project>/<feature>/{spec,impact,plan,ledger,diagnostic-N}.md
+<anywhere>/                   the project repositories, found by scanning
 
 ~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS after task 17
 ```
 
-The hook finds the registry by walking **up** from the session's directory,
-looking for `vault/projects/*.md`. So the method travels everywhere while the
-registry stays bound to one workspace — and the two never live in the same
-repository.
+The hook resolves projects from the vaults declared in
+`~/.config/aikit/vaults` and a scan of their declared roots. So the method
+travels everywhere while a registry stays bound to one vault — and the two
+never live in the same repository.
 
 **aiKit writes nothing inside the project repositories** except the code
 changes themselves. No specs, no plans, no ledger, no scratch. `git status`
@@ -147,15 +147,16 @@ claude plugin install aikit@aikit-marketplace --scope user      # this marketpla
 Register the marketplace over **SSH**, and install in **one scope only** — two
 scopes means two copies, and an update touches one while the other keeps
 running. `--scope user` makes the method available from any repository on the
-machine: it is a way of working, not workspace data. **You do not clone this
+machine: it is a way of working, not vault data. **You do not clone this
 repository to use the method.**
 
-To make a workspace routable, give it a registry — `vault/projects/<name>.md`
-per project. `aikit:registering-a-project` carries the frontmatter contract the
+To make a vault routable, give it a registry — `<vault>/projects/<name>.md`
+per project, and declare the vault in `~/.config/aikit/vaults`.
+`aikit:registering-a-project` carries the frontmatter contract the
 tooling parses and the six sections a registry file must hold.
 
 **[`SETUP.md`](SETUP.md) is the full procedure** — prerequisites (Git for
-Windows is a hard one), why SSH rather than HTTPS, wiring a workspace's vault,
+Windows is a hard one), why SSH rather than HTTPS, registering a vault,
 and the development loop below. That text lives there, once.
 
 ## Iterating on the method
@@ -175,7 +176,7 @@ session.** Run `scripts/doctor` any time for the gates without deploying, and
 `claude --plugin-dir .` to load the working tree into one session only.
 [`SETUP.md`](SETUP.md) §4 has the whole loop, from clone to merge.
 
-The registry is exempt: `vault/projects/*.md` lives in the workspace's vault
+The registry is exempt: `<vault>/projects/*.md` lives in the vault
 and is read from disk by the hook, so a registry edit is live in the next
 session with no deploy.
 
@@ -183,7 +184,7 @@ session with no deploy.
 
 - renamed throughout (`aikit:` prefix), single harness (Claude Code only)
 - artifacts moved out of the repositories into `vault/`
-- per-workspace registry injected at session start, found by ancestry
+- per-vault registry injected at session start, from declared vaults
 - failure-direction rule (down = spike/fix loop, up = re-plan/re-spec)
 - retry budget written to the ledger, not held in context
 - multi-harness ports, CI, upstream docs and the remote brand image removed

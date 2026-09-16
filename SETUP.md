@@ -29,23 +29,34 @@ auto-update. Install in **one scope only** — two scopes means two copies and a
 update touches one while the other keeps running.
 
 `--scope user` makes the method available from any repository on the machine:
-it is a way of working, not workspace data.
+it is a way of working, not vault data.
 
 That is the whole installation. You do **not** clone this repository to use the
 method.
 
-## 3. Wiring a workspace
+## 3. Registering a vault
 
-A workspace becomes routable when it carries a registry.
+A machine registers the vaults whose projects it works on. Zero, one, or
+several. Nothing is derived — declare both the vault and where its projects
+live, because they are often on different filesystems.
 
 ```bash
-git clone git@github.com:<owner>/<workspace>-vault.git "<vault path>"
-ln -sfn "<vault path>" <workspace>/vault
+git clone git@github.com:<owner>/<name>-vault.git "<vault path>"
+mkdir -p ~/.config/aikit
+cat >> ~/.config/aikit/vaults <<'EOF'
+vault work /path/to/the/vault
+root  work /path/to/where/its/projects/are
+EOF
 ```
 
-The hook walks **up** from the session's directory looking for
-`<ancestor>/vault/projects/*.md`. One registry file per project. No deploy: the
-registry is read from disk.
+The path is the last field on the line, so a path containing a space needs no
+quoting. Several `root` lines for one vault accumulate.
+
+**Never point `root` at a home directory.** It is scanned at depth 3 on every
+session start: a correctly declared root takes ~18 ms, a home directory on a
+mounted foreign filesystem does not finish in 4 seconds.
+
+No deploy: the registry is read from disk.
 
 `aikit:registering-a-project` carries the frontmatter contract the tooling
 parses and the six sections a registry file must hold.
@@ -61,7 +72,7 @@ git config core.hooksPath .githooks     # arms the pre-commit gate — per clone
 git switch -c <chantier>
 # ... edit skills/ agents/ hooks/ ...
 
-scripts/doctor                          # the eight gates
+scripts/doctor                          # the nine gates
 claude --plugin-dir .                   # test in a session WITHOUT publishing
                                         # (takes precedence over the installed
                                         # plugin, for that session only)
@@ -87,12 +98,8 @@ Never put a git hook in `hooks/`: that is the harness namespace, and
 `core.hooksPath` points at a *directory* from which git runs every file bearing
 a git-hook name.
 
-## 6. Two known traps
+## 6. One known trap
 
-- **Do not open an aiKit session inside the vault.** Measured: from the vault's
-  *real* path the ancestor probe finds no registry, even though `projects/` is
-  two directories away. A second probe on `${probe}/projects/*.md` would fix it;
-  that is deliberately out of scope.
 - **`/reload-plugins` reloads skills, agents and hooks without restarting.**
   Only the SessionStart preamble needs `startup|clear|compact` — and `/clear` is
   one of those.

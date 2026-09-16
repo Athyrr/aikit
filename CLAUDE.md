@@ -48,13 +48,13 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
 
 ## Completion criterion
 
-No test suite. One command, from the repository root, carrying **eight gates**:
+No test suite. One command, from the repository root, carrying **nine gates**:
 
 ```bash
 scripts/doctor
 ```
 
-It prints `GATES_PASS` and exits 0 when all eight pass; it exits 1 otherwise,
+It prints `GATES_PASS` and exits 0 when all nine pass; it exits 1 otherwise,
 naming each gate that fell.
 
 | # | Gate |
@@ -63,10 +63,11 @@ naming each gate that fell.
 | 2 | `claude plugin validate ./skills --strict` — the skills |
 | 3 | `claude plugin validate ./agents --strict` — the archetypes |
 | 4 | `hooks/session-start` emits valid JSON |
-| 5 | no path left naming the vault's former directory |
+| 5 | no ancestor-walk resolution left — a tripwire against its return, not a debt probe |
 | 6 | no probe left pointing at the plugin's former bundled registry |
 | 7 | no workspace fact left in the tree — five hard-coded brand strings |
 | 8 | `core.hooksPath` is `.githooks` |
+| 9 | `scripts/test-vaults` — the vault-resolution suite. `lib/vaults` runs at every session start, so its tests belong to the completion criterion rather than beside it |
 
 Gates 1-4 check form. Gates 5-7 check the target rather than the shape: they
 catch what no manifest validation can see. Gate 8 is **local** git config — it
@@ -77,7 +78,7 @@ git config core.hooksPath .githooks
 ```
 
 That is the whole point of gate 8, making the arming visible instead of assumed.
-Once armed, `.githooks/pre-commit` runs all eight before every commit, and a red
+Once armed, `.githooks/pre-commit` runs all nine before every commit, and a red
 gate refuses it.
 
 **What it does not prove, and says so itself** — `A NEW session is still
@@ -92,8 +93,8 @@ is private workspace tooling.
 
 **Keep workspace-specific facts out of the method surface.** Skills, agents and
 `README.md` describe the method. Paths, project names, MCP servers and
-infrastructure belong in the registry — `<workspace>/vault/projects/*.md`, which
-is data and lives in the workspace, never in this repository.
+infrastructure belong in the registry — `<vault>/projects/*.md`, which
+is data and lives in a vault, never in this repository.
 
 Gate 7 of `scripts/doctor` catches part of this, and only part: it greps the
 tree for **five hard-coded brand strings**, nothing else. A private
@@ -121,8 +122,8 @@ stays yours.
   their own. What the launcher wired is what they get.
 - The six archetypes are the *product* of this repository, not its experts.
   For questions about harness mechanics — name resolution, install scope, hook
-  behaviour — the domain expert is `claude-code-guide`. See the workspace
-  registry file `<workspace>/vault/projects/aikit.md`, outside this repository.
+  behaviour — the domain expert is `claude-code-guide`. See the
+  registry file `<vault>/projects/aikit.md`, outside this repository.
 
 ## Attribution
 
