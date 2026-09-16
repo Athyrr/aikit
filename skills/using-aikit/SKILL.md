@@ -68,7 +68,11 @@ Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` on any
 failure, `aikit:handling-secrets` before writing config or committing anything
 that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
-a project's own MCP servers.
+a project's own MCP servers, `aikit:dispatching-parallel-agents` for independent
+problem domains outside a single plan's task sequence (not a substitute for
+`aikit:subagent-driven-development`'s own task dispatch, which sequences by
+shared files, not by domain), `aikit:receiving-code-review` when incorporating
+feedback from outside the method's own review loop.
 
 ## What loads where
 
@@ -96,9 +100,17 @@ before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`
 
 | Role | Model |
 |---|---|
-| `aikit:planner`, `aikit:reviewer`, `aikit:spike` | **fable** — evaluative work: planning, judging a diff, answering a question |
+| `aikit:planner`, `aikit:reviewer` | **opus** — evaluative work where a wrong judgement is the most expensive kind of failure: planning, judging a diff |
+| `aikit:spike` | sonnet — bounded, low-stakes investigation; closer to explorer's shape of work than to planning or review |
 | `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-loop attempts (`aikit:handling-blockers`) — never a per-task choice |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
+
+Opus is not escalation-only here: on a machine with no cheaper evaluative-tier
+model (this method originally ran planner/reviewer/spike on **fable**), opus
+is also planner and reviewer's standing default — spike moved to sonnet
+instead, since a bounded investigation carries less downside than a bad plan
+or a missed review finding. Restore the cheaper tier for all three if one
+becomes available again.
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.
 

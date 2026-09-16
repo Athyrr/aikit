@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bump the version, run the eight gates, commit, push, publish.
+# Bump the version, run the nine gates, commit, push, publish.
 #
 # The plugin the harness runs is a COPY pinned to a version under
 # ~/.claude/plugins/cache/. Editing this tree changes nothing until this script
@@ -144,7 +144,7 @@ next="${maj}.${min}.${pat}"
 write_version "$next"
 echo "→ ${current} → ${next}"
 
-# --- the gates, all eight, before anything leaves the machine --------------
+# --- the gates, all nine, before anything leaves the machine ---------------
 #
 # The bump happens BEFORE the gates on purpose: what gets validated is the
 # state that would ship, manifests included. But a red gate must not leave the

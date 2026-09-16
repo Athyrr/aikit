@@ -193,15 +193,20 @@ implementation.
 
 | Role | Model | Why |
 |---|---|---|
-| `aikit:planner` | **fable** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are. |
-| `aikit:reviewer` | **fable** | Same shape of judgement, applied to a diff instead of a spec. |
-| `aikit:spike` | **fable** | A spike produces a finding, not code. Analysis, not production. |
+| `aikit:planner` | **opus** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are — a wrong plan is the most expensive failure this method has, so it gets the strongest available judgement. |
+| `aikit:reviewer` | **opus** | Same shape of judgement, applied to a diff instead of a spec — the review is the safety net every task passes through. |
+| `aikit:spike` | sonnet | A spike produces a finding, not code — bounded and low-stakes, closer to explorer's shape of work than to planning or review. |
 | `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded fix-loop failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
 | `aikit:explorer` | sonnet | High-volume reading, low judgement. |
 | `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
 
 Each archetype carries this in its frontmatter, so dispatching by archetype
-name gets the right model without you specifying one.
+name gets the right model without you specifying one. Opus is not
+escalation-only here: on a machine with no cheaper evaluative-tier model
+(this method originally ran planner/reviewer/spike on **fable**), opus also
+serves as planner and reviewer's standing default — spike moved to sonnet
+instead, since a bounded investigation carries less downside than a bad plan
+or a missed review finding.
 
 **When a task names a project's domain expert instead (`Agent: api-expert`),
 that agent carries its own model, and it is not necessarily the right tier.**

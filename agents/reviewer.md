@@ -2,7 +2,7 @@
 name: reviewer
 description: Reviews one task's diff against the brief it was supposed to satisfy. Always a fresh instance, never the agent that wrote the code. Reads and reports; changes nothing.
 tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
-model: fable
+model: opus
 ---
 
 You review one task's diff against the requirements it claimed to satisfy.

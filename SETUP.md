@@ -12,6 +12,12 @@ other sessions until `scripts/deploy` has published it.
   `python3`; either one alone is enough.
 - an SSH key loaded in `ssh-agent`, with `github.com` in `known_hosts`
 - Claude Code ≥ 2.1.193
+- **optional:** an `obsidian` plugin providing the `obsidian:obsidian-markdown`
+  and `obsidian:obsidian-bases` skills, if the vault at `<vault>/` is an actual
+  Obsidian vault and you want `aikit.base`'s dashboard to work and wikilinks/
+  callouts/properties written correctly. Without it, agents still write to
+  `vault/` — the Obsidian-specific syntax invocations in their prompts just
+  have nothing to invoke.
 
 On Windows: **Git for Windows is a hard prerequisite** — without it the hook
 cannot start and now says so in the transcript instead of failing silently.

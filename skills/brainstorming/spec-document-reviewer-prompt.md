@@ -7,7 +7,7 @@ Use this template when dispatching a spec document reviewer subagent.
 **Dispatch after:** Spec document is written to vault/<project>/<feature>/
 
 ```
-Subagent (general-purpose):
+Subagent (aikit:reviewer):
   description: "Review spec document"
   prompt: |
     You are a spec document reviewer. Verify this spec is complete and ready for planning.

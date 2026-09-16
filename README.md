@@ -51,7 +51,9 @@ mid-flight, is **Heavy-Path**: the phase table below, in full.
 Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` whenever
 something fails, `aikit:delegating-to-a-perimeter` when a question needs a
-project's own tools.
+project's own tools, `aikit:dispatching-parallel-agents` for independent
+problem domains that can run concurrently, `aikit:receiving-code-review` when
+incorporating feedback from outside the method's own review loop.
 
 ## Model cascading
 
@@ -112,13 +114,19 @@ delegated spec is an invented spec.
 ## The archetypes
 
 `aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`, `aikit:verifier`, `aikit:spike` — roles in
-the process, each with a fixed model: **fable** for `aikit:planner`, `aikit:reviewer` and
-`aikit:spike` (evaluative work), **sonnet** for `aikit:implementer` (production work),
-`aikit:explorer` and `aikit:verifier`. Implementation escalates to opus exactly once per
+the process, each with a fixed model: **opus** for `aikit:planner` and
+`aikit:reviewer` (evaluative work where a wrong judgement is the most
+expensive kind of failure), **sonnet** for `aikit:implementer` (production
+work), `aikit:explorer`, `aikit:verifier` and `aikit:spike` (a spike is
+bounded and low-stakes — closer to explorer's shape of work than to planning
+or review). Implementation escalates to opus exactly once per
 task — automatically, when the ledger shows two failed fix-loop attempts — never
-a per-task judgement call; see `aikit:handling-blockers`. A project's domain
-agents are the other axis: when a plan task names one, it is dispatched
-instead of the generic `aikit:implementer`. The registry says which exist.
+a per-task judgement call; see `aikit:handling-blockers`. Opus is therefore not
+escalation-only: it also stands as planner and reviewer's default on a machine
+with no cheaper evaluative-tier model (this method originally ran that tier on
+**fable**). A project's domain agents are the other axis: when a plan task
+names one, it is dispatched instead of the generic `aikit:implementer`. The
+registry says which exist.
 
 ## Where things live
 
@@ -187,7 +195,7 @@ reports "already at the latest version" and the stale copy keeps running.
 scripts/deploy [patch|minor|major] "message"
 ```
 
-from the clone bumps both manifests, runs the eight gates, commits, pushes,
+from the clone bumps both manifests, runs the nine gates, commits, pushes,
 refreshes the marketplace and updates the install. **Takes effect in a new
 session.** Run `scripts/doctor` any time for the gates without deploying, and
 `claude --plugin-dir .` to load the working tree into one session only.
