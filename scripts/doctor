@@ -7,9 +7,11 @@
 #
 # Gates 5-7 are what the four form gates never catch: they validate the TARGET,
 # not the shape. Gate 8 is what makes the net exist on a machine other than the
-# one where somebody remembered to wire it. Gate 9 runs lib/vaults' own suite:
-# resolution runs at every session start, so its tests belong to the completion
-# criterion rather than beside it.
+# one where somebody remembered to wire it. Gate 9 runs the whole vault suite,
+# which is NOT lib/vaults alone: it covers the session-start hook and both
+# launchers, `bin/ezy` and `bin/scoped` — the four distinct causes of failure
+# and the agreement of the two launchers. Resolution runs at every session
+# start, so its tests belong to the completion criterion rather than beside it.
 #
 # Usage: scripts/doctor
 set -uo pipefail

@@ -256,6 +256,40 @@ case "$reg_mixte" in
         "la table de espace + orphelin + la phrase de remede" "${reg_mixte:-vide}" ;;
 esac
 
+echo "hook : donnee de registre hostile"
+# Un `summary:` est ecrit a la MAIN dans une fiche. Qu'il porte un caractere de
+# controle nu (0x01 ici) n'a rien d'exotique -- un copier-coller suffit. Non
+# filtre, il sortait tel quel dans la chaine JSON du hook : JSON invalide, donc
+# porte 4 rouge et preambule PERDU a chaque demarrage de session. Le vault est a
+# lui seul : une fiche de plus sous $VAULT changerait ce que les autres voient.
+HOSTILE="$TMP/hostile"; mkdir -p "$HOSTILE/projects"
+printf '%s\n' "---" "name: controle" "kind: conception" \
+  "summary: un resume "$'\001'"hostile" "---" > "$HOSTILE/projects/controle.md"
+# Le CR est l'inverse du precedent : il doit SURVIVRE au filtre, echappe en \r
+# juste apres. Tabulation, LF et CR sont exclus du filtre expres ; les y ajouter
+# casserait la mise en forme du preambule injecte a chaque session, et cette
+# fiche est ce qui rendrait ce durcissement-la rouge.
+printf '%s\n' "---" "name: retour" "kind: conception" \
+  "summary: avant"$'\r'"apres" "---" > "$HOSTILE/projects/retour.md"
+printf 'vault hostile %s\n' "$HOSTILE" > "$TMP/vaults-hostile"
+out_hostile=$(AIKIT_VAULTS="$TMP/vaults-hostile" bash hooks/session-start)
+printf '%s' "$out_hostile" | python3 -m json.tool > /dev/null \
+  && ok "un caractere de controle dans un summary : le JSON reste valide" \
+  || ko "un caractere de controle dans un summary : le JSON reste valide" \
+        "JSON valide" "invalide"
+reg_hostile=$(hookreg "$TMP/vaults-hostile")
+# Filtrer n'est pas avaler : le reste de la ligne doit arriver intact.
+case "$reg_hostile" in
+  *"| controle "*"un resume hostile"*) ok "le reste du summary survit au filtre" ;;
+  *) ko "le reste du summary survit au filtre" \
+        "| controle ... | un resume hostile |" "${reg_hostile:-vide}" ;;
+esac
+case "$reg_hostile" in
+  *"avant"$'\r'"apres"*) ok "un CR dans un summary est echappe, pas supprime" ;;
+  *) ko "un CR dans un summary est echappe, pas supprime" \
+        "avant<CR>apres" "${reg_hostile:-vide}" ;;
+esac
+
 echo "bin/ezy"
 # Fixtures PROPRES aux lanceurs : un vault et une racine a eux. Ajouter un
 # depot sous $ROOT casserait les listes exactes de vaults_scan, et une fiche de
@@ -401,4 +435,8 @@ hasnt "... et la cause n'est pas imputee au projet" "no project named" "$err_bid
 
 echo
 echo "$pass passes, $fail echecs"
-[ "$fail" = 0 ]
+# `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
+# d'un script sans `set -e` est celui de sa DERNIERE commande, donc toute
+# ligne ajoutee dessous rendrait la suite verte quoi qu'elle imprime -- et la
+# porte 9 de `scripts/doctor` deviendrait decorative sans que rien ne le dise.
+exit $(( fail != 0 ))

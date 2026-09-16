@@ -89,6 +89,13 @@ fi
 
 escape_for_json() {
     local s="$1"
+    # Les caracteres de controle NUS d'abord, avant tout echappement : un
+    # `summary:` de fiche est ecrit a la main, et un seul octet de ce genre
+    # rend la chaine JSON invalide -- donc porte 4 rouge et preambule perdu a
+    # CHAQUE demarrage de session. Tabulation (011), LF (012) et CR (015) sont
+    # exclus du filtre expres : ils sont echappes correctement juste en dessous,
+    # et les supprimer casserait la mise en forme du preambule injecte.
+    s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')
     s="${s//\\/\\\\}"
     s="${s//\"/\\\"}"
     s="${s//$'\n'/\\n}"
