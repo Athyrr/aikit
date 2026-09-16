@@ -290,6 +290,29 @@ case "$reg_hostile" in
         "avant<CR>apres" "${reg_hostile:-vide}" ;;
 esac
 
+# La sentinelle de `escape_for_json` n'etait gardee que par son commentaire :
+# aucune donnee de fiche n'atteint jamais la QUEUE de la chaine echappee (les
+# trois branches de `registry` finissent sur un litteral du hook), donc aucune
+# fiche ne peut l'exercer. On mute une COPIE du hook, dans une ferme de liens,
+# pour forcer un preambule finissant par une ligne vide -- et on regarde si elle
+# survit. Boite noire : l'ancre d'injection est `body=$(escape_for_json`, stable,
+# et le libelle de la sentinelle n'est pas epingle. Qui la retire voit ceci rouge.
+FERME="$TMP/ferme"; mkdir -p "$FERME/hooks"
+ln -s "$PWD/lib" "$FERME/lib"; ln -s "$PWD/skills" "$FERME/skills"
+# ENVIRON, pas -v : awk interprete les echappements d'une affectation -v, et
+# `\n` y deviendrait un vrai saut de ligne -- l'injection se couperait en deux.
+q=$'registry+=$\'\\n\\n\'' \
+  awk '/^body=\$\(escape_for_json/ && !injecte { print ENVIRON["q"]; injecte = 1 } { print }' \
+  hooks/session-start > "$FERME/hooks/session-start"
+# Combien de sauts de ligne survivent juste avant la balise fermante : 3 avec la
+# sentinelle (les deux injectes + celui du gabarit), 1 sans elle.
+queue=$(AIKIT_VAULTS="$CONF" bash "$FERME/hooks/session-start" | python3 -c \
+  "import json,re,sys
+c = json.load(sys.stdin)['hookSpecificOutput']['additionalContext']
+m = re.search(r'(\n*)</EXTREMELY_IMPORTANT>\$', c)
+print(len(m.group(1)) if m else -1)")
+is "la sentinelle preserve les sauts de ligne terminaux" "3" "$queue"
+
 echo "bin/ezy"
 # Fixtures PROPRES aux lanceurs : un vault et une racine a eux. Ajouter un
 # depot sous $ROOT casserait les listes exactes de vaults_scan, et une fiche de

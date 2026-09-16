@@ -107,11 +107,20 @@ if [ "$vaults_rc" != 0 ]; then
   # Ending the block on the next ✓ rather than on a closing bracket lets a
   # section header slip in after a failure — one stray line, deliberately
   # preferred to a cleverer rule that could truncate the diagnosis itself.
+  #
+  # The block also opens BACKWARDS. An assertion's sub-command writes to stderr
+  # BEFORE ko() prints the ✗ — `Invalid control character at: line 4 column
+  # 6101` is such a line, and it is the only one saying what and where. Keeping
+  # just ✗ + attendu/obtenu would report a verdict and withhold the cause. So
+  # every line since the last tick or blank is held, and flushed if a ✗ turns
+  # up: a tick or a blank line clears the hold, which is what bounds it.
   vaults_red=$(printf '%s\n' "$vaults_out" | awk '
-    /^  ✗ / { keep = 1 }
-    /^  ✓ / { keep = 0 }
-    / passes, .* echecs$/ { keep = 0; print; next }
-    keep')
+    /^  ✗ / { for (i = 1; i <= n; i++) print buf[i]; n = 0; keep = 1; print; next }
+    /^  ✓ / { keep = 0; n = 0; next }
+    / passes, .* echecs$/ { keep = 0; n = 0; print; next }
+    keep { print; next }
+    /^[[:space:]]*$/ { n = 0; next }
+    { buf[++n] = $0 }')
   # A suite that dies before its verdict — killed, or a syntax error — carries
   # neither a ✗ nor a count. Fall back to everything it did print, and if that
   # is nothing at all, say THAT: a red gate with an empty block teaches nobody.
