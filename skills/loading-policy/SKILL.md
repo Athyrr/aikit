@@ -67,6 +67,10 @@ more relevance.
 If the section you need is not in the routing table, read the table of contents
 first, then the section. Never the file.
 
+The registry's **Load before working** table routes to the project's docs *and*
+to the vault's own artifacts — a finished chantier's `status.md` is often the
+cheapest answer to "how does this work and why is it like that".
+
 ## Handing work over
 
 - Pass **paths, not contents**. A report's path costs 20 tokens; its body costs

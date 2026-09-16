@@ -68,8 +68,8 @@ ask a question, and a delegated spec is an invented spec.
 file. Never chain two phases in one context hoping to remember the first.
 
 **aiKit writes nothing inside the project repositories** except the code
-changes themselves. Specs, plans, ledgers and scratch all live under `vault/`
-at the workspace root — an **Obsidian vault**: invoke `obsidian:obsidian-markdown`
+changes themselves. Specs, plans, ledgers and scratch all live under the vault
+that owns the project — an **Obsidian vault**: invoke `obsidian:obsidian-markdown`
 before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`.
 
 ## The archetypes, and their fixed models

@@ -54,10 +54,11 @@ scoped <project> <feature> @vault/<project>/<feature>/brief.md
 ```
 
 The first call opens the session and prints its id; later calls resume it. The
-session id is kept in `vault/<project>/<feature>/.session` — delete that file to
-start a clean perimeter. The directory it runs in is the registry's
-`perimeter:`, falling back to `path:` — they differ when a project's tools are
-installed somewhere other than its own repository.
+session id is kept in `<vault>/<project>/<feature>/.session` — delete that file
+to start a clean perimeter. The directory it runs in is the located project's
+directory, joined with the registry's `perimeter:` (default `.`) — set it when
+a project's tools are installed somewhere other than its own repository (a
+sibling directory, e.g. `perimeter: ..`).
 
 Permissions come from the project's registry frontmatter (`allow:`, `deny:`),
 never from a blanket bypass. A tool that is neither allowed nor denied simply

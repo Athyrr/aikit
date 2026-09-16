@@ -14,16 +14,20 @@ so a delegated understanding is an invented one.
 
 ## 1. Name the project
 
-Every request targets one project of the workspace. The session context lists
-them. If the request does not make the project obvious, ask — do not guess from
-a filename.
+Every request targets one project of a registered vault. The session context
+lists them. If the request does not make the project obvious, ask — do not
+guess from a filename.
 
 **Read that project's registry file before anything else.** It carries the base
 branch, the conventions to load, the domain agents, the completion criterion,
 and the traps. Working on a project whose registry file you have not read is a
 process error, not a shortcut.
 
-**Outside a workspace that carries a registry**, the session context says so.
+A project the session table marks **absent d'ici** is registered but not cloned
+on this machine. Read its registry file as usual — then say so before planning
+anything that needs its code.
+
+**Outside a vault that carries a registry**, the session context says so.
 The method still applies in full — only the routing step has nothing to route
 to. Establish the same four things from the project's own documentation before
 planning, state that you did, and flag the completion criterion explicitly: it
@@ -46,11 +50,11 @@ symptom is a guess with a plan attached.
 ## 3. Open or resume the feature directory
 
 ```
-vault/<project>/<feature>/
+<vault>/<project>/<feature>/
 ```
 
-at the workspace root. `<feature>` is a short kebab-case slug of what is being
-built, stable for the whole life of the work.
+in the vault that owns the project. `<feature>` is a short kebab-case slug of
+what is being built, stable for the whole life of the work.
 
 **Look before you create.** If the directory already exists, this is a
 resumption:
