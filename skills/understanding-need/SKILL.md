@@ -39,7 +39,7 @@ is the one a registry would have given you, and phase 6 cannot run without it.
 |---|---|
 | Something is broken / behaves wrong | `aikit:systematic-debugging` — you are diagnosing, not building |
 | … and the diagnosis needs the live systems | `aikit:delegating-to-a-perimeter` — run it in its own process. Its tools are already in your session; what you are keeping out is its forty tool calls. Never guess at production state from the code. |
-| Build, add, change, remove behaviour | `aikit:brainstorming` — continue to phase 2 |
+| Build, add, change, remove behaviour | Estimate size — see 2a below |
 | "How does X work / where is Y" | Answer it. No feature directory, no spec. |
 | Too unclear to classify | Ask one question. Do not open a directory on a guess. |
 
@@ -47,7 +47,38 @@ A debugging request that turns out to need a code change becomes a feature
 request **after** the root cause is known — not before. A fix designed from a
 symptom is a guess with a plan attached.
 
-## 3. Open or resume the feature directory
+## 2a. Estimate size — Fast-Path or Heavy-Path
+
+Before opening a feature directory, make the call:
+
+| | Fast-Path | Heavy-Path |
+|---|---|---|
+| Criteria | ≤2 files, no API/contract break, no critical dependency | anything bigger, a new component, a refactor, or you are unsure |
+| Route | Dispatch a light implementer directly — no `spec.md`, no `plan.md` | `aikit:brainstorming` — continue to phase 2 |
+| Proof | `git diff --name-only` matches the file(s) you named | `aikit:checking-plan-drift` per task |
+
+State the estimate back to the human in the same breath as the route
+confirmation (step 4) — "Fast-Path, touches `foo.py` and its test" — so a
+wrong guess is visible before work starts, not after.
+
+**When in doubt, Heavy-Path.** An estimate that turns out wrong mid-flight is
+not a reason to keep going on the cheap route — stop, name what you found,
+and re-route through `aikit:brainstorming`. A Fast-Path task whose diff grows
+past what was named is exactly the drift the file declaration exists to catch;
+treat it the same way whether the declaration came from a plan task or from
+this estimate.
+
+**Fast-Path dispatch:** the request itself, restated with the exact files
+named, is the brief — there is no plan to extract it from. Dispatch
+`aikit:implementer` (sonnet by default; see `aikit:using-aikit`'s model table
+for when it escalates). When it reports done, run `git diff --name-only`
+yourself against the files you named in step 4 — a match is the proof: no
+reviewer, no ledger, no workspace. A mismatch is drift — route it with
+`aikit:handling-blockers` rather than accepting a "close enough" diff.
+
+## 3. Open or resume the feature directory (Heavy-Path only)
+
+Fast-Path work skips this: no feature directory, no artifacts, just the diff.
 
 ```
 <vault>/<project>/<feature>/
@@ -69,8 +100,11 @@ A resumed feature whose `status.md` names an unresolved blocker resumes at
 
 ## 4. Confirm before moving on
 
-State back, in three lines: the project, the feature slug, the route, and
-whether this is new or a resumption. Get agreement, then continue.
+**Heavy-Path:** state back, in three lines: the project, the feature slug, the
+route, and whether this is new or a resumption. Get agreement, then continue.
+
+**Fast-Path:** state back, in one line: the project and the file(s) you expect
+to touch. Get agreement, then continue.
 
 ## Red flags
 

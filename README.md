@@ -17,22 +17,32 @@ and cherry-pick by hand when you feel like it.
 A SessionStart hook injects, at every startup, `/clear` and **after every
 compaction**, two things:
 
-1. the full text of `skills/using-aikit/SKILL.md` — the method itself;
+1. a compact stub — the cardinal rules (skill-check discipline, the phase-1
+   gate, the Fast-Path/Heavy-Path split) — not the full method;
 2. a table of every registered vault's projects, built from `<vault>/projects/*.md`
    for each vault declared on this machine — the router.
 
-The compaction matcher is the point: the method survives context loss, which
-is the failure it exists to prevent. Outside a vault that carries a
-registry, only the method is injected — the routing step simply has nothing to
-route to.
+The full method (`skills/using-aikit/SKILL.md`) loads on demand, like any
+other skill, the first time a session actually needs it — the compaction
+matcher on the stub is what survives context loss without re-paying for the
+whole method every time. Outside a vault that carries a registry, only the
+stub is injected — the routing step simply has nothing to route to.
 
-## The phases
+## Fast-Path vs Heavy-Path
+
+Phase 1 estimates size before anything else runs. **Fast-Path** — 2 files or
+fewer, no API/contract break, no critical dependency — skips straight to a
+direct implementer dispatch, validated with `git diff --name-only`: no spec,
+no plan, no ledger. Everything bigger, or anything the estimate gets wrong
+mid-flight, is **Heavy-Path**: the phase table below, in full.
+
+## The phases (Heavy-Path)
 
 | # | Phase | Skill | Produces |
 |---|---|---|---|
 | 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
 | 2 | Specify | `aikit:brainstorming` → `aikit:writing-specs` | `spec.md` |
-| 2.5 | Impact | the project's domain expert, consultatively | `impact.md` |
+| 2.5 | Impact | the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
 | 3 | Plan | `aikit:writing-plans` | `plan.md` |
 | 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
 | 5 | Execute | `aikit:subagent-driven-development` | code, one task at a time |
@@ -42,6 +52,13 @@ Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` whenever
 something fails, `aikit:delegating-to-a-perimeter` when a question needs a
 project's own tools.
+
+## Model cascading
+
+`aikit:implementer` defaults to **sonnet**. It escalates to **opus** exactly
+once per task — automatically, when `aikit:handling-blockers` finds two failed
+fix-loop attempts recorded in the ledger. It is never a per-task judgement
+call; see `aikit:handling-blockers` and `aikit:subagent-driven-development`.
 
 A **diagnostic** does not run these phases. It produces a `diagnostic-N.md` and
 stops; if it concludes that code must change, that finding becomes the input of
@@ -96,12 +113,12 @@ delegated spec is an invented spec.
 
 `aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`, `aikit:verifier`, `aikit:spike` — roles in
 the process, each with a fixed model: **fable** for `aikit:planner`, `aikit:reviewer` and
-`aikit:spike` (evaluative work), **opus** for `aikit:implementer` (production work), sonnet
-for `aikit:explorer` and `aikit:verifier`. Implementation therefore runs at the ceiling,
-which removes "retry on a stronger model" from the fix loop — see
-`aikit:handling-blockers`. A project's domain agents are the other axis:
-when a plan task names one, it is dispatched instead of the generic
-`aikit:implementer`. The registry says which exist.
+`aikit:spike` (evaluative work), **sonnet** for `aikit:implementer` (production work),
+`aikit:explorer` and `aikit:verifier`. Implementation escalates to opus exactly once per
+task — automatically, when the ledger shows two failed fix-loop attempts — never
+a per-task judgement call; see `aikit:handling-blockers`. A project's domain
+agents are the other axis: when a plan task names one, it is dispatched
+instead of the generic `aikit:implementer`. The registry says which exist.
 
 ## Where things live
 
@@ -120,7 +137,7 @@ the method itself.
 ~/.config/aikit/vaults         which vaults this machine knows, and where
 <vault>/                      a clone of a vault (an Obsidian vault)
   projects/                   the registry: one file per project
-  <project>/<feature>/{spec,impact,plan,ledger,diagnostic-N}.md
+  <project>/<feature>/{spec,plan,ledger,diagnostic-N}.md   spec carries its own Impact section
 <anywhere>/                   the project repositories, found by scanning
 
 ~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS after task 17

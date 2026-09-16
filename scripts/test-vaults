@@ -9,6 +9,44 @@ ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
 ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
 is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
 
+# JSON helpers: node first (a hard dependency of the harness, never absent),
+# python3 as fallback -- same order and same reason as scripts/doctor's
+# json_ok(). `python3` can be on PATH and still not be a real interpreter
+# (Windows App Execution Alias stub).
+json_valid() {  # lit sur stdin, code de sortie seul
+  local input; input="$(cat)"
+  if command -v node > /dev/null 2>&1 \
+    && printf '%s' "$input" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{JSON.parse(s)})' 2>/dev/null
+  then return 0; fi
+  if command -v python3 > /dev/null 2>&1 \
+    && printf '%s' "$input" | python3 -m json.tool > /dev/null 2>&1
+  then return 0; fi
+  return 1
+}
+json_ctx() {  # lit le JSON du hook sur stdin, imprime .hookSpecificOutput.additionalContext
+  local input out
+  input="$(cat)"
+  if command -v node > /dev/null 2>&1; then
+    out=$(printf '%s' "$input" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{process.stdout.write(JSON.parse(s).hookSpecificOutput.additionalContext)})' 2>/dev/null) \
+      && { printf '%s' "$out"; return 0; }
+  fi
+  if command -v python3 > /dev/null 2>&1; then
+    printf '%s' "$input" | python3 -c \
+      "import json,sys;print(json.load(sys.stdin)['hookSpecificOutput']['additionalContext'])"
+    return $?
+  fi
+  return 1
+}
+trailing_newlines_before() {  # <chaine> <suffixe> -> nb de \n juste avant le suffixe final, ou -1
+  local s="$1" tag="$2" n=0
+  case "$s" in
+    *"$tag") s="${s%"$tag"}" ;;
+    *) printf -- '-1'; return ;;
+  esac
+  while [[ "$s" == *$'\n' ]]; do n=$((n+1)); s="${s%$'\n'}"; done
+  printf '%s' "$n"
+}
+
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 
 # --- fixtures ---------------------------------------------------------------
@@ -137,11 +175,10 @@ echo "hook"
 # en `set -euo pipefail`, et sa sortie est du JSON lu par le harnais. AIKIT_VAULTS
 # est ce qui le rend testable ici.
 out=$(AIKIT_VAULTS="$CONF" bash hooks/session-start)
-printf '%s' "$out" | python3 -m json.tool > /dev/null \
+printf '%s' "$out" | json_valid \
   && ok "le hook emet du JSON valide" \
   || ko "le hook emet du JSON valide" "JSON" "invalide"
-ctx=$(printf '%s' "$out" | python3 -c \
-  "import json,sys;print(json.load(sys.stdin)['hookSpecificOutput']['additionalContext'])")
+ctx=$(printf '%s' "$out" | json_ctx)
 # Le preambule est skills/using-aikit/SKILL.md ; on ne garde que le bloc que le
 # hook ajoute. Necessaire pour le mot `workspace` (SKILL.md le porte ailleurs),
 # et sain pour tout le reste : aucune assertion ne doit pouvoir etre satisfaite
@@ -177,9 +214,7 @@ echo "hook : vaults declares mais sans fiche"
 hookreg() {  # hookreg <fichier de vaults> -> le bloc que le hook ajoute
   local out ctx
   out=$(AIKIT_VAULTS="$1" bash hooks/session-start) || return 1
-  ctx=$(printf '%s' "$out" | python3 -c \
-    "import json,sys;print(json.load(sys.stdin)['hookSpecificOutput']['additionalContext'])") \
-    || return 1
+  ctx=$(printf '%s' "$out" | json_ctx) || return 1
   printf '%s' "${ctx#*"$pre"}"
 }
 
@@ -273,7 +308,7 @@ printf '%s\n' "---" "name: retour" "kind: conception" \
   "summary: avant"$'\r'"apres" "---" > "$HOSTILE/projects/retour.md"
 printf 'vault hostile %s\n' "$HOSTILE" > "$TMP/vaults-hostile"
 out_hostile=$(AIKIT_VAULTS="$TMP/vaults-hostile" bash hooks/session-start)
-printf '%s' "$out_hostile" | python3 -m json.tool > /dev/null \
+printf '%s' "$out_hostile" | json_valid \
   && ok "un caractere de controle dans un summary : le JSON reste valide" \
   || ko "un caractere de controle dans un summary : le JSON reste valide" \
         "JSON valide" "invalide"
@@ -306,11 +341,8 @@ q=$'registry+=$\'\\n\\n\'' \
   hooks/session-start > "$FERME/hooks/session-start"
 # Combien de sauts de ligne survivent juste avant la balise fermante : 3 avec la
 # sentinelle (les deux injectes + celui du gabarit), 1 sans elle.
-queue=$(AIKIT_VAULTS="$CONF" bash "$FERME/hooks/session-start" | python3 -c \
-  "import json,re,sys
-c = json.load(sys.stdin)['hookSpecificOutput']['additionalContext']
-m = re.search(r'(\n*)</EXTREMELY_IMPORTANT>\$', c)
-print(len(m.group(1)) if m else -1)")
+ctx_ferme=$(AIKIT_VAULTS="$CONF" bash "$FERME/hooks/session-start" | json_ctx)
+queue=$(trailing_newlines_before "$ctx_ferme" '</EXTREMELY_IMPORTANT>')
 is "la sentinelle preserve les sauts de ligne terminaux" "3" "$queue"
 
 echo "bin/ezy"

@@ -2,17 +2,35 @@
 # SessionStart hook for the aiKit plugin.
 #
 # Injects two things into every session (startup, /clear, and after compaction):
-#   1. the full text of the using-aikit skill  -> the method itself
+#   1. a compact stub -- the cardinal rules, not the method's full text
 #   2. a compact table of the registered projects -> the router
 #
-# The compaction matcher is the point: the method survives context loss.
+# Earlier versions cat'd the whole of skills/using-aikit/SKILL.md here, on
+# every startup AND every compaction. That skill is ordinary "on invocation"
+# content per aikit:loading-policy -- paid once, in the context that invokes
+# it -- and paying for it a second time, unconditionally, on every session and
+# every compaction, bought nothing the Skill tool doesn't already give for
+# free. The compaction matcher is still the point: the STUB survives context
+# loss, and it is what tells a compacted session to go re-invoke the method
+# rather than re-inventing it.
+#
+# aikit:loading-policy note: the stub below must stay small enough that this
+# tradeoff holds. If it grows past a screen, something belongs in the skill
+# body instead, loaded on demand like everything else.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-preamble=$(cat "${PLUGIN_ROOT}/skills/using-aikit/SKILL.md" 2>&1 || echo "Error reading using-aikit skill")
+preamble='**Cardinal rules, always in force — the full method is NOT resident, invoke it via the Skill tool:**
+
+1. Every request starts with the Skill tool: invoke `aikit:understanding-need` before any other action. It names the project, reads its registry file, classifies the request, and routes.
+2. If a skill might apply to what you are doing, invoke it via the Skill tool. Never rely on memory of what a skill says -- skills change.
+3. Phase 1 estimates size immediately. **Fast-Path** (2 files or fewer, no API/contract break, no critical dependency): no spec, no plan -- dispatch `aikit:implementer` directly, validate with `git diff --name-only`. **Heavy-Path** (everything else, or the estimate turns out wrong): invoke `aikit:using-aikit` via the Skill tool for the full phase table, model routing and failure-direction rules before doing anything else.
+4. Artifacts (spec, plan, ledger) live under the vault that owns the project -- never inside a project repository.
+
+For the full method -- phases, archetypes and their models, failure routing, red flags -- invoke the Skill tool with `aikit:using-aikit`. It is not resident; it loads once, when the work actually needs it.'
 
 # --- vault registries -------------------------------------------------------
 # Plus de remontee d'ancetres : les vaults sont declares, par machine, dans
@@ -113,7 +131,7 @@ escape_for_json() {
 
 body=$(escape_for_json "${preamble}${registry}")
 
-session_context="<EXTREMELY_IMPORTANT>\naiKit is active.\n\n**Below is the full content of your 'aikit:using-aikit' skill - your entry point to the method. For every other skill, use the 'Skill' tool.**\n\n${body}\n</EXTREMELY_IMPORTANT>"
+session_context="<EXTREMELY_IMPORTANT>\naiKit is active. This is a minimal stub, not the full method -- invoke 'aikit:using-aikit' via the 'Skill' tool for that, and every other skill the same way.\n\n${body}\n</EXTREMELY_IMPORTANT>"
 
 # printf rather than a heredoc: bash 5.3+ hangs on heredocs here.
 printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"

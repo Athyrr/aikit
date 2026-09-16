@@ -12,10 +12,10 @@ method — read the skill.
 
 ## Before you plan
 
-Read, in this order: the project's registry file, the spec, `impact.md` if
-phase 2.5 produced one, then the code the spec touches. A plan written without
-reading the code invents file paths, and invented paths make every later drift
-check meaningless.
+Read, in this order: the project's registry file, the spec — including its
+`## Impact` section if phase 2.5 produced one — then the code the spec
+touches. A plan written without reading the code invents file paths, and
+invented paths make every later drift check meaningless.
 
 **Read documentation in slices.** The registry file carries a routing table:
 this kind of task → that section, with its cost. `example-service/EVENT_FLOWS.md`

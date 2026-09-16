@@ -72,7 +72,7 @@ digraph process {
         "Spec ✅ and quality approved?" [shape=diamond];
         "Finding conflicts with plan text?" [shape=diamond];
         "Rule on the conflict, ledger the ruling" [shape=box];
-        "Fix round R of 5: R≤3 resume implementer; R≥4 fresh implementer, more capable model" [shape=box];
+        "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" [shape=box];
         "Dispatch scoped re-review (./re-review-prompt.md)" [shape=box];
         "All findings addressed?" [shape=diamond];
         "R = 5?" [shape=diamond];
@@ -100,13 +100,13 @@ digraph process {
     "Spec ✅ and quality approved?" -> "Append completion to ledger, mark todo complete" [label="yes"];
     "Spec ✅ and quality approved?" -> "Finding conflicts with plan text?" [label="no"];
     "Finding conflicts with plan text?" -> "Rule on the conflict, ledger the ruling" [label="yes"];
-    "Rule on the conflict, ledger the ruling" -> "Fix round R of 5: R≤3 resume implementer; R≥4 fresh implementer, more capable model";
-    "Finding conflicts with plan text?" -> "Fix round R of 5: R≤3 resume implementer; R≥4 fresh implementer, more capable model" [label="no"];
-    "Fix round R of 5: R≤3 resume implementer; R≥4 fresh implementer, more capable model" -> "Dispatch scoped re-review (./re-review-prompt.md)";
+    "Rule on the conflict, ledger the ruling" -> "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus";
+    "Finding conflicts with plan text?" -> "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" [label="no"];
+    "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" -> "Dispatch scoped re-review (./re-review-prompt.md)";
     "Dispatch scoped re-review (./re-review-prompt.md)" -> "All findings addressed?";
     "All findings addressed?" -> "Append completion to ledger, mark todo complete" [label="yes"];
     "All findings addressed?" -> "R = 5?" [label="no"];
-    "R = 5?" -> "Fix round R of 5: R≤3 resume implementer; R≥4 fresh implementer, more capable model" [label="no - next round"];
+    "R = 5?" -> "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" [label="no - next round"];
     "R = 5?" -> "Adjudicate each open finding" [label="yes - breaker trips"];
     "Adjudicate each open finding" -> "Any load-bearing finding?";
     "Any load-bearing finding?" -> "Rule and continue; stop only if every path forward is a guess" [label="yes"];
@@ -196,7 +196,7 @@ implementation.
 | `aikit:planner` | **fable** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are. |
 | `aikit:reviewer` | **fable** | Same shape of judgement, applied to a diff instead of a spec. |
 | `aikit:spike` | **fable** | A spike produces a finding, not code. Analysis, not production. |
-| `aikit:implementer` | **opus** | Production work. This is where wrong output costs the most to undo. |
+| `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded fix-loop failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
 | `aikit:explorer` | sonnet | High-volume reading, low judgement. |
 | `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
 
@@ -213,16 +213,19 @@ separate choices; picking the expert must never silently downgrade the tier.
 
 ### The consequence you have to plan around
 
-Implementation already runs at the ceiling. **"Re-dispatch with a more capable
-model" is not an available retry.** A retry must therefore change something
-real about the attempt:
+Implementation starts at sonnet, not the ceiling. That buys one genuine
+escalation — but it is not a per-task judgement call, and it does not replace
+changing the attempt. A retry must always change something real:
 
 - more context in the brief (the interfaces, the constraint, the trap it hit);
 - a narrower target (split the task, dispatch the remainder separately);
 - a `aikit:spike` first, so the attempt stops guessing at an unknown.
 
 Re-dispatching the same brief to the same tier is not an attempt. It is a coin
-flip charged to your budget.
+flip charged to your budget. The model escalates to opus exactly once per
+task, automatically, when the ledger shows two failed attempts — see
+`aikit:handling-blockers`. Escalating early, or as a way to skip changing the
+brief, defeats the point of fixing the tier at all.
 
 **Always pass the model explicitly when you dispatch anything that is not one
 of these archetypes.** An omitted model inherits your session's, which
@@ -399,18 +402,19 @@ Before the loop starts, two routes leave it immediately:
 Everything else enters the loop. A fix round is one fix dispatch plus one
 scoped re-review. Five rounds maximum per task:
 
-**Rounds 1-3 — resume the original implementer.** Send it the open findings
-verbatim. Its context is intact: it knows the task, the code, and its own
-choices. If your harness cannot send another message to a live subagent,
+**Rounds 1-2 — resume the original implementer, at sonnet.** Send it the open
+findings verbatim. Its context is intact: it knows the task, the code, and its
+own choices. If your harness cannot send another message to a live subagent,
 dispatch a fresh implementer carrying the brief path, the report-file path,
 and the findings — the report file is the persistent memory either way.
 
-**Rounds 4-5 — dispatch a fresh implementer on a more capable model** (per
-Model Selection), with the brief path, the report-file path, the open
-findings, and this framing: "A prior implementer attempted this task
-[N] times; you own it now. Read the report file for what was tried." A loop
-that survives three resumes usually means the implementer cannot see its
-own problem — fresh eyes and a capability bump in one move.
+**Rounds 3-5 — dispatch a fresh implementer on opus** (per Model Selection),
+with the brief path, the report-file path, the open findings, and this
+framing: "A prior implementer attempted this task [N] times; you own it now.
+Read the report file for what was tried." Two failed rounds is the ledger
+trigger for the one escalation this method allows — a loop that survives two
+resumes usually means the implementer cannot see its own problem, and fresh
+eyes plus the capability bump arrive together.
 
 **Every round, either way:** the implementer fixes, re-runs the tests
 covering the amended code, appends its fix report to the same report file,

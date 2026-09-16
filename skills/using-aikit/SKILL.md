@@ -29,20 +29,40 @@ checklist, create a todo per item.
 reads its registry file, and routes. Nothing runs before it. Where no registry
 exists, the method is unchanged — its facts come from the project's own docs.
 
-## The Phases
+## Fast-Path vs Heavy-Path
+
+`aikit:understanding-need` classifies every build/change/remove request into
+one of two routes before phase 2 starts:
+
+| | Fast-Path | Heavy-Path |
+|---|---|---|
+| When | ≤2 files, no API/contract break, no critical dependency | new component, refactor, contract change, or the estimate is wrong |
+| Artifacts | none — no `spec.md`, no `plan.md` | the full chain below |
+| Execution | one light dispatch, direct | phases 2 through 5 |
+| Validation | `git diff --name-only` against the stated file set | `aikit:checking-plan-drift` per task |
+
+Fast-Path is a bet, not a discount on rigor: if the diff exceeds the stated
+files, or a second file turns out to need a change the first didn't predict,
+that is drift — stop and re-route to Heavy-Path rather than absorbing it
+silently. Getting the estimate wrong is cheap; treating the wrong estimate as
+right is not.
+
+## The Phases (Heavy-Path)
 
 | # | Phase | Skill | Produces |
 |---|---|---|---|
 | 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
 | 2 | Specify | `aikit:brainstorming` then `aikit:writing-specs` | `vault/<project>/<feature>/spec.md` |
-| 2.5 | Impact | dispatch the project's domain expert, consultatively | `vault/<project>/<feature>/impact.md` |
+| 2.5 | Impact | dispatch the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
 | 3 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md` |
 | 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
 | 5 | Execute | `aikit:subagent-driven-development` | code, and `sdd/` next to the plan |
 | 6 | Verify | `aikit:verification-before-completion` | the project's completion criterion, met |
 
 Phase 2.5 asks the expert what a doc cannot answer: *which files does this
-spec touch, what are the traps, how would you cut it?* It writes no code.
+spec touch, what are the traps, how would you cut it?* It writes no code, and
+it writes no separate file — its answer lands as a section of `spec.md`, the
+one artifact phase 2 and 2.5 share.
 
 Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` on any
@@ -77,7 +97,7 @@ before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`
 | Role | Model |
 |---|---|
 | `aikit:planner`, `aikit:reviewer`, `aikit:spike` | **fable** — evaluative work: planning, judging a diff, answering a question |
-| `aikit:implementer` | **opus** — production work, where wrong output costs most to undo |
+| `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-loop attempts (`aikit:handling-blockers`) — never a per-task choice |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.

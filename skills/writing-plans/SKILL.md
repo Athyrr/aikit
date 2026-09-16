@@ -83,11 +83,10 @@ independently testable deliverable.
 **Tech Stack:** [Key technologies/libraries]
 
 **Spec:** [path to the spec/design doc this plan implements — the plan
-argues from the spec, so the spec travels with it; executors read both]
-
-**Impact:** [path to `impact.md` from phase 2.5, when the project has a domain
-expert. It names the files and traps the expert saw; a Files block that
-contradicts it is wrong until argued otherwise.]
+argues from the spec, so the spec travels with it; executors read both. When
+the project has a domain expert, the spec's own `## Impact` section (phase
+2.5) names the files and traps the expert saw; a Files block that contradicts
+it is wrong until argued otherwise.]
 
 ## Global Constraints
 

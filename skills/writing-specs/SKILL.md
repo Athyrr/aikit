@@ -88,7 +88,11 @@ mark the affected scope out-of-scope for this pass.
 Set `status: agreed`, then run **phase 2.5** before planning: dispatch the
 project's domain expert consultatively — *"here is the spec: which files does
 it touch, what are the traps, how would you cut it? Write no code."* — and have
-it write `vault/<project>/<feature>/impact.md`.
+it append the answer as an `## Impact` section at the end of the same
+`spec.md`, not a separate file. `impact.md` does not exist: the expert's
+judgement on *this* spec is inseparable from the spec it judges, and a plan
+that disagrees with it is disagreeing with a section of its own spec, not a
+detached document that can drift out of sync.
 
 The expert answers what a document cannot: a judgement on **this** spec. Skip
 2.5 only where the registry lists no domain expert. Then continue to

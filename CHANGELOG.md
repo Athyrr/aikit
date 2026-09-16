@@ -3,6 +3,28 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.11.0
+- **Fast-Path vs Heavy-Path.** `aikit:understanding-need` estime la taille en
+  phase 1 : deux fichiers ou moins, pas de rupture de contrat, pas de
+  dependance critique passe en Fast-Path — dispatch direct de
+  `aikit:implementer`, validation par `git diff --name-only`, aucun artifact.
+  Tout le reste reste Heavy-Path, les six phases completes.
+- **Cascade de modeles.** `aikit:implementer` demarre sur sonnet (etait opus).
+  L'escalade vers opus n'est plus une decision au cas par cas : elle se
+  declenche automatiquement dans `aikit:handling-blockers`, apres deux echecs
+  de la boucle de correction consignes dans le ledger.
+- **Hook SessionStart allege.** Le stub injecte les regles cardinales et le
+  registre des vaults ; il ne cat plus le corps complet de
+  `using-aikit/SKILL.md`, qui se charge a la demande, comme n'importe quel
+  autre skill, la premiere fois qu'une session l'invoque.
+- **`spec.md` porte son propre Impact.** La phase 2.5 (expert du domaine)
+  n'ecrit plus `impact.md` : sa reponse devient une section `## Impact`
+  ajoutee a `spec.md`. `plan.md` et `ledger.md` restent des fichiers a part.
+- `scripts/doctor` et `scripts/test-vaults` valident le JSON en preferant
+  node a python3, meme ordre que `scripts/deploy` : un `python3` present sur
+  le PATH mais non fonctionnel (stub Windows "App Execution Alias") ne fait
+  plus tomber les gates 4 et 9.
+
 ## 0.10.0
 - **Le vault remplace le workspace comme unite d'association.** La remontee
   d'ancetres (`find_workspace()`, dupliquee dans trois fichiers) disparait :

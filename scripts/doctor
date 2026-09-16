@@ -23,16 +23,20 @@ cd "$(dirname "$0")/.." || {
 fail=0
 run() { echo "→ $1"; shift; "$@" || { echo "  ✗ FAILED"; fail=1; }; }
 
-# Validate JSON on stdin without requiring python3.
+# Validate JSON on stdin. node first: it is a hard dependency of the harness
+# itself, so it is never absent, whereas `python3` can be on PATH and still
+# not be a real interpreter (the Windows App Execution Alias stub redirects
+# to the Store instead of running). Same preference order as scripts/deploy.
 json_ok() {
-  if command -v python3 > /dev/null 2>&1; then
-    python3 -m json.tool > /dev/null
-  elif command -v node > /dev/null 2>&1; then
-    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{JSON.parse(s)})'
-  else
-    echo "  ✗ neither python3 nor node on PATH" >&2
-    return 1
-  fi
+  local input; input="$(cat)"
+  if command -v node > /dev/null 2>&1 \
+    && printf '%s' "$input" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{JSON.parse(s)})' 2>/dev/null
+  then return 0; fi
+  if command -v python3 > /dev/null 2>&1 \
+    && printf '%s' "$input" | python3 -m json.tool > /dev/null 2>&1
+  then return 0; fi
+  echo "  ✗ neither node nor python3 could validate this JSON" >&2
+  return 1
 }
 
 # A grep gate passes when it finds NOTHING.

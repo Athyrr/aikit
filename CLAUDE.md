@@ -12,9 +12,14 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
 
 - **Skills are prompts, not documentation.** Every line costs context in a
   real session. Cut before you add.
-- `skills/using-aikit/SKILL.md` is injected **in full** at every session start
-  and after every compaction. Adding ten lines there taxes every session
-  forever. Keep it under ~125 lines (~1,600 tokens).
+- `hooks/session-start` injects a **compact stub** at every session start and
+  after every compaction — cardinal rules and the vault registry table, not
+  the method's full text. `skills/using-aikit/SKILL.md` itself loads on
+  demand, like any other skill, the first time a session invokes it. Keep the
+  stub (the `preamble` string in `hooks/session-start`) small enough to read
+  in one screen — it pays on every session and every compaction, unconditionally.
+  The full skill body pays once, in whichever context invokes it, so it can
+  afford to be larger, but it is still read by a live context: cut before you add.
 - **Any agent carrying a `tools:` list must include `Skill` in it.** A `tools:`
   list is exhaustive: without `Skill` an agent cannot invoke a single skill —
   not even the one its own body tells it to follow. `agents/implementer.md`
