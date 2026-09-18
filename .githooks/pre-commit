@@ -4,5 +4,6 @@
 # Armed per clone: `git config core.hooksPath .githooks`. Gate 8 of
 # scripts/doctor is what makes that arming visible instead of assumed.
 set -uo pipefail
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 repo="$(git rev-parse --show-toplevel)"
 exec "${repo}/scripts/doctor"
