@@ -3,6 +3,23 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.11.2
+- **`using-aikit/SKILL.md` repasse sous son plafond.** 153 -> 124 lignes ; la
+  forme longue (tables de routage completes, rationale des modeles, matrice
+  d'echec ligne a ligne) part dans un companion `reference.md`, charge a la
+  demande comme n'importe quel autre companion du depot.
+- **Regle cardinale n1 clarifiee.** « Every request starts with... » devient
+  « once per distinct need, not once per message » : repondre a une question
+  de clarification a l'interieur d'un besoin deja route ne re-invoque plus
+  `aikit:understanding-need`. Regle explicite ajoutee dans
+  `understanding-need/SKILL.md`.
+- **Bug de hook corrige.** `.githooks/pre-commit` neutralise desormais
+  `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE` avant `scripts/doctor` : ces
+  variables, posees par git pour le process qui execute un hook, ecrasaient
+  la decouverte du depot que `git -C` fait normalement, et la porte 9
+  (`scripts/test-vaults`) echouait silencieusement sous `git commit` — jamais
+  en invocation directe de `scripts/doctor`.
+
 ## 0.11.0
 - **Fast-Path vs Heavy-Path.** `aikit:understanding-need` estime la taille en
   phase 1 : deux fichiers ou moins, pas de rupture de contrat, pas de
