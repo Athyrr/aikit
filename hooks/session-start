@@ -25,7 +25,7 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 preamble='**Cardinal rules, always in force — the full method is NOT resident, invoke it via the Skill tool:**
 
-1. Every request starts with the Skill tool: invoke `aikit:understanding-need` before any other action. It names the project, reads its registry file, classifies the request, and routes.
+1. Every distinct need starts with the Skill tool: invoke `aikit:understanding-need` before any other action -- once per distinct need, not once per message. It names the project, reads its registry file, classifies the request, and routes. Answering a clarifying question inside a need it already routed does NOT re-invoke it; a new subject does.
 2. If a skill might apply to what you are doing, invoke it via the Skill tool. Never rely on memory of what a skill says -- skills change.
 3. Phase 1 estimates size immediately. **Fast-Path** (2 files or fewer, no API/contract break, no critical dependency): no spec, no plan -- dispatch `aikit:implementer` directly, validate with `git diff --name-only`. **Heavy-Path** (everything else, or the estimate turns out wrong): invoke `aikit:using-aikit` via the Skill tool for the full phase table, model routing and failure-direction rules before doing anything else.
 4. Artifacts (spec, plan, ledger) live under the vault that owns the project -- never inside a project repository.

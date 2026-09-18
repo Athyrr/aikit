@@ -1,6 +1,6 @@
 ---
 name: understanding-need
-description: Use at the start of every request - names the project, reads its registry file, classifies the request, and opens or resumes the feature directory before any other work
+description: Use at the start of every distinct need - once per need, not once per message - names the project, reads its registry file, classifies the request, and opens or resumes the feature directory before any other work
 ---
 
 # Understanding the Need
@@ -11,6 +11,20 @@ Phase 1. The intake gate. Nothing else runs before it.
 so a delegated understanding is an invented one.
 
 **Announce:** "Using understanding-need to route this request."
+
+## Once per need, not once per message
+
+This phase runs **once per distinct need**, not once per message. A need
+already routed stays routed: answering a clarifying question you asked during
+`aikit:brainstorming`, confirming the feature slug, narrowing the scope,
+approving a spec — all of that is *inside* the same need. Do not re-invoke this
+skill for it. Continue the phase you are in.
+
+Re-invoke it when the subject changes: another project, another feature, a
+request whose route would differ (a bug report arriving mid-spec), or a
+resumption across a session boundary. When a message could be either, ask —
+one question is cheaper than a wrong route, and cheaper than re-running this
+phase on a need it already routed.
 
 ## 1. Name the project
 
