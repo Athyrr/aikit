@@ -25,27 +25,14 @@ for the situation, you don't have to use it.
 Then announce "Using [skill] to [purpose]" and follow it exactly. If it has a
 checklist, create a todo per item.
 
-**Every request starts with `aikit:understanding-need`.** It names the project,
-reads its registry file, and routes. Nothing runs before it. Where no registry
-exists, the method is unchanged — its facts come from the project's own docs.
+**Every distinct need starts with `aikit:understanding-need`** — once per need,
+not once per message: answering clarifying questions inside a need already
+routed does not re-invoke it. It names the project, reads its registry, routes.
 
-## Fast-Path vs Heavy-Path
-
-`aikit:understanding-need` classifies every build/change/remove request into
-one of two routes before phase 2 starts:
-
-| | Fast-Path | Heavy-Path |
-|---|---|---|
-| When | ≤2 files, no API/contract break, no critical dependency | new component, refactor, contract change, or the estimate is wrong |
-| Artifacts | none — no `spec.md`, no `plan.md` | the full chain below |
-| Execution | one light dispatch, direct | phases 2 through 5 |
-| Validation | `git diff --name-only` against the stated file set | `aikit:checking-plan-drift` per task |
-
-Fast-Path is a bet, not a discount on rigor: if the diff exceeds the stated
-files, or a second file turns out to need a change the first didn't predict,
-that is drift — stop and re-route to Heavy-Path rather than absorbing it
-silently. Getting the estimate wrong is cheap; treating the wrong estimate as
-right is not.
+Route first: `aikit:understanding-need` splits every request into **Fast-Path**
+(≤2 files, no contract break — no spec, no plan, one dispatch, proven by
+`git diff --name-only`) or **Heavy-Path** (everything else, or a wrong
+estimate — the phases below, drift-checked per task). Tables: `reference.md`.
 
 ## The Phases (Heavy-Path)
 
@@ -58,11 +45,6 @@ right is not.
 | 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
 | 5 | Execute | `aikit:subagent-driven-development` | code, and `sdd/` next to the plan |
 | 6 | Verify | `aikit:verification-before-completion` | the project's completion criterion, met |
-
-Phase 2.5 asks the expert what a doc cannot answer: *which files does this
-spec touch, what are the traps, how would you cut it?* It writes no code, and
-it writes no separate file — its answer lands as a section of `spec.md`, the
-one artifact phase 2 and 2.5 share.
 
 Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` on any
@@ -105,12 +87,7 @@ before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`
 | `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-loop attempts (`aikit:handling-blockers`) — never a per-task choice |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
 
-Opus is not escalation-only here: on a machine with no cheaper evaluative-tier
-model (this method originally ran planner/reviewer/spike on **fable**), opus
-is also planner and reviewer's standing default — spike moved to sonnet
-instead, since a bounded investigation carries less downside than a bad plan
-or a missed review finding. Restore the cheaper tier for all three if one
-becomes available again.
+Rationale per role, and the fable note: `reference.md`, next to this skill.
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.
 
@@ -120,18 +97,12 @@ work: experts carry their own tier and it is often lower.
 
 ## When something fails, the nature of the failure decides the direction
 
-| What happened | Direction |
-|---|---|
-| Technical unknown | **down** — spike, bounded. The plan does not move. |
-| Execution error (red test, broken build) | **down** — fix loop, bounded by budget. |
-| Unplanned dependency, task too large | **up** — finish the independents, then re-plan. |
-| Ambiguous or contradictory spec | **up** — stop now, back to phase 2 with the human. |
-
-Going down is cheap, going up is expensive — but retrying a wrong plan is the
-most expensive thing of all. Never spend a retry budget on a failure that
-belongs upward. **The budget is counted in the ledger, not in your head.**
-
-Full protocol, escalation contract and loop report: `aikit:handling-blockers`.
+**Down**, plan unmoved: technical unknown → bounded spike; red test or broken
+build → fix loop, bounded by budget. **Up**: unplanned dependency, a file
+outside the task's declared set, or a task too large → finish the independents,
+then re-plan; spec ambiguous or contradictory → stop, back to phase 2 with the
+human. Going up is expensive, but retrying a wrong plan is the most expensive
+of all. **The budget lives in the ledger.** Protocol: `aikit:handling-blockers`.
 
 ## Red Flags
 
