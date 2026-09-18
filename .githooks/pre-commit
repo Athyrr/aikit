@@ -4,6 +4,7 @@
 # Armed per clone: `git config core.hooksPath .githooks`. Gate 8 of
 # scripts/doctor is what makes that arming visible instead of assumed.
 set -uo pipefail
+# Git sets these for the process running this hook, which makes `git -C <dir>` ignore -C and operate on this repo instead; drop this unset and gate 9 (scripts/test-vaults) starts failing, but only under `git commit` via this hook — a direct `scripts/doctor` run stays green.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 repo="$(git rev-parse --show-toplevel)"
 exec "${repo}/scripts/doctor"
