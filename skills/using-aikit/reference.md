@@ -24,9 +24,9 @@ that is drift — stop and re-route to Heavy-Path rather than absorbing it
 silently. Getting the estimate wrong is cheap; treating the wrong estimate as
 right is not.
 
-## Phase 2.5, what the expert is asked
+## Phase 3, what the expert is asked
 
-Phase 2.5 asks the expert what a doc cannot answer: *which files does this
+Phase 3 asks the expert what a doc cannot answer: *which files does this
 spec touch, what are the traps, how would you cut it?* It writes no code, and
 it writes no separate file — its answer lands as a section of `spec.md`, the
 one artifact phase 2 and 2.5 share.

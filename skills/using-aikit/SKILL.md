@@ -36,15 +36,16 @@ estimate — the phases below, drift-checked per task). Tables: `reference.md`.
 
 ## The Phases (Heavy-Path)
 
-| # | Phase | Skill | Produces |
+> **A step is a phase only if it ends in a written artifact.**
+
+| # | Phase | Skill | Artifact |
 |---|---|---|---|
-| 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
-| 2 | Specify | `aikit:designing-the-solution` then `aikit:writing-specs` | `vault/<project>/<feature>/spec.md` |
-| 2.5 | Impact | dispatch the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
-| 3 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md` |
-| 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
-| 5 | Execute | `aikit:executing-plans` | code, and `runs/` next to the plan |
-| 6 | Verify | `aikit:verifying-completion` | the project's completion criterion, met |
+| 1 | Understand | `aikit:understanding-need` | the need's directory, `status.md` initialised |
+| 2 | Design | `aikit:designing-the-solution` then `aikit:writing-specs` | `spec.md` |
+| 3 | Assess | the domain expert, consultatively | the `## Impact` section of `spec.md` |
+| 4 | Plan | `aikit:writing-plans` | `plan.md` |
+| 5 | Execute | `aikit:executing-plans` | the code, and `runs/<plan>/` |
+| 6 | Verify | `aikit:verifying-completion` | the verdict, `status.md` closed, candidates harvested |
 
 Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:routing-failures` on any
