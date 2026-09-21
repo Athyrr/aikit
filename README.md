@@ -51,9 +51,8 @@ mid-flight, is **Heavy-Path**: the phase table below, in full.
 Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` whenever
 something fails, `aikit:delegating-to-a-perimeter` when a question needs a
-project's own tools, `aikit:dispatching-parallel-agents` for independent
-problem domains that can run concurrently, `aikit:receiving-code-review` when
-incorporating feedback from outside the method's own review loop.
+project's own tools, `aikit:receiving-code-review` when incorporating feedback
+from outside the method's own review loop.
 
 ## Model cascading
 

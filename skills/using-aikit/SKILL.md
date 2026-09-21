@@ -50,10 +50,7 @@ Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:handling-blockers` on any
 failure, `aikit:handling-secrets` before writing config or committing anything
 that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
-a project's own MCP servers, `aikit:dispatching-parallel-agents` for independent
-problem domains outside a single plan's task sequence (not a substitute for
-`aikit:subagent-driven-development`'s own task dispatch, which sequences by
-shared files, not by domain), `aikit:receiving-code-review` when incorporating
+a project's own MCP servers, `aikit:receiving-code-review` when incorporating
 feedback from outside the method's own review loop.
 
 ## What loads where
