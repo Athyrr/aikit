@@ -1,7 +1,7 @@
 # using-aikit — long form
 
 Loaded on demand, never resident. This file holds what `aikit:using-aikit`
-points to instead of carrying: the two routing tables in full, what phase 2.5
+points to instead of carrying: the two routing tables in full, what phase 3
 asks the expert, the rationale behind each archetype's fixed model, and the
 failure matrix row by row. Nothing here is new — it is the same text, moved out
 of a file that is read in full every time the method loads.
@@ -29,7 +29,7 @@ right is not.
 Phase 3 asks the expert what a doc cannot answer: *which files does this
 spec touch, what are the traps, how would you cut it?* It writes no code, and
 it writes no separate file — its answer lands as a section of `spec.md`, the
-one artifact phase 2 and 2.5 share.
+one artifact phase 2 and 3 share.
 
 ## Why each archetype gets the model it gets
 
