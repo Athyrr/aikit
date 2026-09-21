@@ -19,6 +19,20 @@ You write test cases (pressure scenarios with subagents), watch them fail (basel
 
 **Official guidance:** For Anthropic's official skill authoring best practices, see anthropic-best-practices.md. This document provides additional patterns and guidelines that complement the TDD-focused approach in this skill.
 
+## Before you name anything
+
+**Read `VOCABULARY.md` at the repository root before creating or editing any
+skill.** It is the authority on every term the method uses, and it carries the
+four-question naming test. A name that collides with an existing term is not a
+near miss — it is the exact failure the file exists to prevent.
+
+Two rules from it apply to every skill you write:
+
+- A skill invoked by another skill or by an archetype must never carry
+  `disable-model-invocation`. It would silence the invocation with no error.
+- A rename moves the **directory** and the frontmatter `name:` together. Moving
+  only the directory leaves a working ghost alias that passes every grep.
+
 ## What is a Skill?
 
 A **skill** is a reference guide for proven techniques, patterns, or tools. Skills help future agents find and apply effective approaches.

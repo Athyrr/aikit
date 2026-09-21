@@ -26,6 +26,9 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   carries **no** `tools:` list, deliberately — that is the only way to reach a
   project's MCP tools — so it inherits everything.
 - Use `aikit:writing-skills` when creating or editing a skill.
+- **`VOCABULARY.md` is the authority on every term the method uses.** Read it
+  before naming anything — a skill, an agent, a phase, an artifact. It is a
+  file, not a skill: read it by path, do not invoke it.
 - The completion criterion is `scripts/doctor`, in this repository — see
   **Completion criterion** below. Run it; do not invent an equivalent.
 - After touching `hooks/session-start`, verify it still emits valid JSON:
