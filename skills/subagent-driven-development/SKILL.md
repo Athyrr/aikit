@@ -602,3 +602,22 @@ Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
 Done! Using aikit:finishing-a-development-branch.
 ```
+
+## Without subagents — the fallback
+
+This is the same method run inline, for a session where subagents are
+unavailable. It is a degraded mode, not a choice: the fresh-reviewer guarantee
+is gone, because the context that wrote the code is the context that reviews it.
+Say so in the verdict.
+
+1. **Load and review the plan.** Ensure an isolated workspace
+   (`aikit:using-git-worktrees`). Read the plan. Review it critically and raise
+   concerns with your human partner before starting. Create one todo per task.
+2. **Execute task by task.** Mark in progress, follow each step exactly, run
+   every verification the step names, mark complete. Never batch two tasks.
+3. **Finish.** Use `aikit:finishing-a-development-branch`.
+
+**Stop and ask** on a blocker, a critical gap in the plan, an instruction you do
+not understand, or a verification that fails repeatedly. Return to step 1 when
+the plan changes or the approach needs rethinking. Never start implementation on
+`main` or `master` without explicit consent.
