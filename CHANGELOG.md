@@ -3,6 +3,54 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.13.0
+- **Les renommages : un mot, un sens.** 8 repertoires et 8 `name:` alignes sur
+  `VOCABULARY.md` en un seul commit — `spike` -> `probe`, `sdd` -> `runs`, et
+  les unifications de `loading-policy` (-> `budgeting-context`) et
+  `systematic-debugging` (-> `diagnosing`). README, hooks/session-start et
+  toutes les references croisees suivent dans le meme commit : un renommage
+  qui laisse une reference perimee derriere lui recree l'alias fantome que la
+  porte 10 existe pour detecter.
+- Deux phrases cassees par la substitution mecanique du renommage, corrigees
+  dans `routing-failures` et `executing-plans` — la casse ou la substitution
+  d'un mot dans une phrase peut en briser la grammaire meme quand le mot est
+  juste.
+- `executing-plans` absorbe l'ancien contenu de son propre nom en section
+  unique : une seule skill porte l'execution, plus deux qui se recouvraient
+  partiellement.
+
+## 0.12.0
+- **`VOCABULARY.md` : un mot, un sens.** Nouveau fichier a la racine du depot,
+  lu obligatoirement (regle ajoutee dans `writing-skills/SKILL.md` et
+  `CLAUDE.md`) avant de nommer quoi que ce soit — skill, agent, phase,
+  artefact. Il se lit a la racine d'aiKit, jamais du projet en cours.
+- **Dixieme porte.** `scripts/doctor` verifie que le repertoire de chaque
+  skill egale son `name:` en frontmatter. Renommer seulement le repertoire
+  laisse l'ancien `name:` resoudre comme une commande fantome — un alias qui
+  passe tous les greps et que seule cette porte detecte. Mesure en phase 3 de
+  refonte-methode. `SETUP.md` et `scripts/deploy` rattrapent la comptabilite
+  neuf -> dix portes.
+- **`plan-drift` refuse une entree `Files:` illisible au lieu de la deviner.**
+  Deux chemins sur une ligne, ou de la prose apres le chemin, etaient avales
+  entiers : le chemin impossible revenait INCHANGE pendant que le vrai fichier
+  revenait EXTRA, route comme une dependance non planifiee — un echec vers le
+  haut. Quatre faux verdicts DRIFT sur un cycle mesure ; le parseur leve
+  desormais plutot que de deviner.
+- `grilling` vendore (MIT, mattpocock/skills) : son unite est la passe, pas le
+  round.
+- `dispatching-parallel-agents` supprimee : un plan sequence par fichiers
+  partages, pas par domaine.
+
+## 0.11.3
+- **`lib/vaults` resout la fiche du vault lui-meme hors scan/probe.** Le vault
+  n'est jamais range sous une racine de projets — ce n'est pas un oubli de
+  config mais sa nature — donc sa propre fiche ne pouvait jamais matcher par
+  le scan/probe generique : un faux negatif garanti (« absent » alors que
+  c'est la fiche en cours de lecture), pas une information vraie comme pour un
+  projet qui peut reellement manquer. `resolve_projects()` compare desormais
+  le `repo:` de la fiche au remote git du vault lui-meme avant de retomber sur
+  le scan.
+
 ## 0.11.2
 - **`using-aikit/SKILL.md` repasse sous son plafond.** 153 -> 124 lignes ; la
   forme longue (tables de routage completes, rationale des modeles, matrice
