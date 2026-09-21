@@ -55,6 +55,11 @@ that one declaration does three jobs: it enables this check, it bounds the
 implementer's scope, and disjoint file sets are what make parallel dispatch
 safe. Fix the plan.
 
+**Exit 2 is not a drift verdict — it is a refusal.** The script exits 2 when a
+`Files:` entry is not a single bare path: two paths on one line, or prose after
+the path. It has no opinion on the task in that case. Fix the plan's block and
+rerun; never interpret an exit 2 as either CLEAN or DRIFT.
+
 ## Projects with no repository
 
 A project with no git repository has no diff to compare against, so this check

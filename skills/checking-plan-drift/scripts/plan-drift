@@ -24,10 +24,16 @@ def task_block(plan_text, n):
 
 
 def declared_paths(block):
-    """Paths under the **Files:** block: Create/Modify/Test entries.
+    """Paths under the **Files:** block: Create/Modify/Test/Delete entries.
 
-    Accepts `path`, `path:123-145` and bare paths. Line ranges are stripped —
-    git reports files, not ranges.
+    One path per entry. `path` and `path:123-145` are accepted; line ranges are
+    stripped, since git reports files and not ranges.
+
+    A parser that guesses is worse than a parser that refuses. Two paths on one
+    line, or prose after the path, used to be swallowed whole: the impossible
+    string came back UNTOUCHED while the real file came back EXTRA, and EXTRA is
+    routed as an unplanned dependency — an upward failure. Four false DRIFT
+    verdicts on one measured cycle. Raise instead.
     """
     files_section = re.search(r"\*\*Files:\*\*(.*?)(?:\n\s*\n|\Z)", block, re.DOTALL)
     if not files_section:
@@ -38,9 +44,12 @@ def declared_paths(block):
         if not m:
             continue
         path = m.group(1).strip().strip("`").strip()
-        path = re.sub(r":\d+(?:-\d+)?$", "", path)   # drop :123-145
-        if path:
-            out.append(path)
+        path = re.sub(r":\d+(?:-\d+)?$", "", path)
+        if not path:
+            continue
+        if re.search(r"[\s,;`]", path):
+            raise ValueError(line.strip())
+        out.append(path)
     return out
 
 
@@ -57,7 +66,15 @@ def main():
         print(f"plan-drift: no 'Task {task_n}' in {plan_file}", file=sys.stderr)
         return 2
 
-    declared = declared_paths(block)
+    try:
+        declared = declared_paths(block)
+    except ValueError as bad:
+        print(f"plan-drift: entree Files illisible : {bad}", file=sys.stderr)
+        print("Un chemin par ligne, rien apres. Les plages de lignes et les",
+              file=sys.stderr)
+        print("explications vont SOUS le bloc. Corrige le plan, puis relance.",
+              file=sys.stderr)
+        return 2
     if not declared:
         print(f"plan-drift: task {task_n} declares no Files: block.", file=sys.stderr)
         print("Drift cannot be checked. Fix the plan — every task declares its files.",

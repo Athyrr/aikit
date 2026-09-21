@@ -114,6 +114,13 @@ falls in its area — e.g. `api-expert`. Omit for the generic `aikit:implementer
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
 
+**One path per line, and nothing after it.** No second path on the same line,
+no prose, no parenthesis. Line ranges are allowed as a `:123-145` suffix and
+are stripped before comparison. Anything else makes `plan-drift` exit 2 and
+refuse to check the task — by design: a parser that guesses produced four false
+`DRIFT` verdicts on one cycle, and `EXTRA` is routed as an upward failure.
+Explanations go in prose **below** the block.
+
 **Interfaces:**
 - Consumes: [what this task uses from earlier tasks — exact signatures]
 - Produces: [what later tasks rely on — exact function names, parameter
