@@ -78,7 +78,7 @@ git config core.hooksPath .githooks     # arms the pre-commit gate — per clone
 git switch -c <chantier>
 # ... edit skills/ agents/ hooks/ ...
 
-scripts/doctor                          # the nine gates
+scripts/doctor                          # the ten gates
 claude --plugin-dir .                   # test in a session WITHOUT publishing
                                         # (takes precedence over the installed
                                         # plugin, for that session only)
