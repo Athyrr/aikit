@@ -41,6 +41,46 @@ Use for ANY technical issue:
 - You're in a hurry (rushing guarantees rework)
 - Manager wants it fixed NOW (systematic is faster than thrashing)
 
+## The diagnosis is a file, not a conversation
+
+A diagnostic that lives only in context is lost in full at the first reset —
+and eliminations are most of its value, since the next session will otherwise
+re-test what this one already ruled out.
+
+Open `<vault>/<project>/<feature>/diagnosis.md` **before investigating**, and
+update it after every hypothesis, not at the end:
+
+```markdown
+---
+project: <project>
+feature: <slug>
+type: diagnostic
+status: en-cours
+updated: <today>
+---
+
+# <symptom> — diagnosis
+
+## The symptom, reproduced
+<the exact command, its exact output, and the machine it ran on>
+
+## Ruled out
+- <hypothesis> — <what ruled it out: command, output, file:line>
+
+## Still open
+- <hypothesis> — <what would settle it>
+
+## Root cause
+<empty until it is known — never a guess, never a plausible story>
+```
+
+**Ruled out** is the section that pays. A hypothesis eliminated with a named
+command is a fact the next session inherits; one eliminated in your head is a
+test it will run again.
+
+A diagnostic becomes a feature need **after** the root cause is known, never
+before. A fix designed from a symptom is a guess with a plan attached.
+
 ## The Four Phases
 
 You MUST complete each phase before proceeding to the next.
