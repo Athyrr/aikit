@@ -86,7 +86,11 @@ your path and complete them in order.
 
 **Bounded:**
 1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, the ones that matter
+2. **Question the design with `aikit:grilling`** — invoke it via the
+   Skill tool; it works the question tree in passes, asking only
+   questions whose prerequisites are already settled, and requires you
+   to recommend an answer to every question you ask — never a bare
+   question handed to your human partner
 3. **Present short design in chat** — approach, files touched, testing
 4. **Get approval** — STOP and wait for an explicit yes; presenting the design and starting in the same breath is skipping the gate
 5. **Implement** — proceed with the normal development workflow (TDD applies); no plan document
@@ -94,7 +98,12 @@ your path and complete them in order.
 **Architectural:**
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
-3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+3. **Question the design with `aikit:grilling`** — invoke it via the
+   Skill tool; it works the question tree in passes, asking only
+   questions whose prerequisites are already settled, and requires you
+   to recommend an answer to every question you ask — never a bare
+   question handed to your human partner. Purpose/constraints/success
+   criteria are what the tree is settling.
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get your human partner's approval after each section
 6. **Write design doc** — save to `vault/<project>/<feature>/spec.md` (never committed — artifacts live outside the repositories)
@@ -166,7 +175,15 @@ is the whole process.
 - Check out the current project state first (files, docs, recent commits)
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help your human partner decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time to refine the idea
+- For appropriately-scoped projects, **question the design with
+  `aikit:grilling`**. Invoke it via the Skill tool. It works the
+  question tree in passes, asks only the questions whose prerequisites
+  are already settled, and requires you to recommend an answer to
+  every question you ask — never a bare question handed to your human
+  partner.
+- `grilling` also requires that facts be found by subagent and never
+  asked of the human partner. That is already `aikit:budgeting-context`;
+  the two agree, and neither needs restating in the other.
 - Prefer multiple choice questions when possible, but open-ended is fine too
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
