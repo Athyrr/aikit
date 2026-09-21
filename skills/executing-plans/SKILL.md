@@ -461,8 +461,8 @@ ruling at the cap — append the completion line to the ledger in the same
 message as your other bookkeeping:
 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
-- `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
-  round cap reached
+- `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after the
+  round cap is reached
 
 Then mark the todo complete and move on. Never move to the next task while
 the review has open Critical/Important issues that are neither fixed nor

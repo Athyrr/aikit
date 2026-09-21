@@ -74,7 +74,7 @@ probe — it is an unplanned dependency. **Go up.**
 ## The attempt budget lives in the ledger, not in your head
 
 An agent that retries does not reliably remember it is on attempt three;
-compaction erases that first. **An attempt budget that is not written down is
+compaction erases that first. **An attempt budget that is not written down
 does not exist.**
 
 Write, in the plan's ledger, before each attempt:
