@@ -296,7 +296,7 @@ wc -w skills/path/SKILL.md
 
 Use skill name only, with explicit requirement markers:
 - ✅ Good: `**REQUIRED SUB-SKILL:** Use aikit:test-driven-development`
-- ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand aikit:systematic-debugging`
+- ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand aikit:diagnosing`
 - ❌ Bad: `See skills/testing/test-driven-development` (unclear if required)
 - ❌ Bad: `@skills/testing/test-driven-development/SKILL.md` (force-loads, burns context)
 
@@ -413,7 +413,7 @@ Different skill types need different test approaches:
 
 ### Discipline-Enforcing Skills (rules/requirements)
 
-**Examples:** TDD, verification-before-completion, designing-before-coding
+**Examples:** TDD, verifying-completion, designing-before-coding
 
 **Test with:**
 - Academic questions: Do they understand the rules?

@@ -12,7 +12,7 @@ Dispatch a code reviewer subagent to catch issues before they cascade. The revie
 ## When to Request Review
 
 **Mandatory:**
-- After each task in subagent-driven development
+- After each task when executing a plan with `aikit:executing-plans`
 - After completing major feature
 - Before merge to main
 

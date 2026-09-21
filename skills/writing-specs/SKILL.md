@@ -1,6 +1,6 @@
 ---
 name: writing-specs
-description: Use after brainstorming to write the spec artifact - the contract for where it lives, what metadata it carries, and what it must contain before a plan can be argued from it
+description: Use after designing the solution to write the spec artifact - the contract for where it lives, what metadata it carries, and what it must contain before a plan can be argued from it
 ---
 
 # Writing Specs
@@ -10,8 +10,8 @@ later phase argues from.
 
 **Announce:** "Using writing-specs to record the design."
 
-`aikit:brainstorming` produces the design through dialogue. This skill governs
-what gets written down. Run brainstorming first; do not write a spec from a
+`aikit:designing-the-solution` produces the design through dialogue. This skill governs
+what gets written down. Run `aikit:designing-the-solution` first; do not write a spec from a
 request you have not explored.
 
 ## Where it goes
@@ -67,7 +67,7 @@ The wikilinks cost nothing and make the artifact directory navigable as a vault.
 
 ## Required content
 
-- **Problem** — what is wrong or missing today, in the user's terms.
+- **Problem** — what is wrong or missing today, in your human partner's terms.
 - **Goal** — one sentence. What is true when this is done.
 - **Scope** — what is in. Then **explicitly** what is out. The out-list is what
   stops phase 3 from planning work nobody asked for.

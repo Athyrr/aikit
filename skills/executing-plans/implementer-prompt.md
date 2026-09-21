@@ -52,7 +52,7 @@ Subagent (aikit:implementer):
     Do all of this task's work yourself. Never spawn a subagent to
     implement part of the task, and above all never spawn a reviewer to
     check your work. Self-review (below) means reading your own diff.
-    Review is the controller's job: after you report, it dispatches a
+    Review is the orchestrator's job: after you report, it dispatches a
     fresh reviewer against your diff. A reviewer you spawn duplicates
     that review at full cost, and its approval counts for nothing in
     the process. If you catch yourself thinking "an independent review
@@ -86,7 +86,7 @@ Subagent (aikit:implementer):
 
     **How to escalate:** Report back with status BLOCKED or NEEDS_CONTEXT. Describe
     specifically what you're stuck on, what you've tried, and what kind of help you need.
-    The controller can provide more context, re-dispatch with a more capable model,
+    The orchestrator can provide more context, re-dispatch with a more capable model,
     or break the task into smaller pieces.
 
     ## Before Reporting Back: Self-Review
@@ -146,7 +146,7 @@ Subagent (aikit:implementer):
     - The report file path
 
     If BLOCKED or NEEDS_CONTEXT, put the specifics in the final message
-    itself — the controller acts on it directly.
+    itself — the orchestrator acts on it directly.
 
     Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
     Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need

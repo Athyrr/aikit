@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Resolve and ensure the directory SDD uses for one plan's short-lived
-# artifacts: task briefs, implementer reports, review packages, and the
-# progress ledger. Print its absolute path.
+# Resolve and ensure the directory one plan's execution uses for its
+# short-lived artifacts: task briefs, implementer reports, review packages,
+# and the progress ledger. Print its absolute path.
 #
 # It sits next to the plan, under the feature's artifact directory:
-#   vault/<project>/<feature>/sdd/<plan-basename>/
+#   vault/<project>/<feature>/runs/<plan-basename>/
 #
 # Two consequences, both deliberate:
 #   - aiKit writes NOTHING inside the project repositories. Only the code
@@ -14,13 +14,13 @@
 #   - One directory per plan, so a dependency-sequenced set (plan1, plan2,
 #     plan3) in the same feature can never read or overwrite each other's
 #     artifacts. A stale ledger misread as current progress makes
-#     controllers skip whole task sequences.
+#     orchestrators skip whole task sequences.
 #
-# Usage: sdd-workspace PLAN_FILE
+# Usage: run-workspace PLAN_FILE
 set -euo pipefail
 
 if [ $# -ne 1 ]; then
-  echo "usage: sdd-workspace PLAN_FILE" >&2
+  echo "usage: run-workspace PLAN_FILE" >&2
   exit 2
 fi
 
@@ -32,6 +32,6 @@ slug=$(basename "$plan" .md)
   || { echo "cannot derive a workspace name from: $plan" >&2; exit 2; }
 
 feature_dir=$(cd "$(dirname "$plan")" && pwd)
-dir="$feature_dir/sdd/$slug"
+dir="$feature_dir/runs/$slug"
 mkdir -p "$dir"
 cd "$dir" && pwd

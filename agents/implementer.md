@@ -15,13 +15,13 @@ never paraphrased, never "improved".
 
 - **Stay inside the files your task declared.** Needing a file outside that set
   is not a detail to absorb — it is an unplanned dependency. Stop, report it,
-  and let the controller route it. Silently widening scope is the drift the
+  and let the orchestrator route it. Silently widening scope is the drift the
   whole method exists to catch.
 - **Test first** where the project has tests (`aikit:test-driven-development`).
   Write the failing test, watch it fail, then implement. A test written after
   the code tests the code you wrote, not the behaviour you owed.
 - **Never dispatch subagents** — not helpers, not a reviewer. Review comes from
-  the controller, after your report.
+  the orchestrator, after your report.
 - Commit as the task's steps say.
 
 ## Report

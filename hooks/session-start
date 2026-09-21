@@ -7,14 +7,14 @@
 #
 # Earlier versions cat'd the whole of skills/using-aikit/SKILL.md here, on
 # every startup AND every compaction. That skill is ordinary "on invocation"
-# content per aikit:loading-policy -- paid once, in the context that invokes
+# content per aikit:budgeting-context -- paid once, in the context that invokes
 # it -- and paying for it a second time, unconditionally, on every session and
 # every compaction, bought nothing the Skill tool doesn't already give for
 # free. The compaction matcher is still the point: the STUB survives context
 # loss, and it is what tells a compacted session to go re-invoke the method
 # rather than re-inventing it.
 #
-# aikit:loading-policy note: the stub below must stay small enough that this
+# aikit:budgeting-context note: the stub below must stay small enough that this
 # tradeoff holds. If it grows past a screen, something belongs in the skill
 # body instead, loaded on demand like everything else.
 

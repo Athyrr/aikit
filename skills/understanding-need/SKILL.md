@@ -16,7 +16,7 @@ so a delegated understanding is an invented one.
 
 This phase runs **once per distinct need**, not once per message. A need
 already routed stays routed: answering a clarifying question you asked during
-`aikit:brainstorming`, confirming the feature slug, narrowing the scope,
+`aikit:designing-the-solution`, confirming the feature slug, narrowing the scope,
 approving a spec — all of that is *inside* the same need. Do not re-invoke this
 skill for it. Continue the phase you are in.
 
@@ -51,7 +51,7 @@ is the one a registry would have given you, and phase 6 cannot run without it.
 
 | The request is | Route |
 |---|---|
-| Something is broken / behaves wrong | `aikit:systematic-debugging` — you are diagnosing, not building |
+| Something is broken / behaves wrong | `aikit:diagnosing` — you are diagnosing, not building |
 | … and the diagnosis needs the live systems | `aikit:delegating-to-a-perimeter` — run it in its own process. Its tools are already in your session; what you are keeping out is its forty tool calls. Never guess at production state from the code. |
 | Build, add, change, remove behaviour | Estimate size — see 2a below |
 | "How does X work / where is Y" | Answer it. No feature directory, no spec. |
@@ -68,7 +68,7 @@ Before opening a feature directory, make the call:
 | | Fast-Path | Heavy-Path |
 |---|---|---|
 | Criteria | ≤2 files, no API/contract break, no critical dependency | anything bigger, a new component, a refactor, or you are unsure |
-| Route | Dispatch a light implementer directly — no `spec.md`, no `plan.md` | `aikit:brainstorming` — continue to phase 2 |
+| Route | Dispatch a light implementer directly — no `spec.md`, no `plan.md` | `aikit:designing-the-solution` — continue to phase 2 |
 | Proof | `git diff --name-only` matches the file(s) you named | `aikit:checking-plan-drift` per task |
 
 State the estimate back to the human in the same breath as the route
@@ -77,7 +77,7 @@ wrong guess is visible before work starts, not after.
 
 **When in doubt, Heavy-Path.** An estimate that turns out wrong mid-flight is
 not a reason to keep going on the cheap route — stop, name what you found,
-and re-route through `aikit:brainstorming`. A Fast-Path task whose diff grows
+and re-route through `aikit:designing-the-solution`. A Fast-Path task whose diff grows
 past what was named is exactly the drift the file declaration exists to catch;
 treat it the same way whether the declaration came from a plan task or from
 this estimate.
@@ -88,7 +88,7 @@ named, is the brief — there is no plan to extract it from. Dispatch
 for when it escalates). When it reports done, run `git diff --name-only`
 yourself against the files you named in step 4 — a match is the proof: no
 reviewer, no ledger, no workspace. A mismatch is drift — route it with
-`aikit:handling-blockers` rather than accepting a "close enough" diff.
+`aikit:routing-failures` rather than accepting a "close enough" diff.
 
 ## 3. Open or resume the feature directory (Heavy-Path only)
 
@@ -110,7 +110,7 @@ resumption:
    because restarting is easier than reading.
 
 A resumed feature whose `status.md` names an unresolved blocker resumes at
-`aikit:handling-blockers`, not at execution.
+`aikit:routing-failures`, not at execution.
 
 ## 4. Confirm before moving on
 

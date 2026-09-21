@@ -39,15 +39,15 @@ estimate — the phases below, drift-checked per task). Tables: `reference.md`.
 | # | Phase | Skill | Produces |
 |---|---|---|---|
 | 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
-| 2 | Specify | `aikit:brainstorming` then `aikit:writing-specs` | `vault/<project>/<feature>/spec.md` |
+| 2 | Specify | `aikit:designing-the-solution` then `aikit:writing-specs` | `vault/<project>/<feature>/spec.md` |
 | 2.5 | Impact | dispatch the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
 | 3 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md` |
 | 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
-| 5 | Execute | `aikit:subagent-driven-development` | code, and `sdd/` next to the plan |
-| 6 | Verify | `aikit:verification-before-completion` | the project's completion criterion, met |
+| 5 | Execute | `aikit:executing-plans` | code, and `runs/` next to the plan |
+| 6 | Verify | `aikit:verifying-completion` | the project's completion criterion, met |
 
-Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
-`aikit:checking-plan-drift` after every task, `aikit:handling-blockers` on any
+Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
+`aikit:checking-plan-drift` after every task, `aikit:routing-failures` on any
 failure, `aikit:handling-secrets` before writing config or committing anything
 that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
 a project's own MCP servers, `aikit:receiving-code-review` when incorporating
@@ -62,7 +62,7 @@ A subagent reads the 27,000-token doc, returns a 300-token finding, and dies.
 
 Never open a large doc whole: the registry routes each kind of task to the
 section it needs. Pass **paths, not contents**. Full table:
-`aikit:loading-policy`.
+`aikit:budgeting-context`.
 
 Phases 1 and 2 need the human, so they are never delegated: a subagent cannot
 ask a question, and a delegated spec is an invented spec.
@@ -80,8 +80,8 @@ before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`
 | Role | Model |
 |---|---|
 | `aikit:planner`, `aikit:reviewer` | **opus** — evaluative work where a wrong judgement is the most expensive kind of failure: planning, judging a diff |
-| `aikit:spike` | sonnet — bounded, low-stakes investigation; closer to explorer's shape of work than to planning or review |
-| `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-loop attempts (`aikit:handling-blockers`) — never a per-task choice |
+| `aikit:probe` | sonnet — bounded, low-stakes investigation; closer to explorer's shape of work than to planning or review |
+| `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-round attempts (`aikit:routing-failures`) — never a per-task choice |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
 
 Rationale per role, and the fable note: `reference.md`, next to this skill.
@@ -94,12 +94,12 @@ work: experts carry their own tier and it is often lower.
 
 ## When something fails, the nature of the failure decides the direction
 
-**Down**, plan unmoved: technical unknown → bounded spike; red test or broken
-build → fix loop, bounded by budget. **Up**: unplanned dependency, a file
+**Down**, plan unmoved: technical unknown → bounded probe; red test or broken
+build → fix rounds, bounded by the attempt budget. **Up**: unplanned dependency, a file
 outside the task's declared set, or a task too large → finish the independents,
 then re-plan; spec ambiguous or contradictory → stop, back to phase 2 with the
 human. Going up is expensive, but retrying a wrong plan is the most expensive
-of all. **The budget lives in the ledger.** Protocol: `aikit:handling-blockers`.
+of all. **The attempt budget lives in the ledger.** Protocol: `aikit:routing-failures`.
 
 ## Red Flags
 

@@ -41,15 +41,15 @@ mid-flight, is **Heavy-Path**: the phase table below, in full.
 | # | Phase | Skill | Produces |
 |---|---|---|---|
 | 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
-| 2 | Specify | `aikit:brainstorming` → `aikit:writing-specs` | `spec.md` |
+| 2 | Specify | `aikit:designing-the-solution` → `aikit:writing-specs` | `spec.md` |
 | 2.5 | Impact | the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
 | 3 | Plan | `aikit:writing-plans` | `plan.md` |
 | 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
-| 5 | Execute | `aikit:subagent-driven-development` | code, one task at a time |
-| 6 | Verify | `aikit:verification-before-completion` | the registry's completion criterion, met |
+| 5 | Execute | `aikit:executing-plans` | code, one task at a time |
+| 6 | Verify | `aikit:verifying-completion` | the registry's completion criterion, met |
 
-Cross-cutting: `aikit:loading-policy` before any dispatch or large read,
-`aikit:checking-plan-drift` after every task, `aikit:handling-blockers` whenever
+Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
+`aikit:checking-plan-drift` after every task, `aikit:routing-failures` whenever
 something fails, `aikit:delegating-to-a-perimeter` when a question needs a
 project's own tools, `aikit:receiving-code-review` when incorporating feedback
 from outside the method's own review loop.
@@ -57,9 +57,9 @@ from outside the method's own review loop.
 ## Model cascading
 
 `aikit:implementer` defaults to **sonnet**. It escalates to **opus** exactly
-once per task — automatically, when `aikit:handling-blockers` finds two failed
-fix-loop attempts recorded in the ledger. It is never a per-task judgement
-call; see `aikit:handling-blockers` and `aikit:subagent-driven-development`.
+once per task — automatically, when `aikit:routing-failures` finds two failed
+fix-round attempts recorded in the ledger. It is never a per-task judgement
+call; see `aikit:routing-failures` and `aikit:executing-plans`.
 
 A **diagnostic** does not run these phases. It produces a `diagnostic-N.md` and
 stops; if it concludes that code must change, that finding becomes the input of
@@ -84,13 +84,13 @@ registry routes each task to the *section* it needs, never the whole file.
 
 | What happened | Direction |
 |---|---|
-| Technical unknown | **down** — a bounded spike; the plan does not move |
-| Execution error | **down** — fix loop, bounded by a budget |
+| Technical unknown | **down** — a bounded probe; the plan does not move |
+| Execution error | **down** — fix rounds, bounded by the attempt budget |
 | Unplanned dependency, task too large | **up** — finish the independents, re-plan |
 | Ambiguous or contradictory spec | **up** — stop, back to phase 2 with the human |
 
 Going down is cheap, going up is expensive, and retrying a wrong plan is the
-most expensive of all. **The retry budget is counted in the ledger, not in
+most expensive of all. **The attempt budget is counted in the ledger, not in
 context** — a conversation that compacts forgets it is on its fourth attempt.
 
 **Drift is checked mechanically.** After each task, the files the task declared
@@ -112,15 +112,15 @@ delegated spec is an invented spec.
 
 ## The archetypes
 
-`aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`, `aikit:verifier`, `aikit:spike` — roles in
+`aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`, `aikit:verifier`, `aikit:probe` — roles in
 the process, each with a fixed model: **opus** for `aikit:planner` and
 `aikit:reviewer` (evaluative work where a wrong judgement is the most
 expensive kind of failure), **sonnet** for `aikit:implementer` (production
-work), `aikit:explorer`, `aikit:verifier` and `aikit:spike` (a spike is
+work), `aikit:explorer`, `aikit:verifier` and `aikit:probe` (a probe is
 bounded and low-stakes — closer to explorer's shape of work than to planning
 or review). Implementation escalates to opus exactly once per
-task — automatically, when the ledger shows two failed fix-loop attempts — never
-a per-task judgement call; see `aikit:handling-blockers`. Opus is therefore not
+task — automatically, when the ledger shows two failed fix-round attempts — never
+a per-task judgement call; see `aikit:routing-failures`. Opus is therefore not
 escalation-only: it also stands as planner and reviewer's default on a machine
 with no cheaper evaluative-tier model (this method originally ran that tier on
 **fable**). A project's domain agents are the other axis: when a plan task
@@ -209,6 +209,6 @@ session with no deploy.
 - renamed throughout (`aikit:` prefix), single harness (Claude Code only)
 - artifacts moved out of the repositories into `vault/`
 - per-vault registry injected at session start, from declared vaults
-- failure-direction rule (down = spike/fix loop, up = re-plan/re-spec)
-- retry budget written to the ledger, not held in context
+- failure-direction rule (down = probe/fix rounds, up = re-plan/re-spec)
+- attempt budget written to the ledger, not held in context
 - multi-harness ports, CI, upstream docs and the remote brand image removed

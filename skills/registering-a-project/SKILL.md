@@ -55,7 +55,7 @@ worktrees, no drift check, no rollback).
 routing was right.
 
 **3. Load before working** — the routing table. This is the section that makes
-`aikit:loading-policy` work:
+`aikit:budgeting-context` work:
 
 ```
 | The task touches | Read | ~tok |
@@ -103,7 +103,7 @@ Nothing is written to stderr: the hook runs at every session start.
 ## Costs are measured
 
 Every token figure in a registry file was measured, not estimated. A wrong
-figure is worse than none: it is trusted, and it misroutes budget.
+figure is worse than none: it is trusted, and it misroutes the context budget.
 
 ```bash
 python3 -c "import os;print(os.path.getsize('FILE')//4)"          # a whole file

@@ -111,7 +111,7 @@ def main():
         print("VERDICT: DRIFT")
         if extra:
             print("  Extra files are an unplanned dependency until proven otherwise.")
-            print("  Route with aikit:handling-blockers — this is usually an upward failure.")
+            print("  Route with aikit:routing-failures — this is usually an upward failure.")
         if untouched:
             print("  Untouched declared files mean the task is incomplete, or the plan")
             print("  named a file the work did not need. Decide which, in writing.")

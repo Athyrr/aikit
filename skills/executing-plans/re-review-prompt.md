@@ -92,7 +92,7 @@ Subagent (aikit:reviewer):
     ### Out-of-Scope Observations
 
     Issues you noticed entirely outside the fix diff. Non-blocking; the
-    controller ledgers these for the final review. "None" if none.
+    orchestrator ledgers these for the final review. "None" if none.
 
     ### Verdict
 

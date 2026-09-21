@@ -13,14 +13,14 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** If working in an isolated worktree, it should have been created via the `aikit:using-git-worktrees` skill at execution time.
+**Context:** If working in an isolated worktree, it should have been created via the `aikit:isolating-the-workspace` skill at execution time.
 
 **Save plans to:** `vault/<project>/<feature>/plan.md`
-- (User preferences for plan location override this default)
+- (Your human partner's preferences for plan location override this default)
 
 ## Scope Check
 
-If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+If the spec covers multiple independent subsystems, it should have been broken into sub-project specs while designing the solution. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 
 ## File Structure
 
@@ -74,7 +74,7 @@ independently testable deliverable.
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use aikit:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use aikit:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -188,6 +188,6 @@ After saving the plan, hand it off. **There is no choice to offer:** one skill
 carries execution, and its subagent mode is the method.
 
 **"Plan complete and saved to `<vault>/<project>/<feature>/plan.md`.**
-**REQUIRED SUB-SKILL:** `aikit:subagent-driven-development` — a fresh subagent
+**REQUIRED SUB-SKILL:** `aikit:executing-plans` — a fresh subagent
 per task, a fresh reviewer per diff, the ledger between them. Its final section
 covers the degraded inline mode for a session where subagents are unavailable.

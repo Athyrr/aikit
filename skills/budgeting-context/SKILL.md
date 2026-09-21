@@ -1,16 +1,16 @@
 ---
-name: loading-policy
+name: budgeting-context
 description: Use when dispatching anything or about to read a large file - decides what gets loaded, by whom, and in which context, so the orchestrator never carries what a disposable context could have read
 ---
 
-# Loading Policy
+# Budgeting Context
 
 **The rule everything else follows:**
 
 > **Big reads happen in contexts that get thrown away.**
 
 A subagent reads 27,000 tokens, distills them into a 300-token finding, and
-dies. The orchestrator keeps the 300. That asymmetry is the entire budget
+dies. The orchestrator keeps the 300. That asymmetry is the entire context-budget
 strategy — everything below is its application.
 
 ## Three tiers
@@ -38,7 +38,7 @@ it by pre-loading "just in case".**
 | 6 Verify | `aikit:verifier` | the registry's command and its output | anything else |
 | Diagnostic | a scoped process | its MCP servers and routing skills | the orchestrator loads none of it |
 
-## The orchestrator's budget
+## The orchestrator's context budget
 
 At any moment it should hold roughly:
 

@@ -87,7 +87,7 @@ Subagent (aikit:reviewer):
     Evidence you cannot see is not evidence that doesn't exist. If the
     report or its test evidence looks truncated, or you cannot locate the
     results it claims, re-read the file at its stated path — and if it is
-    genuinely missing or garbled, report that as a gap for the controller.
+    genuinely missing or garbled, report that as a gap for the orchestrator.
     Re-running the suite to regenerate what you failed to read is not
     verification; illegibility of the evidence is not invalidation of it.
 
@@ -134,7 +134,7 @@ Subagent (aikit:reviewer):
 
     Your report should point at evidence: file:line references for every
     finding and for any check you would otherwise answer with a bare
-    "yes." A tight report that cites lines gives the controller everything
+    "yes." A tight report that cites lines gives the orchestrator everything
     it needs.
 
     Your final message is the report itself: begin directly with the
@@ -165,7 +165,7 @@ Subagent (aikit:reviewer):
     - ✅ Spec compliant | ❌ Issues found: [what's missing/extra/misunderstood,
       with file:line references]
     - ⚠️ Cannot verify from diff: [requirements you could not verify from the
-      diff alone, and what the controller should check — report alongside the
+      diff alone, and what the orchestrator should check — report alongside the
       ✅/❌ verdict for everything you could verify]
 
     ### Strengths
@@ -199,9 +199,9 @@ Subagent (aikit:reviewer):
   report to
 - `[BASE_SHA]` — commit before this task
 - `[HEAD_SHA]` — current commit
-- `[DIFF_FILE]` — REQUIRED: the path the controller wrote the review
+- `[DIFF_FILE]` — REQUIRED: the path the orchestrator wrote the review
   package to (`scripts/review-package PLAN_FILE BASE HEAD` prints the unique
-  path it wrote; the package never enters the controller's context)
+  path it wrote; the package never enters the orchestrator's context)
 
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
 (Critical/Important/Minor), Task quality verdict

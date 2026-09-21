@@ -1,9 +1,9 @@
 ---
-name: subagent-driven-development
+name: executing-plans
 description: Use when executing implementation plans with independent tasks in the current session
 ---
 
-# Subagent-Driven Development
+# Executing Plans
 
 Execute plan by dispatching a fresh implementer subagent per task, a task review (spec compliance + code quality) after each, and a broad whole-branch review at the end.
 
@@ -36,25 +36,15 @@ stop and ask.
 digraph when_to_use {
     "Have implementation plan?" [shape=diamond];
     "Tasks mostly independent?" [shape=diamond];
-    "Stay in this session?" [shape=diamond];
-    "subagent-driven-development" [shape=box];
     "executing-plans" [shape=box];
-    "Manual execution or brainstorm first" [shape=box];
+    "Manual execution, or design the solution first" [shape=box];
 
     "Have implementation plan?" -> "Tasks mostly independent?" [label="yes"];
-    "Have implementation plan?" -> "Manual execution or brainstorm first" [label="no"];
-    "Tasks mostly independent?" -> "Stay in this session?" [label="yes"];
-    "Tasks mostly independent?" -> "Manual execution or brainstorm first" [label="no - tightly coupled"];
-    "Stay in this session?" -> "subagent-driven-development" [label="yes"];
-    "Stay in this session?" -> "executing-plans" [label="no - parallel session"];
+    "Have implementation plan?" -> "Manual execution, or design the solution first" [label="no"];
+    "Tasks mostly independent?" -> "executing-plans" [label="yes"];
+    "Tasks mostly independent?" -> "Manual execution, or design the solution first" [label="no - tightly coupled"];
 }
 ```
-
-**vs. Executing Plans (parallel session):**
-- Same session (no context switch)
-- Fresh subagent per task (no context pollution)
-- Review after each task (spec compliance + code quality), broad review at the end
-- Faster iteration (no human-in-loop between tasks)
 
 ## The Process
 
@@ -107,7 +97,7 @@ digraph process {
     "All findings addressed?" -> "Append completion to ledger, mark todo complete" [label="yes"];
     "All findings addressed?" -> "R = 5?" [label="no"];
     "R = 5?" -> "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" [label="no - next round"];
-    "R = 5?" -> "Adjudicate each open finding" [label="yes - breaker trips"];
+    "R = 5?" -> "Adjudicate each open finding" [label="yes - round cap reached"];
     "Adjudicate each open finding" -> "Any load-bearing finding?";
     "Any load-bearing finding?" -> "Rule and continue; stop only if every path forward is a guess" [label="yes"];
     "Any load-bearing finding?" -> "Park findings in ledger with rulings" [label="no"];
@@ -124,18 +114,18 @@ digraph process {
 ## Setup
 
 Ensure the work happens in an isolated workspace: use
-aikit:using-git-worktrees to create one or verify the existing one.
+aikit:isolating-the-workspace to create one or verify the existing one.
 Never start implementation on a main/master branch without your human
 partner's explicit consent.
 
 Conversation memory does not survive compaction. In real sessions,
-controllers that lost their place have re-dispatched entire completed task
+orchestrators that lost their place have re-dispatched entire completed task
 sequences — the single most expensive failure observed. Track progress in
 a ledger file, not only in todos.
 
 - Each plan owns a workspace: at skill start, run this skill's
-  `scripts/sdd-workspace PLAN_FILE` — it prints the plan's git-ignored
-  directory (`vault/<project>/<feature>/sdd/<plan-basename>/`), home to
+  `scripts/run-workspace PLAN_FILE` — it prints the plan's git-ignored
+  directory (`vault/<project>/<feature>/runs/<plan-basename>/`), home to
   every artifact for THIS plan: ledger, briefs, reports, review packages.
   Another plan's directory is never yours to read or write.
 - Check for this plan's ledger at `<workspace>/progress.md`. If its first
@@ -146,11 +136,11 @@ a ledger file, not only in todos.
   ledger at the old flat path `<feature>/sdd/progress.md` — is another
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
-  `# SDD ledger — plan: <plan file path>`.
-- **The retry budget lives here, not in your head.** Before each attempt at a
+  `# Cycle ledger — plan: <plan file path>`.
+- **The attempt budget lives here, not in your head.** Before each attempt at a
   task, write `Task N: attempt K/3 — <what changed since the last one>`, and
   read back the task's existing lines first. Finding `attempt 3/3` already
-  recorded means the budget is spent — escalate, even with no memory of the
+  recorded means the attempt budget is spent — escalate, even with no memory of the
   earlier rounds. Compaction erases attempt counts before it erases anything
   else.
 - The ledger is your recovery map: the commits it names exist in git even
@@ -195,16 +185,16 @@ implementation.
 |---|---|---|
 | `aikit:planner` | **opus** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are — a wrong plan is the most expensive failure this method has, so it gets the strongest available judgement. |
 | `aikit:reviewer` | **opus** | Same shape of judgement, applied to a diff instead of a spec — the review is the safety net every task passes through. |
-| `aikit:spike` | sonnet | A spike produces a finding, not code — bounded and low-stakes, closer to explorer's shape of work than to planning or review. |
-| `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded fix-loop failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
+| `aikit:probe` | sonnet | A probe produces a finding, not code — bounded and low-stakes, closer to explorer's shape of work than to planning or review. |
+| `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded fix-round failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
 | `aikit:explorer` | sonnet | High-volume reading, low judgement. |
 | `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
 
 Each archetype carries this in its frontmatter, so dispatching by archetype
 name gets the right model without you specifying one. Opus is not
 escalation-only here: on a machine with no cheaper evaluative-tier model
-(this method originally ran planner/reviewer/spike on **fable**), opus also
-serves as planner and reviewer's standing default — spike moved to sonnet
+(this method originally ran planner/reviewer/probe on **fable**), opus also
+serves as planner and reviewer's standing default — the probe moved to sonnet
 instead, since a bounded investigation carries less downside than a bad plan
 or a missed review finding.
 
@@ -224,19 +214,19 @@ changing the attempt. A retry must always change something real:
 
 - more context in the brief (the interfaces, the constraint, the trap it hit);
 - a narrower target (split the task, dispatch the remainder separately);
-- a `aikit:spike` first, so the attempt stops guessing at an unknown.
+- a `aikit:probe` first, so the attempt stops guessing at an unknown.
 
 Re-dispatching the same brief to the same tier is not an attempt. It is a coin
-flip charged to your budget. The model escalates to opus exactly once per
+flip charged to your attempt budget. The model escalates to opus exactly once per
 task, automatically, when the ledger shows two failed attempts — see
-`aikit:handling-blockers`. Escalating early, or as a way to skip changing the
+`aikit:routing-failures`. Escalating early, or as a way to skip changing the
 brief, defeats the point of fixing the tier at all.
 
 **Always pass the model explicitly when you dispatch anything that is not one
 of these archetypes.** An omitted model inherits your session's, which
 silently defeats the table above.
 
-## The Task Loop
+## The Task Sequence
 
 **Batch small same-shape work.** When the plan lists several tasks that are
 each a small, independent edit of the same kind — the same one-line fix,
@@ -291,19 +281,19 @@ and fix-round diffs need it.
   implementer template): the implementer never dispatches subagents —
   not helpers, and never a reviewer. Review arrives from you, after the
   report. In real sessions, every reviewer a worker spawned duplicated
-  the task review the controller dispatched anyway — a full extra
+  the task review the orchestrator dispatched anyway — a full extra
   review seat per task.
 - If an earlier task parked a finding in the area this task touches, carry
   a pointer to that ledger entry in the dispatch.
 - Record the implementer's agent identity from the dispatch result —
-  fix-loop rounds 1-3 resume this agent.
+  fix rounds 1-3 resume this agent.
 - **Which agent:** if the task carries an `Agent:` line, dispatch that domain
   expert from the project's registry — it knows conventions the generic
   archetype does not. Otherwise dispatch `aikit:implementer`.
 - Never dispatch multiple implementation subagents in parallel (conflicts).
   **One exception, and it must hold completely:** the tasks declare
   `Depends on: none`, their Files blocks are disjoint, and each runs in its own
-  git worktree (`aikit:using-git-worktrees`). If any of the three is missing,
+  git worktree (`aikit:isolating-the-workspace`). If any of the three is missing,
   sequence them. A shared file beats any dependency block.
 
 Template: [implementer-prompt.md](implementer-prompt.md)
@@ -315,7 +305,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 **DONE:** First run the drift check — `aikit:checking-plan-drift`, using the
 BASE you recorded before dispatching. It is mechanical and takes seconds, and
 it is the only thing that catches a plan quietly abandoned. Drift is routed
-with `aikit:handling-blockers` before any review: reviewing code whose scope
+with `aikit:routing-failures` before any review: reviewing code whose scope
 already left the plan reviews the wrong question.
 
 Then generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), and dispatch the task reviewer with the printed path.
@@ -325,14 +315,14 @@ Then generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, 
 **NEEDS_CONTEXT:** The implementer needs information that wasn't provided. Provide the missing context and re-dispatch.
 
 **BLOCKED:** The implementer cannot complete the task. **Route it with
-`aikit:handling-blockers`** — the nature of the failure decides whether you go
+`aikit:routing-failures`** — the nature of the failure decides whether you go
 down or up, and guessing that wrongly is the most expensive mistake available
 to you:
 1. Context problem → down: provide more context, re-dispatch, **record the attempt in the ledger**
 2. Needs more reasoning → down: implementation is already at the ceiling, so change the brief instead — add the interfaces, the constraint or the trap it hit — and record the attempt
-3. Technical unknown → down: dispatch `aikit:spike` with one written question and a written budget
+3. Technical unknown → down: dispatch `aikit:probe` with one written question and a stated bound
 4. Task too large, or files outside its declared set → **up**: finish the independent tasks, then re-split
-5. The plan or spec is wrong → **up**: stop, write the loop report, do not re-dispatch
+5. The plan or spec is wrong → **up**: stop, write the cycle report, do not re-dispatch
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 
@@ -382,11 +372,11 @@ that live in unchanged code or span tasks. These do not block the rest of the
 review, but you must resolve each one yourself before marking the task
 complete: you hold the plan and cross-task context the reviewer
 lacks. If you confirm an item is a real gap, treat it as a failed spec
-review — it enters the fix loop with the other findings.
+review — it enters the fix rounds with the other findings.
 
 Template: [task-reviewer-prompt.md](task-reviewer-prompt.md)
 
-### 4. The fix loop
+### 4. The fix rounds
 
 The loop triggers when the review reports spec ❌, any Critical or Important
 finding, or a ⚠️ item you confirmed as a real gap.
@@ -441,10 +431,10 @@ minors — they never extend the loop.
 **After each round,** append to the ledger:
 `Task <N>: fix round <R>/5 (<X> addressed, <Y> open — <finding one-liners>; commits <a7>..<b7>)`
 
-Never fix findings yourself in the controller session — your context stays
-clean for coordination, and controller fixes skip review.
+Never fix findings yourself in the orchestrator session — your context stays
+clean for coordination, and orchestrator fixes skip review.
 
-**The breaker.** When round 5's re-review still leaves findings open, stop
+**The round cap.** When round 5's re-review still leaves findings open, stop
 dispatching. Adjudicate each open finding yourself — you hold the plan and
 the cross-task context the reviewer lacks:
 
@@ -472,7 +462,7 @@ message as your other bookkeeping:
 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
-  tripped breaker
+  round cap reached
 
 Then mark the todo complete and move on. Never move to the next task while
 the review has open Critical/Important issues that are neither fixed nor
@@ -498,7 +488,7 @@ session's final-review fix wave cost more than all its tasks combined.
 Then run exactly one scoped re-review of the fix wave
 (`scripts/review-package PLAN_FILE FIX_BASE HEAD` over the fix range,
 [re-review-prompt.md](re-review-prompt.md)).
-Adjudicate any residual findings as in the task loop's breaker: park with
+Adjudicate any residual findings as in the task sequence's round cap: park with
 rulings, or rule on the load-bearing ones and ledger what you decided. Only
 the four classes above stop you here. There is no second fix wave —
 residual load-bearing findings surface to your human partner when
@@ -507,7 +497,7 @@ finishing-a-development-branch presents the options.
 ## Finish
 
 Before you delete anything, collect every ledger line containing `Ruling:` —
-preflight rulings, parked findings, breaker adjudications, all of them — into
+preflight rulings, parked findings, round-cap adjudications, all of them — into
 your final message under "Rulings I made", in the order you made them, each
 with what it costs if wrong. The list is exhaustive: if the ledger holds a
 ruling, the list holds it. That list is the only place the decisions you
@@ -527,23 +517,23 @@ Use aikit:finishing-a-development-branch.
 | Excuse | Reality |
 |--------|---------|
 | "Close enough on spec compliance" | Reviewer found spec gaps = not done. Fix or hit the cap and adjudicate — those are the only exits. |
-| "I'll fix it myself, dispatching is overhead" | Controller fixes pollute your context and skip review. Resume the implementer. |
+| "I'll fix it myself, dispatching is overhead" | Orchestrator fixes pollute your context and skip review. Resume the implementer. |
 | "One more round will converge" | Past the cap, rounds don't converge — the failure is structural. Adjudicate and route. |
 | "The reviewer will just find something new anyway" | Scoped re-reviews verify fixes; they cannot wander. New findings on untouched code go to the ledger, not the loop. |
 | "This finding is obviously wrong, I'll drop it" | You adjudicate only at the cap, and every ruling is a ledger entry. Silent discards are forbidden. |
 | "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every round ends with a scoped re-review. |
 | "Reviews slow the loop down" | The loop without reviews is just unverified churn. Reviews are the loop's brakes and steering. |
-| "Ledger bookkeeping is overhead" | The ledger is what survives compaction. Controllers without one have re-dispatched entire completed task sequences. |
+| "Ledger bookkeeping is overhead" | The ledger is what survives compaction. Orchestrators without one have re-dispatched entire completed task sequences. |
 | "The implementer spawned its own reviewer — free extra assurance" | It's a duplicate seat reviewing the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag, not rigor. |
 
 ## Example Workflow
 
 ```
-You: I'm using Subagent-Driven Development to execute this plan.
+You: I'm using executing-plans to execute this plan.
 
 [Setup: worktree verified]
 [Read plan file once: vault/<project>/<feature>/plan.md]
-[Resolve workspace: scripts/sdd-workspace vault/<project>/<feature>/plan.md — no ledger inside, fresh start]
+[Resolve workspace: scripts/run-workspace vault/<project>/<feature>/plan.md — no ledger inside, fresh start]
 [Create todos for all tasks]
 
 Task 1: Hook installation script
@@ -611,7 +601,7 @@ is gone, because the context that wrote the code is the context that reviews it.
 Say so in the verdict.
 
 1. **Load and review the plan.** Ensure an isolated workspace
-   (`aikit:using-git-worktrees`). Read the plan. Review it critically and raise
+   (`aikit:isolating-the-workspace`). Read the plan. Review it critically and raise
    concerns with your human partner before starting. Create one todo per task.
 2. **Execute task by task.** Mark in progress, follow each step exactly, run
    every verification the step names, mark complete. Never batch two tasks.

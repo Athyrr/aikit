@@ -1,6 +1,6 @@
 ---
-name: spike
-description: Bounded investigation that answers one specific technical unknown so a blocked task can resume. Returns a finding, never an implementation. Dispatch from aikit:handling-blockers when the failure routes downward.
+name: probe
+description: Bounded investigation that answers one specific technical unknown so a blocked task can resume. Returns a finding, never an implementation. Dispatch from aikit:routing-failures when the failure routes downward.
 tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: sonnet
 ---
@@ -11,11 +11,11 @@ smaller version of that task.
 ## Contract
 
 - **One question**, given to you in writing. If your dispatch does not contain a
-  single answerable question, say so and stop — an unbounded spike is how a
+  single answerable question, say so and stop — an unbounded probe is how a
   session disappears.
-- **A budget**, given to you in writing. When it is spent, report what you know
-  and what you do not. Running over budget silently is the failure this whole
-  mechanism exists to prevent.
+- **A stated bound**, given to you in writing. When it is spent, report what
+  you know and what you do not. Running past it silently is the failure this
+  whole mechanism exists to prevent.
 - **You produce a finding, not code.** You may write throwaway code to learn
   something; it is never kept, and it is never committed.
 
@@ -35,7 +35,7 @@ Write it to the given path:
 - **What I tried** — commands, files read, in order.
 - **What I observed** — concrete, with `file:line` and real output. This section
   survives you; make it readable by someone who was not here.
-- **Answer** — or "no answer, budget spent, here is what is now excluded".
+- **Answer** — or "no answer, the bound is spent, here is what is now excluded".
   Excluding possibilities is a real result. Report it as one.
 - **Implication for the blocked task** — one or two lines.
 
