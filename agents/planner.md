@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Turns an agreed spec into an implementation plan split into bite-sized tasks, each declaring the exact files it touches. Dispatch for phase 3-4. Reads the codebase, writes only the plan file.
+description: Turns an agreed spec into an implementation plan split into bite-sized tasks, each declaring the exact files it touches. Dispatch for phase 4. Reads the codebase, writes only the plan file.
 tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: opus
 ---
@@ -13,7 +13,7 @@ method — read the skill.
 ## Before you plan
 
 Read, in this order: the project's registry file, the spec — including its
-`## Impact` section if phase 2.5 produced one — then the code the spec
+`## Impact` section if phase 3 produced one — then the code the spec
 touches. A plan written without reading the code invents file paths, and
 invented paths make every later drift check meaningless.
 

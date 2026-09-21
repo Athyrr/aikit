@@ -86,14 +86,14 @@ while IFS=$'\t' read -r vname vpath; do
 done < <(vaults_list)
 
 if [ "$vault_count" = 0 ]; then
-    registry=$'\n\n## No vault registered on this machine\n\nDeclare one in `~/.config/aikit/vaults`:\n\n```\nvault work /path/to/the/vault\nroot  work /path/to/where/its/projects/are\n```\n\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
+    registry=$'\n\n## No vault registered on this machine\n\nDeclare one in `~/.config/aikit/vaults`:\n\n```\nvault work /path/to/the/vault\nroot  work /path/to/where/its/projects/are\n```\n\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 4, and say plainly that you are doing so.'
 elif [ "$resolved" = 0 ]; then
     # Declare mais introuvable n'est PAS la meme chose qu'aucun vault declare :
     # l'un est une erreur de chemin a corriger, l'autre une machine encore
     # vierge. Les deux notes portent des titres differents, expres.
     registry=$'\n\n## No project registry found\n\nThese vaults are declared in `~/.config/aikit/vaults`, but none of them carries a project registry:\n\n'"${stranded}"
     registry+=$'\nFix the path, or create the missing `projects/` directory in the vault.\n'
-    registry+=$'\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 3, and say plainly that you are doing so.'
+    registry+=$'\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 4, and say plainly that you are doing so.'
 else
     registry+=$'\nBefore working on a project, read `<vault>/projects/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. A project marked **absent d\'ici** is registered but not cloned on this machine. **Never work on a project whose registry file you have not read.**'
     # Apres la regle, pas avant : un titre `##` place juste au-dessus avalerait

@@ -31,8 +31,8 @@ it by pre-loading "just in case".**
 |---|---|---|---|
 | 1 Understand | orchestrator | the project's registry file (~500) | code, project docs |
 | 2 Specify | orchestrator + `aikit:explorer` | explorer reads code and docs, returns a finding | orchestrator reads nothing itself |
-| 2.5 Impact | the project's domain expert | its own prompt + the docs of its area | orchestrator receives the `## Impact` section appended to `spec.md`, nothing else |
-| 3-4 Plan | `aikit:planner` | spec (with its Impact section), the doc **slices** the registry routes to | the whole doc; the orchestrator does not re-read |
+| 3 Assess | the project's domain expert | its own prompt + the docs of its area | orchestrator receives the `## Impact` section appended to `spec.md`, nothing else |
+| 4 Plan | `aikit:planner` | spec (with its Impact section), the doc **slices** the registry routes to | the whole doc; the orchestrator does not re-read |
 | 5 Execute | one `aikit:implementer` per task | its brief, and only its brief | the plan, other tasks, session history |
 | 5b Review | `aikit:reviewer` | the diff and the brief it must satisfy | the conversation |
 | 6 Verify | `aikit:verifier` | the registry's command and its output | anything else |
