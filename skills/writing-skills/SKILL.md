@@ -21,8 +21,9 @@ You write test cases (pressure scenarios with subagents), watch them fail (basel
 
 ## Before you name anything
 
-**Read `VOCABULARY.md` at the repository root before creating or editing any
-skill.** It is the authority on every term the method uses, and it carries the
+**Read `VOCABULARY.md`, at aiKit's own repository root (not the project you
+are working in), before creating or editing any skill.** It is the authority
+on every term the method uses, and it carries the
 four-question naming test. A name that collides with an existing term is not a
 near miss — it is the exact failure the file exists to prevent.
 
