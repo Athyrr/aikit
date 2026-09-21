@@ -119,11 +119,18 @@ fiche_field() {  # fiche_field <fichier> <clef>
 #   - repo: apparie, dir: ne s'y trouve pas -> absent (fiche cassee, ca se voit)
 #   - repo: absent ou n'apparie pas       -> <racine>/<dir>, a defaut <racine>/<nom>
 resolve_projects() {
-  local vname="${1:-}" vpath roots=() scanned f name kind repo dir summary hit state r
+  local vname="${1:-}" vpath roots=() scanned f name kind repo dir summary hit state r vault_repo
   vpath="$(vault_path "$vname")"
   [ -n "$vpath" ] && [ -d "$vpath/projects" ] || return 0
   while IFS= read -r r; do roots+=("$r"); done < <(vault_roots "$vname")
   scanned="$(vaults_scan "${roots[@]+"${roots[@]}"}")"
+  # Le vault lui-meme n'est jamais range sous une racine de projets -- c'est sa
+  # nature, pas un oubli de config -- donc sa propre fiche ne peut jamais
+  # matcher par scan/probe generique. Elle existe forcement a $vpath (on vient
+  # d'y lire les fiches), donc on la resout a part : sinon c'est un faux
+  # negatif garanti ("absent" alors que c'est ce qu'on est en train de lire),
+  # pas une information vraie comme pour un projet qui peut reellement manquer.
+  vault_repo="$(_normalize_remote "$(git -C "$vpath" remote get-url origin 2>/dev/null)")"
 
   for f in "$vpath"/projects/*.md; do
     [ -e "$f" ] || continue
@@ -134,7 +141,9 @@ resolve_projects() {
     summary="$(fiche_field "$f" summary)"; [ -n "$summary" ] || summary="-"
     hit=""
 
-    if [ -n "$repo" ]; then
+    if [ -n "$repo" ] && [ -n "$vault_repo" ] && [ "$repo" = "$vault_repo" ]; then
+      hit="$vpath"
+    elif [ -n "$repo" ]; then
       hit="$(printf '%s\n' "$scanned" | awk -F'\t' -v k="$repo" '$1==k {print $2; exit}')"
     fi
 

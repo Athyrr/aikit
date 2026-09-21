@@ -54,6 +54,10 @@ TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 VAULT="$TMP/Mon Espace/levault"
 ROOT="$TMP/code"
 mkdir -p "$VAULT/projects" "$ROOT"
+# Le vault est lui-meme un depot git, jamais range sous une racine de projets
+# (ROOT) -- sa propre fiche doit quand meme resoudre present, voir plus bas.
+git -C "$VAULT" init -q
+git -C "$VAULT" remote add origin "git@github.com:acme/levault.git"
 
 mkrepo() {  # mkrepo <dir> <remote-url>
   mkdir -p "$ROOT/$1" && git -C "$ROOT/$1" init -q
@@ -82,6 +86,7 @@ fiche sans-git                                        "summary: par nom de reper
 fiche enveloppe   "dir: enveloppe/dedans"             "summary: par dir explicite"
 fiche fantome                                         "summary: pas clone ici"
 fiche idee        "kind: conception"                  "summary: sans depot du tout"
+fiche vault-lui-meme "repo: github.com/acme/levault"  "summary: le vault n'est sous aucune racine"
 fiche travail     "repo: github.com/acme/depot-enveloppe" "dir: dedans" \
                   "summary: repo localise le depot, dir affine dedans"
 fiche url-ssh     "repo: github.com/acme/par-ssh"     "summary: remote en ssh://"
@@ -163,6 +168,8 @@ is "et aucun repli sur les racines de recherche" \
    "depot|absent|-"                                                  "$(r dir-piege)"
 is "non clone ici -> absent"   "depot|absent|-"                      "$(r fantome)"
 is "kind: conception"          "conception|absent|-"                 "$(r idee)"
+is "la fiche du vault lui-meme resout present a vpath, hors scan/probe" \
+   "depot|present|$VAULT"                                             "$(r vault-lui-meme)"
 
 # La 5e colonne est lue par les consommateurs (tache 4 : read -r n kind state
 # path summary). Sans cette assertion, la retirer du printf ne casse rien.
