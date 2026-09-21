@@ -8,7 +8,7 @@
     {
       "name": "aikit",
       "description": "aiKit - an agentic method for Claude Code",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "source": "./",
       "author": {
         "name": "Adam Adhar"
