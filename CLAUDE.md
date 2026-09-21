@@ -56,13 +56,13 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
 
 ## Completion criterion
 
-No test suite. One command, from the repository root, carrying **nine gates**:
+No test suite. One command, from the repository root, carrying **ten gates**:
 
 ```bash
 scripts/doctor
 ```
 
-It prints `GATES_PASS` and exits 0 when all nine pass; it exits 1 otherwise,
+It prints `GATES_PASS` and exits 0 when all ten pass; it exits 1 otherwise,
 naming each gate that fell.
 
 | # | Gate |
@@ -76,8 +76,9 @@ naming each gate that fell.
 | 7 | no workspace fact left in the tree — five hard-coded brand strings |
 | 8 | `core.hooksPath` is `.githooks` |
 | 9 | `scripts/test-vaults` — the vault-resolution suite. `lib/vaults` runs at every session start, so its tests belong to the completion criterion rather than beside it |
+| 10 | every skill's directory name equals its frontmatter `name:` — the only detector of a directory-only rename, which leaves a working ghost alias |
 
-Gates 1-4 check form. Gates 5-7 check the target rather than the shape: they
+Gates 1-4 and 10 check form. Gates 5-7 check the target rather than the shape: they
 catch what no manifest validation can see. Gate 8 is **local** git config — it
 does not clone, push or inherit, so a fresh clone must arm it once:
 
@@ -86,7 +87,7 @@ git config core.hooksPath .githooks
 ```
 
 That is the whole point of gate 8, making the arming visible instead of assumed.
-Once armed, `.githooks/pre-commit` runs all nine before every commit, and a red
+Once armed, `.githooks/pre-commit` runs all ten before every commit, and a red
 gate refuses it.
 
 **What it does not prove, and says so itself** — `A NEW session is still
@@ -120,7 +121,7 @@ stays yours.
   sees the *directory* name — but the old frontmatter `name:` keeps resolving as
   a typed command, so a directory-only rename leaves a working ghost that passes
   every grep. **Always move the directory (or file) and the frontmatter `name:`
-  together.**
+  together.** Gate 10 of `scripts/doctor` is what makes that mechanical.
 - **A `tools:` list in an agent's frontmatter excludes MCP tools.** Measured:
   an agent restricted to `Glob, Grep, Read, Bash, Write, TodoWrite, Skill` sees
   no `mcp__*` tool at all, while one with tools `*` inherits every connected

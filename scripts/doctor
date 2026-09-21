@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The method's completion criterion, nine gates, no deploy, no network state.
+# The method's completion criterion, ten gates, no deploy, no network state.
 #
 # `claude plugin validate .` checks the marketplace manifest ONLY — it reads no
 # SKILL.md and no agents/*.md. The two --strict invocations are what gate the
@@ -69,7 +69,7 @@ gate_empty() {
   fi
 }
 
-SCOPE=(skills agents hooks bin lib scripts README.md CLAUDE.md SETUP.md)
+SCOPE=(skills agents hooks bin lib scripts README.md CLAUDE.md SETUP.md VOCABULARY.md)
 
 run "1 manifest"        claude plugin validate .
 run "2 skills (strict)" claude plugin validate ./skills --strict
@@ -137,8 +137,25 @@ if [ "$vaults_rc" != 0 ]; then
   echo "  ✗ FAILED"; fail=1
 fi
 
+# Gate 10 is the only mechanical detector of the ghost-alias trap. Renaming a
+# skill's DIRECTORY alone leaves the old frontmatter `name:` resolving as a
+# typed command: a working alias that passes every grep, pointing at a skill
+# nobody maintains. Measured in phase 3 of refonte-methode. The `fm>=2` guard
+# stops at the closing delimiter so a `name:` in the body cannot answer for the
+# frontmatter.
+echo "→ 10 skill dir == frontmatter name"
+for d in skills/*/; do
+  n=$(basename "$d")
+  [ -f "$d/SKILL.md" ] || { echo "    NO SKILL.md: $d"; fail=1; continue; }
+  fm=$(awk '/^---[[:space:]]*$/{fm++;next} fm==1 && /^name:/{sub(/^name:[[:space:]]*/,"");sub(/[[:space:]]+$/,"");print;exit} fm>=2{exit}' "$d/SKILL.md")
+  if [ "$n" != "$fm" ]; then
+    echo "    DIVERGENCE: dir=$n name=${fm:-<absent>}"
+    fail=1
+  fi
+done
+
 if [ "$fail" = 0 ]; then
-  echo "✓ nine gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
+  echo "✓ ten gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
 else
   echo "✗ one or more gates failed"
 fi
