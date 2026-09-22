@@ -185,18 +185,20 @@ implementation.
 |---|---|---|
 | `aikit:planner` | **opus** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are — a wrong plan is the most expensive failure this method has, so it gets the strongest available judgement. |
 | `aikit:reviewer` | **opus** | Same shape of judgement, applied to a diff instead of a spec — the review is the safety net every task passes through. |
-| `aikit:probe` | sonnet | A probe produces a finding, not code — bounded and low-stakes, closer to explorer's shape of work than to planning or review. |
+| `aikit:probe` | **sonnet**, escalating to **opus** after 2 recorded attempt failures | A probe produces a finding, not code — bounded and low-stakes, closer to explorer's shape of work than to planning or review — but it shares the implementer's ledger-triggered escalation, since two failed attempts mean the same thing for either role: the tier stopped being the bottleneck. |
 | `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded fix-round failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
 | `aikit:explorer` | sonnet | High-volume reading, low judgement. |
 | `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
 
 Each archetype carries this in its frontmatter, so dispatching by archetype
-name gets the right model without you specifying one. Opus is not
-escalation-only here: on a machine with no cheaper evaluative-tier model
-(this method originally ran planner/reviewer/probe on **fable**), opus also
-serves as planner and reviewer's standing default — the probe moved to sonnet
-instead, since a bounded investigation carries less downside than a bad plan
-or a missed review finding.
+name gets the right model without you specifying one. `aikit:planner` and
+`aikit:reviewer` have no rung above — they already run at the ceiling, so a
+failed pass is answered with more context, a narrower target, a probe, fresh
+eyes at the same tier, or a higher configured `effort`, never a different
+model (see `aikit:routing-failures`). `aikit:probe` and `aikit:implementer`
+both start below the ceiling, at sonnet, and both carry the same
+ledger-triggered escalation to opus — a bounded investigation and a task
+implementation carry the same argument for starting cheap.
 
 **When a task names a project's domain expert instead (`Agent: api-expert`),
 that agent carries its own model, and it is not necessarily the right tier.**
@@ -208,19 +210,21 @@ separate choices; picking the expert must never silently downgrade the tier.
 
 ### The consequence you have to plan around
 
-Implementation starts at sonnet, not the ceiling. That buys one genuine
-escalation — but it is not a per-task judgement call, and it does not replace
-changing the attempt. A retry must always change something real:
+Implementation starts at sonnet, not the ceiling — and so does a probe. That
+buys each of them one genuine escalation — but it is not a per-task judgement
+call, and it does not replace changing the attempt. A retry must always
+change something real:
 
 - more context in the brief (the interfaces, the constraint, the trap it hit);
 - a narrower target (split the task, dispatch the remainder separately);
 - a `aikit:probe` first, so the attempt stops guessing at an unknown.
 
 Re-dispatching the same brief to the same tier is not an attempt. It is a coin
-flip charged to your attempt budget. The model escalates to opus exactly once per
-task, automatically, when the ledger shows two failed attempts — see
-`aikit:routing-failures`. Escalating early, or as a way to skip changing the
-brief, defeats the point of fixing the tier at all.
+flip charged to your attempt budget. The model escalates to opus exactly once
+per task — for an implementer or a probe alike — automatically, when the
+ledger shows two failed attempts — see `aikit:routing-failures`. Escalating
+early, or as a way to skip changing the brief, defeats the point of fixing
+the tier at all.
 
 **Always pass the model explicitly when you dispatch anything that is not one
 of these archetypes.** An omitted model inherits your session's, which
