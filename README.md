@@ -110,7 +110,29 @@ artifact inside a repository: every file in a diff is production code by
 construction.
 
 **The reviewer is always a fresh instance** — never the agent that wrote the
-code. An author re-reads their intention, not their text.
+code. An author re-reads their intention, not their text. Its decision is
+binary: `REJECT` only for a functional bug, a spec/task violation, or a
+security regression — everything else (style, naming, structure) becomes a
+non-blocking suggestion, and still `APPROVE`s.
+
+**Dispatch in, report out — both hermetic.** The orchestrator's dispatch
+prompt carries four things and nothing else: the task's identity in
+`plan.md`, its file paths, its test command, at most one constraint. No
+pasted code, no session history. The implementer's reply back is three
+lines — `STATUS` / `FILES` / `TEST` — nothing else re-enters the
+orchestrator's context. There is no separate brief or report file; `plan.md`
+itself is the record.
+
+**Two attempts, then a human, never a bigger model automatically.** A task
+that still fails review after its second attempt stops the loop — no
+K-of-N escalation, no automatic model bump. The orchestrator asks, states
+what it tried, and waits.
+
+**A trap earns a line only once it's real.** `heuristics.md` (per-project
+and machine-global, capped at 50 lines each) is read in cascade before
+planning and written by the orchestrator alone, only at close, only for a
+trap this cycle actually hit — never a restatement of what was already
+known.
 
 **A perimeter is a process, not a subagent.** A subagent runs inside its
 caller's session: it cannot re-scope to another directory or load a project's

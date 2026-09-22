@@ -3,6 +3,40 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.15.0
+- **Dispatch orchestrateur -> implementer reduit a quatre choses** : la tache
+  (pointeur vers `plan.md`), les fichiers cibles, la commande de test, au
+  plus une contrainte. Plus d'extraction de brief separe, plus de fichier de
+  rapport persistant — l'implementer lit `plan.md` lui-meme avec ses propres
+  outils.
+- **Retour sous-agent hermetique en trois lignes** (`STATUS`/`FILES`/`TEST`).
+  Les quatre statuts `DONE`/`DONE_WITH_CONCERNS`/`BLOCKED`/`NEEDS_CONTEXT`
+  fusionnes en `SUCCESS`/`FAILURE` ; `plan.md` devient le seul registre entre
+  deux tentatives.
+- **Budget de tentatives ramene a deux, sans escalade automatique de
+  modele.** Au-dela, arbitrage humain plutot qu'une troisieme tentative ou
+  un modele plus cher choisi seul. `run-workspace`, `task-brief` et
+  `review-package` supprimes ; le diff part directement en dispatch
+  (`BASE..HEAD`, jamais `HEAD~1`, qui tronque une tache multi-commits).
+- **`aikit:reviewer` passe a sonnet par defaut** — opus reste une escalade
+  manuelle : audit securite, ou deux echecs consecutifs de revue.
+- **Decision de revue binaire `APPROVE`/`REJECT`.** `REJECT` reserve au bug
+  fonctionnel, a la violation de spec ou a la regression de securite ; le
+  reste (style, naming, micro-optimisation) devient une suggestion non
+  bloquante sous `### Non-blocking suggestions`.
+- **L'orchestrateur ne lit plus massivement le code pour specifier** —
+  delegation a `aikit:explorer` sur une question fermee, synthese bridee a
+  30-50 lignes, zero bloc de code brut.
+- **`heuristics.md`** (`vault/<project>/` et `vault/_global/`) : regles
+  empiriques capees a 50 lignes, lues en cascade avant le plan, ecrites
+  uniquement par l'orchestrateur a la cloture (phase 6), une puce
+  `Condition -> Action` par piege reellement rencontre.
+- `scripts/doctor` : sortie des portes en echec plafonnee (25 lignes pour
+  les portes 1-3, 30 pour le bloc deja filtre de la porte 9) au lieu d'un
+  dump brut.
+- L'etat d'avancement (plan + statut + cases a cocher) reste dans
+  `vault/<project>/<feature>/plan.md` — jamais dans le depot du projet.
+
 ## 0.13.0
 - **Les renommages : un mot, un sens.** 8 repertoires et 8 `name:` alignes sur
   `VOCABULARY.md` en un seul commit — `spike` -> `probe`, `sdd` -> `runs`, et
