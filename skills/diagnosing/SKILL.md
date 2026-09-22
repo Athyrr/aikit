@@ -47,15 +47,17 @@ A diagnostic that lives only in context is lost in full at the first reset —
 and eliminations are most of its value, since the next session will otherwise
 re-test what this one already ruled out.
 
-Open `<vault>/<project>/<feature>/diagnosis.md` **before investigating**, and
-update it after every hypothesis, not at the end:
+Open `<vault>/<project>/<feature>/diagnosis.md` **before investigating** —
+with stubs and placeholders, since the symptom section can't be filled until
+it's reproduced — and update it after every hypothesis, not at the end:
 
 ```markdown
 ---
 project: <project>
 feature: <slug>
-type: diagnostic
-status: en-cours
+phase: diagnostic
+status: agreed
+created: <today>
 updated: <today>
 ---
 
@@ -78,8 +80,8 @@ updated: <today>
 command is a fact the next session inherits; one eliminated in your head is a
 test it will run again.
 
-A diagnostic becomes a feature need **after** the root cause is known, never
-before. A fix designed from a symptom is a guess with a plan attached.
+A diagnostic becomes a feature need only after the root cause is known — see
+`aikit:understanding-need` for why a symptom alone can't found one.
 
 ## The Four Phases
 
