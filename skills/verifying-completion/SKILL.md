@@ -37,6 +37,39 @@ anyone else from looking.
 Dispatch `aikit:verifier` for this when you want the measurement separated from the
 agent that did the work.
 
+## Candidates — what survives the need
+
+A **candidate** is a real problem that nothing is waiting on. It is not a
+blocker (that routes `out`, see `aikit:routing-failures`) and it is not a review
+finding ruled at the round cap (that is **parked**, and it dies with the plan).
+
+They live at **project** level, durable:
+
+```
+<vault>/<project>/candidates.md
+```
+
+**Classify by subject, record the origin.** A need's own documents — `spec.md`,
+`runs/` — are built to stop being read: a `status: done`, then an `rm -rf`.
+Writing something there that has to survive is burying it.
+
+Every entry carries four things, and the fourth is what keeps the file alive:
+
+```markdown
+## <subject>
+
+- **Observed:** what actually happened, concretely.
+- **Where:** file, command, or the moment it showed up.
+- **Cost:** what handling it would take. An estimate, not a promise.
+- **Origin:** `from: <need-slug>, cycle N`
+```
+
+**The cost estimate is mandatory.** Without it two entries can never be weighed
+against each other, and a file that cannot be arbitrated stops being read.
+
+Harvesting them is part of phase 6, not a nicety: a candidate noticed during
+execution and never written down is a problem discovered twice.
+
 ## The Gate Function
 
 ```
@@ -57,6 +90,25 @@ Once step 5 passes, close the artifact: set `status: done` and `updated` in
 `vault/<project>/<feature>/spec.md`. It is the only thing that tells the vault
 this feature is finished; a passing test suite nobody recorded leaves it
 looking in flight.
+
+## Closing `status.md` — the happy path too
+
+`status.md` used to be written only when a cycle went **up**. On the happy path
+nobody wrote it, and the ledger was deleted at the end of the plan — so after a
+successful run there was neither a record nor a state.
+
+Phase 6 closes it. Before the verdict is reported:
+
+- `status:` becomes `done`, `phase:` becomes `verify`, `updated:` gets today's
+  date.
+- The verdict goes in verbatim — the command, and its output.
+- **What the verification does not cover** is named explicitly, as a list. Green
+  gates say nothing about a screen nobody looked at. A completion verdict that
+  hides its blind spots is worse than no verdict, because it is believed.
+- Harvested candidates are listed, with a pointer to `candidates.md`.
+
+Phase 1 initialises this file, `aikit:routing-failures` writes to it when a
+cycle goes up, and phase 6 closes it. It is never absent after a successful run.
 
 ## Common Failures
 
