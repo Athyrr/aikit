@@ -115,9 +115,11 @@ gets `derived: <child-slug>`; the child's `spec.md` and `status.md` get
 as an orphan nobody can explain.
 
 **Depth is capped at one.** A derived need may never itself derive. Anything
-discovered inside one goes **up**, to the parent — which is the direction that
-was available all along. The cap is what stops a single feature from spawning a
-tree of half-specified children, each blocked on the next.
+discovered inside one that **blocks its own progress** goes **up**, to the
+parent — the direction that was available all along, since it may not derive
+again. Anything that does not block its own progress is a candidate, same as
+anywhere else. The cap is what stops a single feature from spawning a tree of
+half-specified children, each blocked on the next.
 
 **The discriminant, answered in writing, in the ledger:**
 
@@ -155,7 +157,10 @@ rule does not hold for `Billing.PriceSink` (registry trap, example-service).
 **Open question for the human:** none / <the question>
 ```
 
-4. Re-enter at the named phase. Carry the report; do not re-derive it.
+4. Rewrite the top-level `## Re-enter at` heading in place so it matches this
+   cycle's **Re-enter at** line — the heading is the live pointer a resumed
+   session trusts; the `## Cycle N` sections are history.
+5. Re-enter at the named phase. Carry the report; do not re-derive it.
 
 ## Escalating to the human
 
