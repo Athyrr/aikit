@@ -197,7 +197,9 @@ plan — the one artifact where a mistake is paid by every task downstream — h
 only its author. This closes that.
 
 Handle its findings the way a task handles review findings: fix, or rule and
-record the ruling. Do not argue with it in your own head and move on.
+record the ruling in `status.md` — the ledger doesn't exist yet at this point,
+`status.md` is what a resumption can read. Do not argue with it in your own
+head and move on.
 
 **The spec gets no such guard.** Its authority comes from a human partner having
 signed it. A subagent re-reading an approved spec adds nothing and invites
