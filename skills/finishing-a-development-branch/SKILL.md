@@ -15,12 +15,17 @@ description: Use when implementation is complete, all tests pass, and you need t
 
 Run the project's full test suite (`npm test` / `cargo test` / `pytest` / `go test ./...`).
 
-**If tests fail**, report the failures and stop — the menu comes after a green suite:
+**If tests fail**, report the failures and stop — the menu comes after a green suite.
+Cap what reaches the orchestrator's context at **30 lines**, the same
+principle as `scripts/doctor`'s gate output: the failing test names and their
+assertion messages, never the full raw dump. Strip stack-trace frames beyond
+the first one pointing at project code — a full framework trace buys nothing
+a human didn't already know from the assertion line.
 
 ```
 Tests failing (<N> failures). Must fix before completing:
 
-[Show failures]
+[Failing test names + assertion messages, filtered stack frames, ≤30 lines]
 ```
 
 **If tests pass:** continue to Step 2.

@@ -127,6 +127,14 @@ what makes a task parallelisable.]
 **Agent:** [a domain expert from the project's registry file when the task
 falls in its area — e.g. `api-expert`. Omit for the generic `aikit:implementer`.]
 
+**Model:** [optional — `sonnet` or `opus`; omit for the default, `sonnet`. Only
+annotate `opus` when the task itself demands it — concurrent state or
+distributed locking, a math/crypto algorithm with strict formal invariants,
+or a cross-cutting refactor touching more than 4 modules with no prior
+integration tests. This is a proposal, not a decision: `aikit:executing-plans`
+confirms it with the human partner per task before dispatching on opus, and
+it never carries over to the next task.]
+
 **Files:**
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
@@ -200,28 +208,9 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-## The fresh-eye guard — before any execution dispatch
-
-Your Self-Review above is the author checking their own work. It catches
-placeholders and type drift. It cannot catch what you did not think of, because
-it is you thinking again.
-
-**Before the handoff, dispatch `plan-document-reviewer-prompt.md` (next to this
-skill) on a fresh `aikit:reviewer`, at its fixed model, sonnet.** It has not
-read the conversation that produced the plan, which is the entire point.
-
-Every diff in this method already faces a reviewer who did not write it. The
-plan — the one artifact where a mistake is paid by every task downstream — had
-only its author. This closes that.
-
-Handle its findings the way a task handles review findings: fix, or rule and
-record the ruling directly in `vault/<project>/<feature>/plan.md`, under a `## Rulings` section —
-that file is what a resumption reads. Do not argue with it in your own head
-and move on.
-
-**The spec gets no such guard.** Its authority comes from a human partner having
-signed it. A subagent re-reading an approved spec adds nothing and invites
-re-litigating a settled contract.
+Once Self-Review is clean, the plan goes straight to your human partner for
+validation — no intermediate reviewer subagent. Its authority comes from a
+human partner having signed it.
 
 ## Execution Handoff
 

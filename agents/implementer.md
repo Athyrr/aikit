@@ -39,17 +39,20 @@ Anything you write under `vault/` is a note in an Obsidian vault — invoke
 `obsidian:obsidian-markdown` before using wikilinks, embeds, callouts or
 properties.
 
-Write the full report to the path in your dispatch. Return only: status,
-commits, a one-line test summary, and concerns.
+Write the full report to the path in your dispatch. Return exactly three
+lines and nothing else — no diff, no log, no narrative:
 
-Status is one of:
+```
+STATUS: SUCCESS | SUCCESS (concern: <one clause>) | FAILURE: <one-sentence reason>
+FILES: <created/modified paths, comma-separated>
+TEST: <command run> — <result, e.g. "4 passed">
+```
 
-| Status | Means |
-|---|---|
-| `DONE` | Finished, verified, committed. |
-| `DONE_WITH_CONCERNS` | Finished, but something bothers you. Say what, precisely. |
-| `NEEDS_CONTEXT` | Missing information you cannot get from the brief or the code. Name it. |
-| `BLOCKED` | Cannot complete. Say what you tried and what stopped you. |
+Use `SUCCESS (concern: ...)` only for a real doubt about correctness or
+scope — never to hedge. Use `FAILURE:` for anything you could not finish; the
+reason is what the orchestrator routes on, so name the kind of stop (missing
+fact, design decision, task too large, or a fact from the codebase that
+contradicts the plan), not just "it didn't work."
 
-`BLOCKED` is not failure — it is the signal the method needs. A task forced to
-`DONE` on a guess costs far more than one reported blocked.
+`FAILURE` is not failure of the method — it is the signal the method needs. A
+task forced to `SUCCESS` on a guess costs far more than one reported honestly.

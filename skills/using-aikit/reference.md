@@ -34,15 +34,31 @@ one artifact phase 2 and 3 share.
 
 ## Why each archetype gets the model it gets
 
-Opus is `aikit:planner`'s standing default, since a wrong plan is the most
-expensive kind of failure this method has. `aikit:reviewer` runs at sonnet by
-default — a human partner escalates it to opus by hand, for a
-security-sensitive audit or after two consecutive fix attempts still fail
-review. `aikit:probe` and `aikit:implementer` are fixed at sonnet with no
-automatic escalation at all: two failed attempts stop the loop and hand the
-decision to a human, rather than buying a bigger model.
+`aikit:planner` runs at sonnet by default — a human partner escalates it to
+opus by hand, for a complex distributed-architecture redesign, at their
+explicit request; it is not a standing default the way it once was.
+`aikit:reviewer` also runs at sonnet by default — a human partner escalates
+it to opus by hand, for a security-sensitive audit or after two consecutive
+fix attempts still fail review. `aikit:probe` and `aikit:implementer` are
+fixed at sonnet with no automatic escalation at all: two failed attempts
+stop the loop and hand the decision to a human, rather than buying a bigger
+model.
 
 Full table with the rationale per role: `aikit:executing-plans`.
+
+## The task-review exemption
+
+A per-task `aikit:reviewer` dispatch is skipped when all three hold: the
+task's tests pass, its diff is 30 lines of code or fewer, and it changes no
+public API or shared contract. The orchestrator records the exemption on the
+task's checklist line in `vault/<project>/<feature>/plan.md` and moves to
+the next task without a reviewer round-trip.
+
+This narrows the per-task gate, not the method's only gate: the final
+whole-branch review is unconditional and sees every exempted task's diff for
+the first time. When the line count or the contract boundary is unclear,
+dispatch the reviewer — the exemption is for the unambiguous small case, not
+a default to reach for. Full protocol: `aikit:executing-plans`.
 
 ## The failure matrix, row by row
 

@@ -99,7 +99,7 @@ invoke `obsidian:obsidian-markdown` before writing its syntax,
 
 | Role | Model |
 |---|---|
-| `aikit:planner` | **opus** — evaluative work where a wrong judgement is the most expensive kind of failure: reading the spec against the codebase and deciding what the tasks are |
+| `aikit:planner` | **sonnet** by default — a human partner escalates it to opus manually, for a complex distributed-architecture redesign, at their explicit request |
 | `aikit:reviewer` | **sonnet** by default — a human partner dispatches it manually on opus for a security-sensitive audit, or after 2 consecutive fix attempts still fail review |
 | `aikit:probe`, `aikit:implementer` | **sonnet**, fixed — no automatic escalation; two failed attempts stop the loop and ask a human for arbitration (`aikit:routing-failures`) |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
@@ -107,6 +107,13 @@ invoke `obsidian:obsidian-markdown` before writing its syntax,
 Rationale per role: `reference.md`, next to this skill.
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.
+
+**Task-review exemption:** a task whose tests pass, whose diff is ≤30 lines,
+and that changes no public API or shared contract skips the per-task
+`aikit:reviewer` dispatch — the orchestrator moves straight to the next
+task. The final whole-branch review still covers it; the exemption removes
+only the per-task gate, never the branch-level one. See
+`aikit:executing-plans`.
 
 When a task names a domain expert (`Agent: api-expert`), dispatch it instead
 of the generic implementer, **overriding its model to opus** for implementation

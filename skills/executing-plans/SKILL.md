@@ -5,7 +5,7 @@ description: Use when executing implementation plans with independent tasks in t
 
 # Executing Plans
 
-Execute plan by dispatching a fresh implementer subagent per task, a task review (spec compliance + code quality) after each, and a broad whole-branch review at the end.
+Execute plan by dispatching a fresh implementer subagent per task, a task review (spec compliance + code quality) after each non-exempt task, and a broad whole-branch review at the end.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
@@ -244,6 +244,29 @@ any that finished without reporting. A bounded stretch keeps nearly
 all of a long wait's efficiency while guaranteeing a stuck or lost
 child is noticed within minutes, not at the end of the session.
 
+### Règle de routage dynamique du modèle par tâche
+
+Before assembling the dispatch payload, read the `Model:` field under the
+current task's heading in `vault/<project>/<feature>/plan.md`.
+
+- **Absent** → `sonnet`. Nothing to confirm.
+- **`Model: sonnet`** → apply it directly. Not an escalation.
+- **`Model: opus`** → this is the planner's **proposal**, not a decision. It
+  is only a legitimate proposal when the task itself meets one of the
+  criteria in `aikit:writing-plans`' Task Structure (concurrent state or
+  distributed locking; a math/crypto algorithm with strict formal
+  invariants; a cross-cutting refactor touching more than 4 modules with no
+  prior integration tests). Before dispatching **this task** on opus, name
+  the task and the criterion to your human partner and get their explicit
+  confirmation — the same rule that already governs escalating
+  `aikit:planner` or `aikit:reviewer` to opus: **no escalation to opus is
+  ever automatic in this method.** Without confirmation, dispatch on
+  `sonnet` and record the disagreement in `vault/<project>/<feature>/plan.md`.
+
+**No propagation.** A task's `Model:` field — confirmed opus, sonnet, or
+absent — governs that task alone. Task N+1 is read fresh from its own
+`Model:` field, or defaults to `sonnet`; it never inherits Task N's model.
+
 ### 1. Dispatch the implementer — minimalist protocol
 
 Record BASE (`git rev-parse HEAD`) before dispatching — the review diff and
@@ -310,7 +333,19 @@ correctness or scope gets addressed before review; an observational concern
 (e.g. "this file is getting large") is noted in `vault/<project>/<feature>/plan.md` and does
 not block review.
 
-Then get the diff directly — `git diff BASE..HEAD -U10` (BASE is the commit
+**Task-review exemption:** when the task's tests pass, its diff touches **30
+lines of code or fewer**, and it changes no public API or shared contract,
+you may skip the per-task `aikit:reviewer` dispatch and move straight to the
+next task. Record the exemption on the task's checklist line in
+`vault/<project>/<feature>/plan.md` (`- [x] Task N — review skipped: exemption,
+<line count> lines`) so the final whole-branch review can see which tasks it
+is seeing for the first time. **The final whole-branch review stays
+mandatory regardless** — it is the only gate an exempted task still passes
+through. When in doubt about the line count or the contract boundary,
+dispatch the reviewer; the exemption is for the obviously small case, not a
+default to reach for.
+
+Otherwise, get the diff directly — `git diff BASE..HEAD -U10` (BASE is the commit
 you recorded before dispatching the implementer, so this diff is exactly
 this task's attempt — never `HEAD~1`, which means "the single most recent
 commit" and silently drops everything earlier in a multi-commit task) — and

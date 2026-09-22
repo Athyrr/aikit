@@ -57,13 +57,16 @@ from outside the method's own review loop.
 
 ## Model selection
 
-Every role runs at one fixed model, and none escalates automatically.
-`aikit:implementer`, `aikit:probe`, `aikit:explorer` and `aikit:verifier` run
-sonnet; `aikit:planner` runs opus; `aikit:reviewer` runs sonnet by default,
-escalated to opus by hand — a security-sensitive audit, or two consecutive
-fix attempts that still fail review. When a task's second attempt also
-fails, `aikit:routing-failures` stops the loop and asks the human partner for
-arbitration instead of trying a third time or reaching for a bigger model.
+Every role runs on sonnet by default, and none escalates automatically.
+`aikit:implementer`, `aikit:probe`, `aikit:explorer` and `aikit:verifier` are
+fixed there with no escalation at all. `aikit:planner` and `aikit:reviewer`
+also default to sonnet, each with its own manual-only escalation to opus: the
+planner for a complex distributed-architecture redesign at the human
+partner's explicit request, the reviewer for a security-sensitive audit or
+two consecutive fix attempts that still fail review. When a task's second
+attempt also fails, `aikit:routing-failures` stops the loop and asks the
+human partner for arbitration instead of trying a third time or reaching for
+a bigger model.
 
 A **diagnostic** does not run these phases. `aikit:diagnosing` opens
 `diagnosis.md` before investigating and updates it after every hypothesis —
@@ -115,6 +118,13 @@ binary: `REJECT` only for a functional bug, a spec/task violation, or a
 security regression — everything else (style, naming, structure) becomes a
 non-blocking suggestion, and still `APPROVE`s.
 
+**Two redundant reviews were removed.** The plan no longer faces a dedicated
+plan-reviewer subagent before handoff — its self-review stays, but validation
+is the human partner's, directly. And a task whose tests pass, whose diff is
+≤30 lines, and that touches no public API or shared contract skips its
+per-task reviewer dispatch entirely; the final whole-branch review is what
+still catches it, unconditionally.
+
 **Dispatch in, report out — both hermetic.** The orchestrator's dispatch
 prompt carries four things and nothing else: the task's identity in
 `plan.md`, its file paths, its test command, at most one constraint. No
@@ -156,17 +166,16 @@ must be reported explicitly, not corrected silently.
 ## The archetypes
 
 `aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`,
-`aikit:verifier`, `aikit:probe` — roles in the process, each with a fixed
-model and no automatic escalation between models: **opus** for
-`aikit:planner` (evaluative work where a wrong judgement is the most
-expensive kind of failure), **sonnet** by default for everything else,
-including `aikit:reviewer` — a human partner dispatches it on opus by hand,
-for a security-sensitive audit or after two consecutive fix attempts still
-fail review. Two failed attempts at a task stop the loop and hand the
-decision to the human partner instead of buying a bigger model; see
-`aikit:routing-failures`. A project's domain agents are the other axis: when
-a plan task names one, it is dispatched instead of the generic
-`aikit:implementer`. The registry says which exist.
+`aikit:verifier`, `aikit:probe` — roles in the process, each on **sonnet** by
+default and no automatic escalation between models. `aikit:planner` and
+`aikit:reviewer` are the two a human partner can escalate to opus by hand:
+the planner for a complex distributed-architecture redesign at their
+explicit request, the reviewer for a security-sensitive audit or after two
+consecutive fix attempts still fail review. Two failed attempts at a task
+stop the loop and hand the decision to the human partner instead of buying a
+bigger model; see `aikit:routing-failures`. A project's domain agents are the
+other axis: when a plan task names one, it is dispatched instead of the
+generic `aikit:implementer`. The registry says which exist.
 
 ## Where things live
 
