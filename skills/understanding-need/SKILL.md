@@ -37,6 +37,13 @@ branch, the conventions to load, the domain agents, the completion criterion,
 and the traps. Working on a project whose registry file you have not read is a
 process error, not a shortcut.
 
+**A registry file is how an expert is declared, not the only way one exists.**
+Phase 3 is skipped only when no expert is *available* — never merely because no
+file names one. When the need falls in a domain the workspace has a standing
+expert for, dispatch it: for work on skills, agents, hooks and plugin
+manifests, that expert is `claude-code-guide`. Say which expert you used, and
+say so explicitly when you found none.
+
 A project the session table marks **absent d'ici** is registered but not cloned
 on this machine. Read its registry file as usual — then say so before planning
 anything that needs its code.
@@ -108,6 +115,34 @@ resumption:
 2. Read `spec.md` and `plan.md` if they exist.
 3. Re-enter at the phase the status file names. Do not restart from phase 1
    because restarting is easier than reading.
+
+**A new directory gets its `status.md` before anything else is written.** Not a
+placeholder — the three things a resumption needs and cannot re-derive:
+
+```markdown
+---
+project: <project>
+feature: <slug>
+phase: understand
+status: en-cours
+cycle: 1
+updated: <today>
+---
+
+# <feature> — cycle state
+
+## Re-enter at
+Phase 2 — nothing specified yet.
+```
+
+Phase 6 closes it; `aikit:routing-failures` writes to it when a cycle goes up.
+Between those, it is the only thing a resumed session can trust.
+
+**A need carrying `derived_from:` is a child cycle.** It runs the phases
+normally, with one restriction: it may not derive again. Depth is capped at 1,
+so any new behaviour decision discovered inside it goes **up**, to the parent
+named in its frontmatter — never sideways into a grandchild
+(`aikit:routing-failures`).
 
 A resumed feature whose `status.md` names an unresolved blocker resumes at
 `aikit:routing-failures`, not at execution.
