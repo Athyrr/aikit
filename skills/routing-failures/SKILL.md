@@ -126,9 +126,10 @@ tree of half-specified children, each blocked on the next.
 - **Yes** → derive now. The current cycle stops at the tasks that do not depend
   on the missing decision, exactly as an upward failure does.
 - **No** → it is a **candidate**, not a derived need. Write it to
-  `vault/<project>/candidates.md` and keep going. A candidate costs one line
-  now; a derived need costs a full cycle, and deriving one the current work did
-  not need is how a plan quietly doubles in size.
+  `vault/<project>/candidates.md` and keep going — see `aikit:verifying-completion`
+  for the required format (four fields, Cost mandatory). A candidate costs one
+  line now; a derived need costs a full cycle, and deriving one the current
+  work did not need is how a plan quietly doubles in size.
 
 The answer goes in the ledger because the question is easy to re-answer
 differently an hour later, under the pressure of wanting to be done.
