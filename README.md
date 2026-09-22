@@ -40,13 +40,12 @@ mid-flight, is **Heavy-Path**: the phase table below, in full.
 
 | # | Phase | Skill | Produces |
 |---|---|---|---|
-| 1 | Understand the need | `aikit:understanding-need` | the project, the route, the feature directory |
-| 2 | Specify | `aikit:designing-the-solution` → `aikit:writing-specs` | `spec.md` |
-| 2.5 | Impact | the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
-| 3 | Plan | `aikit:writing-plans` | `plan.md` |
-| 4 | Split into tasks | `aikit:writing-plans` | tasks, each declaring its files |
-| 5 | Execute | `aikit:executing-plans` | code, one task at a time |
-| 6 | Verify | `aikit:verifying-completion` | the registry's completion criterion, met |
+| 1 | Understand | `aikit:understanding-need` | the feature directory, `status.md` initialised |
+| 2 | Design | `aikit:designing-the-solution` → `aikit:writing-specs` | `spec.md` |
+| 3 | Assess | the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
+| 4 | Plan | `aikit:writing-plans` | `plan.md`, split into tasks that each declare their files |
+| 5 | Execute | `aikit:executing-plans` | code, one task at a time, and `runs/<plan>/` |
+| 6 | Verify | `aikit:verifying-completion` | the registry's completion criterion, met; `status.md` closed |
 
 Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:routing-failures` whenever
@@ -56,14 +55,18 @@ from outside the method's own review loop.
 
 ## Model cascading
 
-`aikit:implementer` defaults to **sonnet**. It escalates to **opus** exactly
-once per task — automatically, when `aikit:routing-failures` finds two failed
-fix-round attempts recorded in the ledger. It is never a per-task judgement
-call; see `aikit:routing-failures` and `aikit:executing-plans`.
+`aikit:implementer` and `aikit:probe` both default to **sonnet**. Each
+escalates to **opus** exactly once per task — automatically, when
+`aikit:routing-failures` finds two failed attempts recorded in the ledger. It
+is never a per-task judgement call; see `aikit:routing-failures` and
+`aikit:executing-plans`.
 
-A **diagnostic** does not run these phases. It produces a `diagnostic-N.md` and
-stops; if it concludes that code must change, that finding becomes the input of
-a phase 1 on the target project.
+A **diagnostic** does not run these phases. `aikit:diagnosing` opens
+`diagnosis.md` before investigating and updates it after every hypothesis —
+what's ruled out, what's still open, the root cause once known — so
+eliminations survive a reset instead of being re-tested. It becomes a feature
+need, entering phase 1, only once that root cause is known: a fix designed
+from a symptom is a guess with a plan attached.
 
 ## The patterns
 
@@ -88,10 +91,12 @@ registry routes each task to the *section* it needs, never the whole file.
 | Execution error | **down** — fix rounds, bounded by the attempt budget |
 | Unplanned dependency, task too large | **up** — finish the independents, re-plan |
 | Ambiguous or contradictory spec | **up** — stop, back to phase 2 with the human |
+| A behaviour decision is missing, current work isn't wrong | **out** — a derived need, its own directory and cycle |
 
-Going down is cheap, going up is expensive, and retrying a wrong plan is the
-most expensive of all. **The attempt budget is counted in the ledger, not in
-context** — a conversation that compacts forgets it is on its fourth attempt.
+Going down is cheap, going up is expensive, and going out costs a full cycle;
+retrying a wrong plan is still the most expensive of all. **The attempt budget
+is counted in the ledger, not in context** — a conversation that compacts
+forgets it is on its fourth attempt.
 
 **Drift is checked mechanically.** After each task, the files the task declared
 are confronted with `git diff --name-only`. This works *because* aiKit writes no
@@ -110,22 +115,29 @@ gets discarded.
 **Phases 1 and 2 are never delegated.** A subagent cannot ask a question, and a
 delegated spec is an invented spec.
 
+**Phase 2's interview works one frontier at a time.** `aikit:grilling` asks
+every question whose prerequisites are already settled, recommends an answer
+to each, and waits — a question that depends on one still open belongs to a
+later pass, not this one.
+
+**A brief can be wrong about a fact; it can't be wrong about a requirement.**
+When an implementer's brief contradicts what the code actually does, the code
+wins — but that yields only to a stated fact, never to scope creep, and it
+must be reported explicitly, not corrected silently.
+
 ## The archetypes
 
-`aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`, `aikit:verifier`, `aikit:probe` — roles in
-the process, each with a fixed model: **opus** for `aikit:planner` and
-`aikit:reviewer` (evaluative work where a wrong judgement is the most
-expensive kind of failure), **sonnet** for `aikit:implementer` (production
-work), `aikit:explorer`, `aikit:verifier` and `aikit:probe` (a probe is
-bounded and low-stakes — closer to explorer's shape of work than to planning
-or review). Implementation escalates to opus exactly once per
-task — automatically, when the ledger shows two failed fix-round attempts — never
-a per-task judgement call; see `aikit:routing-failures`. Opus is therefore not
-escalation-only: it also stands as planner and reviewer's default on a machine
-with no cheaper evaluative-tier model (this method originally ran that tier on
-**fable**). A project's domain agents are the other axis: when a plan task
-names one, it is dispatched instead of the generic `aikit:implementer`. The
-registry says which exist.
+`aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`,
+`aikit:verifier`, `aikit:probe` — roles in the process, each with a fixed
+model: **opus** for `aikit:planner` and `aikit:reviewer` (evaluative work
+where a wrong judgement is the most expensive kind of failure, and neither
+role has a rung above to escalate to), **sonnet** for `aikit:implementer`,
+`aikit:explorer`, `aikit:verifier` and `aikit:probe`. Both `aikit:implementer`
+and `aikit:probe` escalate to opus exactly once per task — automatically,
+when the ledger shows two failed attempts — never a per-task judgement call;
+see `aikit:routing-failures`. A project's domain agents are the other axis:
+when a plan task names one, it is dispatched instead of the generic
+`aikit:implementer`. The registry says which exist.
 
 ## Where things live
 
@@ -138,16 +150,19 @@ the method itself.
   hooks/                      the SessionStart injection
   skills/                     the skills
   agents/                     the six archetypes
+  VOCABULARY.md               one word, one meaning — read before naming anything
   scripts/                    doctor and deploy — NOT on the Bash tool's PATH
   bin/                        ezy and scoped — these ARE on it
 
 ~/.config/aikit/vaults         which vaults this machine knows, and where
 <vault>/                      a clone of a vault (an Obsidian vault)
   projects/                   the registry: one file per project
-  <project>/<feature>/{spec,plan,ledger,diagnostic-N}.md   spec carries its own Impact section
+  <project>/candidates.md     real problems nothing is waiting on — survives any one need
+  <project>/<feature>/        spec.md, plan.md, status.md, diagnosis.md — spec carries its own Impact section
+    runs/<plan>/               the ledger, probe findings, task reports
 <anywhere>/                   the project repositories, found by scanning
 
-~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS after task 17
+~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS
 ```
 
 The hook resolves projects from the vaults declared in
@@ -164,8 +179,8 @@ in a project never shows a method artifact.
 On any machine, once, at user scope:
 
 ```bash
-claude plugin marketplace add git@github.com:Athyrr/aikit.git   # this remote: task 15
-claude plugin install aikit@aikit-marketplace --scope user      # this marketplace: task 17
+claude plugin marketplace add git@github.com:Athyrr/aikit.git
+claude plugin install aikit@aikit-marketplace --scope user
 ```
 
 Register the marketplace over **SSH**, and install in **one scope only** — two
@@ -194,7 +209,7 @@ reports "already at the latest version" and the stale copy keeps running.
 scripts/deploy [patch|minor|major] "message"
 ```
 
-from the clone bumps both manifests, runs the nine gates, commits, pushes,
+from the clone bumps both manifests, runs the ten gates, commits, pushes,
 refreshes the marketplace and updates the install. **Takes effect in a new
 session.** Run `scripts/doctor` any time for the gates without deploying, and
 `claude --plugin-dir .` to load the working tree into one session only.
@@ -209,6 +224,6 @@ session with no deploy.
 - renamed throughout (`aikit:` prefix), single harness (Claude Code only)
 - artifacts moved out of the repositories into `vault/`
 - per-vault registry injected at session start, from declared vaults
-- failure-direction rule (down = probe/fix rounds, up = re-plan/re-spec)
+- failure-direction rule (down = probe/fix rounds, up = re-plan/re-spec, out = derived need)
 - attempt budget written to the ledger, not held in context
 - multi-harness ports, CI, upstream docs and the remote brand image removed
