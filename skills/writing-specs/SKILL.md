@@ -102,8 +102,9 @@ that disagrees with it is disagreeing with a section of its own spec, not a
 detached document that can drift out of sync.
 
 The expert answers what a document cannot: a judgement on **this** spec. Skip
-phase 3 only where the registry lists no domain expert. Then continue to
-`aikit:writing-plans`.
+phase 3 only where no domain expert is *available* — check both the registry
+and any standing workspace expert (`aikit:understanding-need` names how)
+before concluding none exists. Then continue to `aikit:writing-plans`.
 
 ## Red flags
 

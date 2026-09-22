@@ -117,14 +117,14 @@ resumption:
    because restarting is easier than reading.
 
 **A new directory gets its `status.md` before anything else is written.** Not a
-placeholder — the three things a resumption needs and cannot re-derive:
+placeholder — what a resumption needs and cannot re-derive:
 
 ```markdown
 ---
 project: <project>
 feature: <slug>
 phase: understand
-status: en-cours
+status: draft
 cycle: 1
 updated: <today>
 ---
@@ -135,13 +135,20 @@ updated: <today>
 Phase 2 — nothing specified yet.
 ```
 
+The top-level `## Re-enter at` heading is rewritten in place on every cycle
+transition — it always reflects the *current* re-entry point. The `## Cycle N`
+sections `aikit:routing-failures` appends below it are history, not the live
+pointer: after an upward cycle, trust the heading, not the most recent section.
+
 Phase 6 closes it; `aikit:routing-failures` writes to it when a cycle goes up.
 Between those, it is the only thing a resumed session can trust.
 
 **A need carrying `derived_from:` is a child cycle.** It runs the phases
 normally, with one restriction: it may not derive again. Depth is capped at 1,
-so any new behaviour decision discovered inside it goes **up**, to the parent
-named in its frontmatter — never sideways into a grandchild
+so anything discovered inside it that would otherwise derive — because the
+current cycle needs the answer to continue — goes **up** instead, to the
+parent named in its frontmatter, never sideways into a grandchild. Anything
+that does not block its own progress is a candidate, same as anywhere else
 (`aikit:routing-failures`).
 
 A resumed feature whose `status.md` names an unresolved blocker resumes at
