@@ -63,6 +63,13 @@ only way to tell whether the spec describes the code you are looking at. On a
 project with no repository, write `base_sha: n/a (no repository)` — say it
 explicitly rather than leaving it blank.
 
+A **derived need** carries its lineage in the same frontmatter, in both
+directions: the parent's `status.md` gets `derived: <child-slug>`, and the
+child's `spec.md` and `status.md` get `derived_from: <parent-slug>`. Depth is
+capped at one — a spec carrying `derived_from:` may never also carry `derived:`.
+If you are about to write both, the problem does not derive again: it goes **up**
+to the parent, via `aikit:routing-failures`.
+
 The wikilinks cost nothing and make the artifact directory navigable as a vault.
 
 ## Required content
@@ -70,7 +77,7 @@ The wikilinks cost nothing and make the artifact directory navigable as a vault.
 - **Problem** — what is wrong or missing today, in your human partner's terms.
 - **Goal** — one sentence. What is true when this is done.
 - **Scope** — what is in. Then **explicitly** what is out. The out-list is what
-  stops phase 3 from planning work nobody asked for.
+  stops phase 4 from planning work nobody asked for.
 - **Behaviour** — what the system does, observably. Not how.
 - **Constraints** — versions, naming rules, exact strings, platform limits.
   Copy exact values verbatim; a plan that paraphrases a constraint loses it.
@@ -85,7 +92,7 @@ The wikilinks cost nothing and make the artifact directory navigable as a vault.
 A spec with an open question is not agreed. Either resolve it with the human or
 mark the affected scope out-of-scope for this pass.
 
-Set `status: agreed`, then run **phase 2.5** before planning: dispatch the
+Set `status: agreed`, then run **phase 3** before planning: dispatch the
 project's domain expert consultatively — *"here is the spec: which files does
 it touch, what are the traps, how would you cut it? Write no code."* — and have
 it append the answer as an `## Impact` section at the end of the same
@@ -95,7 +102,7 @@ that disagrees with it is disagreeing with a section of its own spec, not a
 detached document that can drift out of sync.
 
 The expert answers what a document cannot: a judgement on **this** spec. Skip
-2.5 only where the registry lists no domain expert. Then continue to
+phase 3 only where the registry lists no domain expert. Then continue to
 `aikit:writing-plans`.
 
 ## Red flags
