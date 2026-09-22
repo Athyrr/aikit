@@ -17,7 +17,7 @@ description: Use when a task fails, stalls, or surprises you - decides whether t
 | Execution error — red test, broken build, wrong output | **down** | The fix rounds, bounded by the attempt budget. |
 | Unplanned dependency; files outside the task's declared set; task too large | **up** | Finish the independent tasks, then re-split or re-plan. |
 | Spec ambiguous, contradictory, or silent on the case at hand | **up** | Stop now. Back to phase 2, with the human. |
-| **A behaviour decision is missing, and the current work is not wrong** | **out** | **A derived need.** |
+| A behaviour decision is missing, and the current work is not wrong | **out** | A derived need — its own directory, spec and cycle. |
 
 Going down is cheap. Going up is expensive. **Retrying a wrong plan is the most
 expensive thing of all** — it burns the attempt budget, fills context, and
@@ -82,9 +82,25 @@ probe — it is an unplanned dependency. **Go up.**
   once a role is already at its ceiling.
 - After the attempt budget: escalate. Do not extend it silently.
 
+## The attempt budget lives in the ledger, not in your head
+
+An agent that retries does not reliably remember it is on attempt three;
+compaction erases that first. **An attempt budget that is not written down
+does not exist.**
+
+Write, in the plan's ledger, before each attempt:
+
+```
+Task 4: attempt 2/3 — reviewer flagged the consumer name; re-dispatching with the naming table in the brief
+```
+
+Before starting any attempt, read the ledger's lines for this task. If you find
+attempt 3 already recorded, the attempt budget is spent — escalate, even if you
+have no memory of the earlier attempts.
+
 ## Out — the derived need
 
-Some problems answer to neither direction. A probe is useless — **no fact
+Some problems fit neither direction. A probe is useless — **no fact
 resolves it**, because what is missing is a decision about what the system
 should do. And going up would throw away correct code — **the current work is
 not wrong**, it simply ran into a question nobody has answered yet.
@@ -116,22 +132,6 @@ tree of half-specified children, each blocked on the next.
 
 The answer goes in the ledger because the question is easy to re-answer
 differently an hour later, under the pressure of wanting to be done.
-
-## The attempt budget lives in the ledger, not in your head
-
-An agent that retries does not reliably remember it is on attempt three;
-compaction erases that first. **An attempt budget that is not written down
-does not exist.**
-
-Write, in the plan's ledger, before each attempt:
-
-```
-Task 4: attempt 2/3 — reviewer flagged the consumer name; re-dispatching with the naming table in the brief
-```
-
-Before starting any attempt, read the ledger's lines for this task. If you find
-attempt 3 already recorded, the attempt budget is spent — escalate, even if you
-have no memory of the earlier attempts.
 
 ## Up — the cycle report
 
