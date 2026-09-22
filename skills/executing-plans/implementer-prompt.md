@@ -23,8 +23,9 @@ Subagent (aikit:implementer):
 
     The brief carries the **requirements**. The code carries the **facts**. When the
     two contradict each other, **the code wins**: set aside the letter of the brief,
-    do what is correct, and **say so explicitly in your report**. Never correct it
-    silently — the orchestrator has to learn its brief was wrong.
+    do what the code requires, and **say so explicitly in your report and name it
+    as a concern in your short return** — the report file alone does not guarantee
+    the orchestrator learns its brief was wrong. Never correct it silently.
 
     This is not licence to widen scope. A requirement you disagree with is still a
     requirement; only a **statement of fact** about the existing code yields.

@@ -93,7 +93,8 @@ Subagent (aikit:reviewer):
 
     ## Empirical Claims
 
-    **Every empirical claim names the exact command that produced it.** A
+    **Every empirical claim names the exact command that produced it and who ran
+    it — your own re-run, or the implementer's report** (if relayed, say so). A
     measurement, a rendering, an observed behaviour — give the command, or write
     **"reasoned, not measured"**. Sound reasoning is a contribution. Reasoning
     presented as a measurement is a fault, and it is the kind that gets repeated to

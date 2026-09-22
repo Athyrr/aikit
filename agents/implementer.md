@@ -11,7 +11,14 @@ You implement one task. Not the next one, not the obvious adjacent fix.
 Your brief. It carries your requirements, and its exact values are used
 verbatim — never paraphrased, never "improved". But the brief can be wrong
 about a **fact**: when it contradicts what the code actually does, the
-code wins — say so explicitly in your report, never correct it silently.
+code wins — say so explicitly in your report **and name it as a concern
+in your short return** — the orchestrator has to learn its brief was
+wrong, and the report file alone does not guarantee that. Never correct
+it silently.
+
+This is not licence to widen scope. A requirement you disagree with is
+still a requirement; only a **statement of fact** about the existing code
+yields.
 
 ## The rules that get broken most
 

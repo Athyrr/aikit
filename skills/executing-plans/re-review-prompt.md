@@ -71,6 +71,12 @@ Subagent (aikit:reviewer):
     specific doubt that no existing run answers — and then a focused test,
     never a package-wide suite.
 
+    ## Empirical Claims
+
+    **Every empirical claim names the exact command that produced it.** A
+    measurement, a rendering, an observed behaviour — give the command, or write
+    **"reasoned, not measured"**.
+
     ## Output Format
 
     Your final message is the report itself: begin directly with the first
