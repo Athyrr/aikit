@@ -8,6 +8,24 @@ tools, the context window, the model calls, the permission system and the
 hooks. aiKit ships prompts, agent definitions and one hook that the harness
 consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
 
+## Règle d'aiguillage d'exécution obligatoire
+
+- **FAST-PATH** (session principale directe, sans `vault/<project>/<feature>/plan.md`, sans
+  sous-agent) — condition stricte : **≤ 2 fichiers modifiés ET aucun
+  changement d'API publique/schéma de données**. Action : exécution
+  immédiate du code + test ciblé. Interdiction de générer de la
+  documentation intermédiaire.
+- **HEAVY-PATH** (Subagent-Driven Development) — condition : refactorings
+  multi-fichiers, nouvelles fonctionnalités, rupture d'API. Action :
+  spécification minimale, découpage en micro-tâches, délégation à des
+  sous-agents jetables — la table des phases dans `skills/using-aikit/SKILL.md`.
+
+`aikit:understanding-need` fait cet arbitrage à la phase 1 et le prouve :
+`git diff --name-only` pour le Fast-Path, `aikit:checking-plan-drift` par
+tâche pour le Heavy-Path. C'est la même règle que documentent
+`skills/using-aikit/SKILL.md` et `skills/using-aikit/reference.md` — ce
+bloc en est la formulation impérative, pas une règle séparée.
+
 ## Rules
 
 - **Skills are prompts, not documentation.** Every line costs context in a
@@ -26,6 +44,13 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
   carries **no** `tools:` list, deliberately — that is the only way to reach a
   project's MCP tools — so it inherits everything.
 - Use `aikit:writing-skills` when creating or editing a skill.
+- **Heavy-Path execution tracks its plan and status in one file,
+  `vault/<project>/<feature>/plan.md`** — no separate ledger, no
+  `status.md`, no review-package file. aiKit writes nothing inside the
+  project repository itself. Task state is standard GitHub checkboxes. A
+  task whose second fix attempt still fails review stops the loop and asks
+  the human partner for arbitration, instead of escalating rounds or models
+  automatically.
 - **`VOCABULARY.md` is the authority on every term the method uses.** Read it
   before naming anything — a skill, an agent, a phase, an artifact. It is a
   file, not a skill: read it by path, do not invoke it.

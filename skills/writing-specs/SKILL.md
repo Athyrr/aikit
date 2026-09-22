@@ -64,8 +64,8 @@ project with no repository, write `base_sha: n/a (no repository)` — say it
 explicitly rather than leaving it blank.
 
 A **derived need** carries its lineage in the same frontmatter, in both
-directions: the parent's `status.md` gets `derived: <child-slug>`, and the
-child's `spec.md` and `status.md` get `derived_from: <parent-slug>`. Depth is
+directions: the parent's `vault/<project>/<feature>/plan.md` gets `derived: <child-slug>`, and
+the child's `spec.md` and `vault/<project>/<feature>/plan.md` get `derived_from: <parent-slug>`. Depth is
 capped at one — a spec carrying `derived_from:` may never also carry `derived:`.
 If you are about to write both, the problem does not derive again: it goes **up**
 to the parent, via `aikit:routing-failures`.

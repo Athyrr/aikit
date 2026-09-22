@@ -20,14 +20,16 @@ Subagent (aikit:reviewer):
 
     ## What Was Requested
 
-    Read the task brief: [BRIEF_FILE]
+    Read `vault/<project>/<feature>/plan.md`, Task N's section — that is your requirements.
 
     Global constraints from the spec/design that bind this task:
     [GLOBAL_CONSTRAINTS]
 
     ## What the Implementer Claims They Built
 
-    Read the implementer's report: [REPORT_FILE]
+    Task N's checklist line in `vault/<project>/<feature>/plan.md` carries the implementer's
+    own three-line return (STATUS / FILES / TEST) — that is the whole
+    claim. There is no separate report file.
 
     ## Diff Under Review
 
@@ -63,33 +65,22 @@ Subagent (aikit:reviewer):
 
     ## Do Not Trust the Report
 
-    Treat the implementer's report as unverified claims about the code. It
-    may be incomplete, inaccurate, or optimistic. Verify the claims against
-    the diff. Design rationales in the report are claims too: "left it per
-    YAGNI," "kept it simple deliberately," or any other justification is the
-    implementer grading their own work. Judge the code on its merits — a
-    stated rationale never downgrades a finding's severity.
+    Treat the `TEST:` line as an unverified claim about the code. It may be
+    incomplete, inaccurate, or optimistic. Verify it against the diff.
 
     ## Tests
 
-    The implementer already ran the tests and reported results with TDD
-    evidence for exactly this code. Do not re-run the suite to confirm their
-    report. Run a test only when reading the code raises a specific doubt
-    that no existing run answers — and then a focused test, never a
-    package-wide suite, race detector run, or repeated/high-count loop. If
-    heavy validation seems warranted, recommend it in your report instead of
-    running it. If you cannot run commands in this environment, name the
-    test you would run.
+    The `TEST:` line names the command the implementer ran and its result.
+    Do not re-run the suite to confirm it. Run a test only when reading the
+    code raises a specific doubt that no existing run answers — and then a
+    focused test, never a package-wide suite, race detector run, or
+    repeated/high-count loop. If heavy validation seems warranted, recommend
+    it in your report instead of running it. If you cannot run commands in
+    this environment, name the test you would run.
 
-    Warnings or other noise in the implementer's reported test output are
-    findings — test output should be pristine.
-
-    Evidence you cannot see is not evidence that doesn't exist. If the
-    report or its test evidence looks truncated, or you cannot locate the
-    results it claims, re-read the file at its stated path — and if it is
-    genuinely missing or garbled, report that as a gap for the orchestrator.
-    Re-running the suite to regenerate what you failed to read is not
-    verification; illegibility of the evidence is not invalidation of it.
+    A `TEST:` line that names a command but no clear pass/result, or that
+    only ran a subset of what the diff touches, is itself a finding — the
+    claim doesn't carry what it needs to.
 
     ## Empirical Claims
 
@@ -151,20 +142,32 @@ Subagent (aikit:reviewer):
     file:line, or a check you ran — no preamble, no process narration,
     no closing summary.
 
-    ## Calibration
+    ## Calibration — binary decision, non-blocking suggestions
 
-    Categorize issues by actual severity. Not everything is Critical.
-    Important means this task cannot be trusted until it is fixed: incorrect
-    or fragile behavior, a missed requirement, or maintainability damage you
-    would block a merge over — verbatim duplication of a logic block,
-    swallowed errors, tests that assert nothing. "Coverage could be broader"
-    and polish suggestions are Minor.
-    If the plan or brief explicitly mandates something this rubric calls a
-    defect (a test that asserts nothing, verbatim duplication of a logic
-    block), that IS a finding — report it as Important, labeled
-    plan-mandated. The plan's authorship does not grade its own work; the
-    human decides.
-    Acknowledge what was done well before listing issues — accurate praise
+    The decision is binary, and the bar for `REJECT` is narrow:
+
+    - **`REJECT`** — only for a **functional bug** (wrong behaviour, crash,
+      wrong output), a **spec/task violation** (a requirement missing,
+      misunderstood, or claimed without being real — including a test that
+      asserts nothing, which fails the task's own "write tests"
+      requirement), or a **security regression**.
+    - **`APPROVE`** — as soon as the task is fulfilled and the tests pass.
+      Everything else you notice — style, naming, micro-optimization,
+      duplication or structure that costs nothing functionally, coverage
+      that could be broader — does **not** block. Put it under
+      `### Non-blocking suggestions` instead, one checkbox per item, and
+      still `APPROVE`.
+
+    An error silently swallowed in a way that could hide a real failure is a
+    functional bug, not a style note — judge by whether it can cause wrong
+    behaviour to go unnoticed, not by how the code looks.
+
+    If the plan explicitly mandates something that would otherwise be a
+    `REJECT` (a test that asserts nothing, say), that is still a finding —
+    report it, labeled plan-mandated, and let the orchestrator rule on it.
+    The plan's authorship does not grade its own work.
+
+    Acknowledge what was done well before listing anything — accurate praise
     helps the implementer trust the rest of the feedback.
 
     ## Output Format
@@ -180,37 +183,34 @@ Subagent (aikit:reviewer):
     ### Strengths
     [What's well done? Be specific.]
 
-    ### Issues
+    ### Blocking issues (only if REJECT)
 
-    #### Critical (Must Fix)
-    #### Important (Should Fix)
-    #### Minor (Nice to Have)
+    file:line, what's wrong, why it is a functional bug / spec violation /
+    security regression — not a style preference.
 
-    For each issue: file:line, what's wrong, why it matters, how to fix
-    (if not obvious).
+    ### Non-blocking suggestions
 
-    ### Assessment
+    - [ ] file:line — the suggestion, one line
 
-    **Task quality:** [Approved | Needs fixes]
+    ### Verdict
+
+    **`APPROVE` | `REJECT`**
 
     **Reasoning:** [1-2 sentence technical assessment]
 ```
 
 **Placeholders:**
 - `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection
-- `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
-  prints the path; same file the implementer worked from)
 - `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from
   the plan's Global Constraints section or the spec: exact values, formats,
   and stated relationships between components (not process rules — those
   are already in this template)
-- `[REPORT_FILE]` — REQUIRED: the file the implementer wrote its detailed
-  report to
 - `[BASE_SHA]` — commit before this task
 - `[HEAD_SHA]` — current commit
-- `[DIFF_FILE]` — REQUIRED: the path the orchestrator wrote the review
-  package to (`scripts/review-package PLAN_FILE BASE HEAD` prints the unique
-  path it wrote; the package never enters the orchestrator's context)
+- `[DIFF_FILE]` — REQUIRED: the diff for this range, captured directly
+  (`git diff BASE..HEAD -U10`) to a scratch file so it never enters the
+  orchestrator's own context — there is no separate review-package artifact
 
-**Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
-(Critical/Important/Minor), Task quality verdict
+**Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, blocking
+issues if any, non-blocking suggestions, and the binary `APPROVE`/`REJECT`
+verdict.

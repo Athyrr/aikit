@@ -13,6 +13,12 @@
 # and the agreement of the two launchers. Resolution runs at every session
 # start, so its tests belong to the completion criterion rather than beside it.
 #
+# A failing gate prints its own output, capped: `run` at 25 lines, gate 9's
+# already-filtered failure block at 30 — both name how many lines they cut
+# and what to rerun directly for the rest. A session reading this output is
+# not the same as a person scrolling a terminal; an uncapped gate used to be
+# able to spend hundreds of lines on one failure.
+#
 # Usage: scripts/doctor
 set -uo pipefail
 
@@ -21,7 +27,22 @@ cd "$(dirname "$0")/.." || {
   exit 1
 }
 fail=0
-run() { echo "→ $1"; shift; "$@" || { echo "  ✗ FAILED"; fail=1; }; }
+# Captures the command's own output so a failure prints only its head, not
+# a raw unbounded dump — chantier 5: cap terminal-injected output at ~25
+# lines and point at the command for the rest.
+run() {
+  local label=$1; shift
+  echo "→ $label"
+  local out rc
+  out=$("$@" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ]; then
+    local total; total=$(printf '%s\n' "$out" | wc -l)
+    printf '%s\n' "$out" | head -n 25 | sed 's/^/    /'
+    [ "$total" -gt 25 ] && echo "    … $((total - 25)) more line(s) — rerun '$*' directly for the rest"
+    echo "  ✗ FAILED"
+    fail=1
+  fi
+}
 
 # Validate JSON on stdin. node first: it is a hard dependency of the harness
 # itself, so it is never absent, whereas `python3` can be on PATH and still
@@ -130,7 +151,12 @@ if [ "$vaults_rc" != 0 ]; then
   # is nothing at all, say THAT: a red gate with an empty block teaches nobody.
   [ -n "$vaults_red" ] || vaults_red="$vaults_out"
   if [ -n "$vaults_red" ]; then
-    printf '%s\n' "$vaults_red" | sed 's/^/    /'
+    # A second cap on top of the hold-buffer above: that filter already
+    # keeps only the failing blocks, but one assertion's `obtenu:` can still
+    # run long. 30 lines, then point at the command for the rest — chantier 5.
+    vaults_red_total=$(printf '%s\n' "$vaults_red" | wc -l)
+    printf '%s\n' "$vaults_red" | head -n 30 | sed 's/^/    /'
+    [ "$vaults_red_total" -gt 30 ] && echo "    … $((vaults_red_total - 30)) more line(s) — run scripts/test-vaults directly for the rest"
   else
     echo "    the suite printed nothing; it exited $vaults_rc before any verdict"
   fi

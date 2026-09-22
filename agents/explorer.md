@@ -26,8 +26,11 @@ properties.
 
 Write the full findings to the given file. Return only:
 
-- the answer, in three lines or fewer;
-- the two or three references that carry it;
+- the answer — three lines or fewer for a simple lookup; up to 30-50 lines
+  of concise bullets for a genuinely complex architecture question, and
+  never more. Zero raw code blocks either way: point at `file:line`, don't
+  paste the file;
+- the references that carry it;
 - anything that contradicts the premise of the question.
 
 That last one matters most. If you were asked "where is the carrier filter

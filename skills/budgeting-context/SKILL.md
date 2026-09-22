@@ -30,11 +30,11 @@ it by pre-loading "just in case".**
 | Phase | Context | Loads | Must NOT load |
 |---|---|---|---|
 | 1 Understand | orchestrator | the project's registry file (~500) | code, project docs |
-| 2 Specify | orchestrator + `aikit:explorer` | explorer reads code and docs, returns a finding | orchestrator reads nothing itself |
+| 2 Specify | orchestrator + `aikit:explorer` | explorer reads code and docs against one closed question, returns a 30-50 line factual synthesis, no raw code | orchestrator reads nothing itself beyond a light check (`ls`, `git log`) |
 | 3 Assess | the project's domain expert | its own prompt + the docs of its area | orchestrator receives the `## Impact` section appended to `spec.md`, nothing else |
-| 4 Plan | `aikit:planner` | spec (with its Impact section), the doc **slices** the registry routes to | the whole doc; the orchestrator does not re-read |
-| 5 Execute | one `aikit:implementer` per task | its brief, and only its brief | the plan, other tasks, session history |
-| 5b Review | `aikit:reviewer` | the diff and the brief it must satisfy | the conversation |
+| 4 Plan | `aikit:planner` | spec (with its Impact section), the doc **slices** the registry routes to, `_global/heuristics.md` and `<project>/heuristics.md` (both capped at 50 lines) | the whole doc; the orchestrator does not re-read |
+| 5 Execute | one `aikit:implementer` per task | Task N's section in `vault/<project>/<feature>/plan.md`, and only that section | the rest of the plan, other tasks, session history |
+| 5b Review | `aikit:reviewer` | the diff and Task N's section it must satisfy | the conversation |
 | 6 Verify | `aikit:verifier` | the registry's command and its output | anything else |
 | Diagnostic | a scoped process | its MCP servers and routing skills | the orchestrator loads none of it |
 
@@ -44,8 +44,7 @@ At any moment it should hold roughly:
 
 ```
 resident (preamble + registry)   ~4k
-the plan                         ~2-4k
-the ledger / status               ~1k
+`vault/<project>/<feature>/plan.md` (plan + status)  ~3-5k
 ────────────────────────────────────
                                  ~10k
 ```
@@ -53,6 +52,26 @@ the ledger / status               ~1k
 **If the orchestrator is above that, something was read in the wrong place.**
 The usual culprits: a project doc opened "to check something", a subagent's
 full report pasted instead of its path, a diff read inline.
+
+## Running commands whose output might be large
+
+**Never run a test or build command without filtering stdout/stderr when the
+output could exceed ~30 lines.** A full suite's cascade of red is exactly the
+kind of raw dump this skill exists to prevent — it costs the same whether it
+came from a file you opened or a command you ran. Before running one:
+
+- Prefer the tool's own stop-on-first-failure flag (`--bail 1`, `-x`,
+  `--tb=short`, or the project's equivalent) over letting a whole suite run
+  to completion and cascade.
+- If the command has no such flag, pipe it: `| head -n 30` for the shape of
+  the failure, `| tail -n 30` when the cause is at the end, or `| grep -E
+  'FAIL|Error'` when the signal is sparse in a lot of noise.
+- Re-run narrower — one file, one test name — once the first failure is
+  visible, instead of re-reading the same wide output again.
+
+This applies inside a subagent's own context too, not only to what an
+orchestrator reads back: a disposable context still pays for every line it
+generates, even if it distills the result before reporting.
 
 ## Reading a large document
 
@@ -68,8 +87,10 @@ If the section you need is not in the routing table, read the table of contents
 first, then the section. Never the file.
 
 The registry's **Load before working** table routes to the project's docs *and*
-to the vault's own artifacts — a finished chantier's `status.md` is often the
-cheapest answer to "how does this work and why is it like that".
+to the vault's own artifacts — a finished chantier's `spec.md`, still in the
+vault after `vault/<project>/<feature>/plan.md` is gone, is often the cheapest answer to "how
+does this work and why is it like that". Its history lives in `git log`
+once the feature has merged.
 
 ## Handing work over
 

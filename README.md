@@ -31,21 +31,23 @@ stub is injected — the routing step simply has nothing to route to.
 ## Fast-Path vs Heavy-Path
 
 Phase 1 estimates size before anything else runs. **Fast-Path** — 2 files or
-fewer, no API/contract break, no critical dependency — skips straight to a
-direct implementer dispatch, validated with `git diff --name-only`: no spec,
-no plan, no ledger. Everything bigger, or anything the estimate gets wrong
-mid-flight, is **Heavy-Path**: the phase table below, in full.
+fewer, no public API or data-schema change — skips straight to a direct
+implementer dispatch in the main session, validated with
+`git diff --name-only`: no spec, no `vault/<project>/<feature>/plan.md`, no intermediate
+documentation of any kind. Everything bigger, or anything the estimate gets
+wrong mid-flight, is **Heavy-Path**: subagent-driven, the phase table below,
+in full.
 
 ## The phases (Heavy-Path)
 
 | # | Phase | Skill | Produces |
 |---|---|---|---|
-| 1 | Understand | `aikit:understanding-need` | the feature directory, `status.md` initialised |
+| 1 | Understand | `aikit:understanding-need` | the feature directory, `vault/<project>/<feature>/plan.md` initialised |
 | 2 | Design | `aikit:designing-the-solution` → `aikit:writing-specs` | `spec.md` |
 | 3 | Assess | the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
-| 4 | Plan | `aikit:writing-plans` | `plan.md`, split into tasks that each declare their files |
-| 5 | Execute | `aikit:executing-plans` | code, one task at a time, and `runs/<plan>/` |
-| 6 | Verify | `aikit:verifying-completion` | the registry's completion criterion, met; `status.md` closed |
+| 4 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md`, split into tasks that each declare their files |
+| 5 | Execute | `aikit:executing-plans` | code, one task at a time, `vault/<project>/<feature>/plan.md`'s checkboxes ticked |
+| 6 | Verify | `aikit:verifying-completion` | the registry's completion criterion, met; `vault/<project>/<feature>/plan.md` closed |
 
 Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:routing-failures` whenever
@@ -53,13 +55,15 @@ something fails, `aikit:delegating-to-a-perimeter` when a question needs a
 project's own tools, `aikit:receiving-code-review` when incorporating feedback
 from outside the method's own review loop.
 
-## Model cascading
+## Model selection
 
-`aikit:implementer` and `aikit:probe` both default to **sonnet**. Each
-escalates to **opus** exactly once per task — automatically, when
-`aikit:routing-failures` finds two failed attempts recorded in the ledger. It
-is never a per-task judgement call; see `aikit:routing-failures` and
-`aikit:executing-plans`.
+Every role runs at one fixed model, and none escalates automatically.
+`aikit:implementer`, `aikit:probe`, `aikit:explorer` and `aikit:verifier` run
+sonnet; `aikit:planner` runs opus; `aikit:reviewer` runs sonnet by default,
+escalated to opus by hand — a security-sensitive audit, or two consecutive
+fix attempts that still fail review. When a task's second attempt also
+fails, `aikit:routing-failures` stops the loop and asks the human partner for
+arbitration instead of trying a third time or reaching for a bigger model.
 
 A **diagnostic** does not run these phases. `aikit:diagnosing` opens
 `diagnosis.md` before investigating and updates it after every hypothesis —
@@ -88,15 +92,17 @@ registry routes each task to the *section* it needs, never the whole file.
 | What happened | Direction |
 |---|---|
 | Technical unknown | **down** — a bounded probe; the plan does not move |
-| Execution error | **down** — fix rounds, bounded by the attempt budget |
+| Execution error | **down** — two attempts, bounded by the attempt budget |
 | Unplanned dependency, task too large | **up** — finish the independents, re-plan |
 | Ambiguous or contradictory spec | **up** — stop, back to phase 2 with the human |
 | A behaviour decision is missing, current work isn't wrong | **out** — a derived need, its own directory and cycle |
 
 Going down is cheap, going up is expensive, and going out costs a full cycle;
 retrying a wrong plan is still the most expensive of all. **The attempt budget
-is counted in the ledger, not in context** — a conversation that compacts
-forgets it is on its fourth attempt.
+is two, counted in `vault/<project>/<feature>/plan.md`, not in context** — a conversation that
+compacts forgets it is on its second attempt. When it's spent, the method
+stops and asks the human partner to rule, rather than escalating rounds or
+models on its own.
 
 **Drift is checked mechanically.** After each task, the files the task declared
 are confronted with `git diff --name-only`. This works *because* aiKit writes no
@@ -129,14 +135,15 @@ must be reported explicitly, not corrected silently.
 
 `aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`,
 `aikit:verifier`, `aikit:probe` — roles in the process, each with a fixed
-model: **opus** for `aikit:planner` and `aikit:reviewer` (evaluative work
-where a wrong judgement is the most expensive kind of failure, and neither
-role has a rung above to escalate to), **sonnet** for `aikit:implementer`,
-`aikit:explorer`, `aikit:verifier` and `aikit:probe`. Both `aikit:implementer`
-and `aikit:probe` escalate to opus exactly once per task — automatically,
-when the ledger shows two failed attempts — never a per-task judgement call;
-see `aikit:routing-failures`. A project's domain agents are the other axis:
-when a plan task names one, it is dispatched instead of the generic
+model and no automatic escalation between models: **opus** for
+`aikit:planner` (evaluative work where a wrong judgement is the most
+expensive kind of failure), **sonnet** by default for everything else,
+including `aikit:reviewer` — a human partner dispatches it on opus by hand,
+for a security-sensitive audit or after two consecutive fix attempts still
+fail review. Two failed attempts at a task stop the loop and hand the
+decision to the human partner instead of buying a bigger model; see
+`aikit:routing-failures`. A project's domain agents are the other axis: when
+a plan task names one, it is dispatched instead of the generic
 `aikit:implementer`. The registry says which exist.
 
 ## Where things live
@@ -158,8 +165,9 @@ the method itself.
 <vault>/                      a clone of a vault (an Obsidian vault)
   projects/                   the registry: one file per project
   <project>/candidates.md     real problems nothing is waiting on — survives any one need
-  <project>/<feature>/        spec.md, plan.md, status.md, diagnosis.md — spec carries its own Impact section
-    runs/<plan>/               the ledger, probe findings, task reports
+  <project>/heuristics.md     empirical rules and traps for this project — orchestrator-written, at /finish only
+  <project>/<feature>/        spec.md, plan.md, diagnosis.md, probe findings — spec carries its own Impact section
+  _global/heuristics.md       cross-project environment, OS and shell rules
 <anywhere>/                   the project repositories, found by scanning
 
 ~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS
@@ -171,7 +179,7 @@ travels everywhere while a registry stays bound to one vault — and the two
 never live in the same repository.
 
 **aiKit writes nothing inside the project repositories** except the code
-changes themselves. No specs, no plans, no ledger, no scratch. `git status`
+changes themselves. No specs, no plan, no ledger, no scratch. `git status`
 in a project never shows a method artifact.
 
 ## Install
@@ -222,8 +230,11 @@ session with no deploy.
 ## Differences from superpowers
 
 - renamed throughout (`aikit:` prefix), single harness (Claude Code only)
-- artifacts moved out of the repositories into `vault/`
+- artifacts moved out of the repositories into `vault/`; plan, status and
+  ledger consolidated into one file, `vault/<project>/<feature>/plan.md`,
+  instead of three
 - per-vault registry injected at session start, from declared vaults
-- failure-direction rule (down = probe/fix rounds, up = re-plan/re-spec, out = derived need)
-- attempt budget written to the ledger, not held in context
+- failure-direction rule (down = probe/two attempts, up = re-plan/re-spec, out = derived need)
+- attempt budget (two) written to `vault/<project>/<feature>/plan.md`, not held in context —
+  spent, it stops and asks a human partner rather than escalating on its own
 - multi-harness ports, CI, upstream docs and the remote brand image removed

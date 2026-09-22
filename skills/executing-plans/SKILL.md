@@ -11,24 +11,24 @@ Execute plan by dispatching a fresh implementer subagent per task, a task review
 
 **Core principle:** Fresh subagent per task + task review (spec + quality) + broad final review = high quality, fast iteration
 
-**Narration:** between tool calls, narrate at most one short line — the
-ledger and the tool results carry the record.
+**Narration:** between tool calls, narrate at most one short line — `vault/<project>/<feature>/plan.md`
+and the tool results carry the record.
 
-**Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are the four named below, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
+**Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are the five named below, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
-**Rulings, not stalls.** A running plan does not wait on a human. Conflicts,
-ambiguities, plan defects, a cap you would have asked to exceed — decide
-them. The spec is the binding authority, the plan is its argument, and your
-judgment settles what neither answers. Record every decision in the ledger as
+**Rulings, not stalls.** A running plan does not wait on a human for every
+decision. Conflicts, ambiguities, plan defects — decide them yourself. The
+spec is the binding authority, the plan is its argument, and your judgment
+settles what neither answers. Record every decision in `vault/<project>/<feature>/plan.md` as
 `Ruling: <what you decided> — <why> — <what it costs if wrong>`, and keep
 going. A wrong ruling costs rework your human partner can see and undo; a
 session parked on a question costs their whole day and buys nothing.
 
-Four things stop you, and only these: an irreversible or destructive
+Five things stop you, and only these: an irreversible or destructive
 operation; a security-sensitive action; a side effect outside this worktree
 that norms say you ask about first (a merge, a push to a shared branch, a
-publish); and a plan so broken that every path forward is a guess. For those,
-stop and ask.
+publish); a task whose second fix attempt still fails review; and a plan so
+broken that every path forward is a guess. For those, stop and ask.
 
 ## When to Use
 
@@ -58,56 +58,52 @@ digraph process {
         "Implementer asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer implements, tests, commits, self-reviews" [shape=box];
-        "Generate review package, dispatch task reviewer (./task-reviewer-prompt.md)" [shape=box];
-        "Spec ✅ and quality approved?" [shape=diamond];
+        "Get diff directly, dispatch task reviewer (./task-reviewer-prompt.md)" [shape=box];
+        "APPROVE or REJECT?" [shape=diamond];
         "Finding conflicts with plan text?" [shape=diamond];
-        "Rule on the conflict, ledger the ruling" [shape=box];
-        "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" [shape=box];
+        "Rule on the conflict, record it in vault/<project>/<feature>/plan.md" [shape=box];
+        "Fix attempt K of 2: resume implementer, same model" [shape=box];
         "Dispatch scoped re-review (./re-review-prompt.md)" [shape=box];
         "All findings addressed?" [shape=diamond];
-        "R = 5?" [shape=diamond];
-        "Adjudicate each open finding" [shape=box];
-        "Any load-bearing finding?" [shape=diamond];
-        "Rule and continue; stop only if every path forward is a guess" [shape=box];
-        "Park findings in ledger with rulings" [shape=box];
-        "Append completion to ledger, mark todo complete" [shape=box];
+        "K = 2?" [shape=diamond];
+        "Stop, ask human partner for arbitration" [shape=box style=filled fillcolor=lightyellow];
+        "Record the human's ruling in vault/<project>/<feature>/plan.md" [shape=box];
+        "Check task box in vault/<project>/<feature>/plan.md, mark todo complete" [shape=box];
     }
 
-    "Setup: worktree, ledger check, read plan, pre-flight review" [shape=box];
+    "Setup: worktree, read/init vault/<project>/<feature>/plan.md, pre-flight review" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [shape=box];
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" [shape=box];
-    "Final review clean: delete this plan's workspace" [shape=box];
+    "Final review clean: delete vault/<project>/<feature>/plan.md" [shape=box];
     "Use aikit:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
-    "Setup: worktree, ledger check, read plan, pre-flight review" -> "Dispatch implementer subagent (./implementer-prompt.md)";
+    "Setup: worktree, read/init vault/<project>/<feature>/plan.md, pre-flight review" -> "Dispatch implementer subagent (./implementer-prompt.md)";
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer asks questions?";
     "Implementer asks questions?" -> "Answer questions, provide context" [label="yes"];
     "Answer questions, provide context" -> "Implementer implements, tests, commits, self-reviews";
     "Implementer asks questions?" -> "Implementer implements, tests, commits, self-reviews" [label="no"];
-    "Implementer implements, tests, commits, self-reviews" -> "Generate review package, dispatch task reviewer (./task-reviewer-prompt.md)";
-    "Generate review package, dispatch task reviewer (./task-reviewer-prompt.md)" -> "Spec ✅ and quality approved?";
-    "Spec ✅ and quality approved?" -> "Append completion to ledger, mark todo complete" [label="yes"];
-    "Spec ✅ and quality approved?" -> "Finding conflicts with plan text?" [label="no"];
-    "Finding conflicts with plan text?" -> "Rule on the conflict, ledger the ruling" [label="yes"];
-    "Rule on the conflict, ledger the ruling" -> "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus";
-    "Finding conflicts with plan text?" -> "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" [label="no"];
-    "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" -> "Dispatch scoped re-review (./re-review-prompt.md)";
+    "Implementer implements, tests, commits, self-reviews" -> "Get diff directly, dispatch task reviewer (./task-reviewer-prompt.md)";
+    "Get diff directly, dispatch task reviewer (./task-reviewer-prompt.md)" -> "APPROVE or REJECT?";
+    "APPROVE or REJECT?" -> "Check task box in vault/<project>/<feature>/plan.md, mark todo complete" [label="APPROVE"];
+    "APPROVE or REJECT?" -> "Finding conflicts with plan text?" [label="REJECT"];
+    "Finding conflicts with plan text?" -> "Rule on the conflict, record it in vault/<project>/<feature>/plan.md" [label="yes"];
+    "Rule on the conflict, record it in vault/<project>/<feature>/plan.md" -> "Fix attempt K of 2: resume implementer, same model";
+    "Finding conflicts with plan text?" -> "Fix attempt K of 2: resume implementer, same model" [label="no"];
+    "Fix attempt K of 2: resume implementer, same model" -> "Dispatch scoped re-review (./re-review-prompt.md)";
     "Dispatch scoped re-review (./re-review-prompt.md)" -> "All findings addressed?";
-    "All findings addressed?" -> "Append completion to ledger, mark todo complete" [label="yes"];
-    "All findings addressed?" -> "R = 5?" [label="no"];
-    "R = 5?" -> "Fix round R of 5: R≤2 resume implementer (sonnet); R≥3 fresh implementer, opus" [label="no - next round"];
-    "R = 5?" -> "Adjudicate each open finding" [label="yes - round cap reached"];
-    "Adjudicate each open finding" -> "Any load-bearing finding?";
-    "Any load-bearing finding?" -> "Rule and continue; stop only if every path forward is a guess" [label="yes"];
-    "Any load-bearing finding?" -> "Park findings in ledger with rulings" [label="no"];
-    "Park findings in ledger with rulings" -> "Append completion to ledger, mark todo complete";
-    "Append completion to ledger, mark todo complete" -> "More tasks remain?";
+    "All findings addressed?" -> "Check task box in vault/<project>/<feature>/plan.md, mark todo complete" [label="yes"];
+    "All findings addressed?" -> "K = 2?" [label="no"];
+    "K = 2?" -> "Fix attempt K of 2: resume implementer, same model" [label="no - one attempt left"];
+    "K = 2?" -> "Stop, ask human partner for arbitration" [label="yes - attempt budget spent"];
+    "Stop, ask human partner for arbitration" -> "Record the human's ruling in vault/<project>/<feature>/plan.md";
+    "Record the human's ruling in vault/<project>/<feature>/plan.md" -> "Check task box in vault/<project>/<feature>/plan.md, mark todo complete";
+    "Check task box in vault/<project>/<feature>/plan.md, mark todo complete" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [label="no"];
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
-    "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: delete this plan's workspace";
-    "Final review clean: delete this plan's workspace" -> "Use aikit:finishing-a-development-branch";
+    "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: delete vault/<project>/<feature>/plan.md";
+    "Final review clean: delete vault/<project>/<feature>/plan.md" -> "Use aikit:finishing-a-development-branch";
 }
 ```
 
@@ -121,39 +117,38 @@ partner's explicit consent.
 Conversation memory does not survive compaction. In real sessions,
 orchestrators that lost their place have re-dispatched entire completed task
 sequences — the single most expensive failure observed. Track progress in
-a ledger file, not only in todos.
+`vault/<project>/<feature>/plan.md`, not only in todos.
 
-- Each plan owns a workspace: at skill start, run this skill's
-  `scripts/run-workspace PLAN_FILE` — it prints the plan's git-ignored
-  directory (`vault/<project>/<feature>/runs/<plan-basename>/`), home to
-  every artifact for THIS plan: ledger, briefs, reports, review packages.
-  Another plan's directory is never yours to read or write.
-- Check for this plan's ledger at `<workspace>/progress.md`. If its first
-  line names your plan file, tasks with a `Task <N>: complete` line are DONE
-  — do not re-dispatch them; resume at the first task without one. A task
-  whose last line is a fix round is mid-loop: resume the loop at the next
-  round. A ledger whose first line names a different plan file — or a stray
-  ledger at the old flat path `<feature>/sdd/progress.md` — is another
-  plan's progress: leave it in place and start your own, fresh.
-- Create the ledger with its identity as the first line:
-  `# Cycle ledger — plan: <plan file path>`.
-- **The attempt budget lives here, not in your head.** Before each attempt at a
-  task, write `Task N: attempt K/3 — <what changed since the last one>`, and
-  read back the task's existing lines first. Finding `attempt 3/3` already
-  recorded means the attempt budget is spent — escalate, even with no memory of the
-  earlier rounds. Compaction erases attempt counts before it erases anything
-  else.
-- The ledger is your recovery map: the commits it names exist in git even
-  when your context no longer remembers creating them. After compaction,
-  trust the ledger and `git log` over your own recollection.
-- The workspace sits outside every repository, so `git clean -fdx` in a
-  project cannot destroy it.
+- The plan lives at `vault/<project>/<feature>/plan.md`, in the vault that
+  owns the project — never inside the project repository. It is the one
+  file: the plan text, the spec pointer, and the live status, tracked with
+  standard GitHub checkboxes. There is no separate workspace, ledger, or
+  review-package directory.
+- Check for an existing `vault/<project>/<feature>/plan.md` before writing
+  one. If it names your plan and its Goal, a `- [x]` task is DONE — do not
+  re-dispatch it; resume at the first `- [ ]` task. A task whose last
+  checklist line is an open `attempt` note is mid-loop: resume there. A
+  `plan.md` naming a different feature belongs to a different feature
+  directory and is never yours to read or write.
+- **The attempt budget lives here, not in your head.** Before each attempt at
+  a task, add a line under it: `- [ ] Task N — attempt K/2: <what changed
+  since the last one>`, and read back the task's existing lines first.
+  Finding `attempt 2/2` already recorded and unresolved means the attempt
+  budget is spent — stop and ask your human partner for arbitration, even
+  with no memory of the earlier attempt. Compaction erases attempt counts
+  before it erases anything else.
+- `vault/<project>/<feature>/plan.md` is your recovery map: the commits it
+  names exist in the project's git history even when your context no longer
+  remembers creating them. After compaction, trust the file and `git log`
+  over your own recollection.
+- The vault sits outside every project repository, so `git clean -fdx` in a
+  project cannot touch it.
 
 Read the plan once, note its context and Global Constraints, and create a
 todo per task. If the plan names a Spec, read that too: the spec is the
 authority the plan argues from, and conflicts inside the plan resolve
-against it. A plan with no reachable spec gets a ledger note saying so —
-rulings made without one are provisional.
+against it. A plan with no reachable spec gets a note in `vault/<project>/<feature>/plan.md`
+saying so — rulings made without one are provisional.
 
 Before dispatching Task 1, scan the plan once for conflicts, writing down
 what you checked as you check it:
@@ -169,9 +164,10 @@ its own text agrees with itself — the tests it specifies against the code it
 specifies, the files it creates against the files it later touches. "The scan
 is clean" without those rows is not a scan you ran.
 
-Write the table to the ledger. Rule on everything you find before execution
-begins — each finding against the plan text that mandates it — and record
-each ruling in the ledger. If the scan is clean, proceed without comment.
+Write the table into `vault/<project>/<feature>/plan.md`, under a `## Pre-flight scan` heading.
+Rule on everything you find before execution begins — each finding against
+the plan text that mandates it — and record each ruling under a `## Rulings`
+heading in the same file. If the scan is clean, proceed without comment.
 Rule on each conflict it surfaces — the spec is the binding authority, the
 plan is its argument — record the ruling beside its row, and dispatch
 Task 1. The review loop remains the net for conflicts that only emerge from
@@ -179,52 +175,45 @@ implementation.
 
 ## Model Selection
 
-**aiKit fixes the model per role. It is not a per-task judgement call.**
+**aiKit fixes the model per role. It is not a per-task judgement call, and
+there is no automatic escalation between models.**
 
 | Role | Model | Why |
 |---|---|---|
 | `aikit:planner` | **opus** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are — a wrong plan is the most expensive failure this method has, so it gets the strongest available judgement. |
-| `aikit:reviewer` | **opus** | Same shape of judgement, applied to a diff instead of a spec — the review is the safety net every task passes through. |
-| `aikit:probe` | **sonnet**, escalating to **opus** after 2 recorded attempt failures | A probe produces a finding, not code — bounded and low-stakes, closer to explorer's shape of work than to planning or review — but it shares the implementer's ledger-triggered escalation, since two failed attempts mean the same thing for either role: the tier stopped being the bottleneck. |
-| `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded attempt failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
+| `aikit:reviewer` | **sonnet** | The review is the safety net every task passes through, but it does not need the ceiling tier by default. A human partner can dispatch a review manually on opus for a security-sensitive audit, or after two consecutive fix attempts still fail review — see `aikit:routing-failures`. |
+| `aikit:probe` | **sonnet** | A probe produces a finding, not code — bounded and low-stakes. |
+| `aikit:implementer` | **sonnet** | Most production work does not need the ceiling tier. |
 | `aikit:explorer` | sonnet | High-volume reading, low judgement. |
 | `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
 
 Each archetype carries this in its frontmatter, so dispatching by archetype
-name gets the right model without you specifying one. `aikit:planner` and
-`aikit:reviewer` have no rung above — they already run at the ceiling, so a
-failed pass is answered with more context, a narrower target, a probe, fresh
-eyes at the same tier, or a higher configured `effort`, never a different
-model (see `aikit:routing-failures`). `aikit:probe` and `aikit:implementer`
-both start below the ceiling, at sonnet, and both carry the same
-ledger-triggered escalation to opus — a bounded investigation and a task
-implementation carry the same argument for starting cheap.
+name gets the right model without you specifying one. No role escalates
+automatically: a failed pass is answered with more context, a narrower
+target, a probe, or fresh eyes at the same tier — never a bigger model
+picked in the moment. If two attempts at the same task both fail, stop and
+ask your human partner for arbitration (`aikit:routing-failures`); they may
+choose to re-dispatch on a stronger model themselves, but that is their call,
+not an automatic step.
 
 **When a task names a project's domain expert instead (`Agent: api-expert`),
 that agent carries its own model, and it is not necessarily the right tier.**
 Check the project's registry file: on one project, `schema-expert` and
 `api-expert` are already opus, while `ui-expert` and `docs-expert` are
-sonnet. For implementation work, pass an explicit model override on the
-dispatch so the expert runs at opus. Domain knowledge and model tier are
-separate choices; picking the expert must never silently downgrade the tier.
+sonnet. Domain knowledge and model tier are separate choices.
 
 ### The consequence you have to plan around
 
-Implementation starts at sonnet, not the ceiling — and so does a probe. That
-buys each of them one genuine escalation — but it is not a per-task judgement
-call, and it does not replace changing the attempt. A retry must always
-change something real:
+A retry must always change something real:
 
 - more context in the brief (the interfaces, the constraint, the trap it hit);
 - a narrower target (split the task, dispatch the remainder separately);
 - a `aikit:probe` first, so the attempt stops guessing at an unknown.
 
 Re-dispatching the same brief to the same tier is not an attempt. It is a coin
-flip charged to your attempt budget. The model escalates to opus exactly once
-per task — for an implementer or a probe alike — automatically, when the
-ledger shows two failed attempts — see `aikit:routing-failures`. Escalating
-early, or as a way to skip changing the brief, defeats the point of fixing
-the tier at all.
+flip charged to your attempt budget. **The attempt budget is two.** When the
+second attempt also fails, stop dispatching and ask for arbitration — see
+`aikit:routing-failures`.
 
 **Always pass the model explicitly when you dispatch anything that is not one
 of these archetypes.** An omitted model inherits your session's, which
@@ -246,8 +235,8 @@ and is re-read on every later turn. Hand artifacts over as files.
 
 **Waiting on dispatched subagents:** never poll a wait interface with
 short timeouts, and never sit in one silent, open-ended wait either.
-While you have local work — ledger updates, packaging the next review,
-reading reports — keep working; child results arrive on their own.
+While you have local work — updating `vault/<project>/<feature>/plan.md`, packaging the next
+review, reading reports — keep working; child results arrive on their own.
 When you are genuinely idle, wait in bounded stretches (five to ten
 minutes, where your platform allows), and between stretches post one
 line of status and reconcile your live children: list them, and chase
@@ -255,32 +244,29 @@ any that finished without reporting. A bounded stretch keeps nearly
 all of a long wait's efficiency while guaranteeing a stuck or lost
 child is noticed within minutes, not at the end of the session.
 
-### 1. Dispatch the implementer
+### 1. Dispatch the implementer — minimalist protocol
 
-Record BASE (`git rev-parse HEAD`) before dispatching — the review package
-and fix-round diffs need it.
+Record BASE (`git rev-parse HEAD`) before dispatching — the review diff and
+fix-round diffs need it.
 
-- **Task brief:** before dispatching an implementer, run this skill's
-  `scripts/task-brief PLAN_FILE N` — it extracts the task's full text to a
-  uniquely named file and prints the path. Compose the dispatch so the
-  brief stays the single source of
-  requirements. Your dispatch should contain: (1) one line on where this
-  task fits in the project; (2) the brief path, introduced as "read this
-  first — it is your requirements, with the exact values to use verbatim";
-  (3) interfaces and decisions from earlier tasks that the brief cannot
-  know; (4) your resolution of any ambiguity you noticed in the brief;
-  (5) the report-file path and report contract. Exact values (numbers,
-  magic strings, signatures, test cases) appear only in the brief. Never
-  make a subagent read the whole plan file.
-- **Report file:** name the implementer's report file after the brief
-  (brief `…/task-N-brief.md` → report `…/task-N-report.md`) and put it in
-  the dispatch prompt. The implementer writes the full report there and
-  returns only status, commits, a one-line test summary, and concerns.
-- A dispatch prompt describes one task, not the session's history. Do not
-  paste accumulated prior-task summaries ("state after Tasks 1-3") into
-  later dispatches — a real session's dispatch hit 42k chars of which 99%
-  was pasted history. A fresh subagent needs its task, the interfaces it
-  touches, and the global constraints. Nothing else.
+**The dispatch prompt carries four things, and nothing else:**
+
+1. the task's identity in `vault/<project>/<feature>/plan.md` — "Task N: [name]" — with an
+   instruction to read that section there first;
+2. the target file paths (Create/Modify/Test), copied from Task N's Files
+   block;
+3. the test command that proves the task;
+4. at most one constraint — from Global Constraints or
+   `<project>/heuristics.md` — when it bears directly on this task, per
+   `aikit:budgeting-context`'s read cascade.
+
+**Forbidden in the dispatch prompt:** pasted code excerpts, file contents,
+diffs, or a summary of the conversation or of earlier tasks. A task's
+Interfaces block already lives inside `vault/<project>/<feature>/plan.md` — the implementer
+reads it there, with its own tools; the orchestrator never retypes it.
+A dispatch prompt describes one task, not the session's history — a real
+session's dispatch once hit 42k chars, 99% of it pasted history.
+
 - The dispatch carries the no-subagents contract (it is in the
   implementer template): the implementer never dispatches subagents —
   not helpers, and never a reviewer. Review arrives from you, after the
@@ -288,9 +274,13 @@ and fix-round diffs need it.
   the task review the orchestrator dispatched anyway — a full extra
   review seat per task.
 - If an earlier task parked a finding in the area this task touches, carry
-  a pointer to that ledger entry in the dispatch.
-- Record the implementer's agent identity from the dispatch result —
-  fix rounds 1-3 resume this agent.
+  a one-line pointer to it — not its text.
+- Record the implementer's agent identity from the dispatch result — both
+  fix attempts resume this agent, in the same live conversation, so it
+  keeps its own memory of what it tried. No report file persists that
+  memory outside the agent — there is nothing left to read if the agent
+  itself is gone, which is why a fix attempt always tries to resume it
+  first (see Handle the report, below).
 - **Which agent:** if the task carries an `Agent:` line, dispatch that domain
   expert from the project's registry — it knows conventions the generic
   archetype does not. Otherwise dispatch `aikit:implementer`.
@@ -302,38 +292,61 @@ and fix-round diffs need it.
 
 Template: [implementer-prompt.md](implementer-prompt.md)
 
-### 2. Handle the report
+### 2. Handle the report — hermetic in, hermetic out
 
-Implementer subagents report one of four statuses. Handle each appropriately:
+The implementer returns exactly three lines: `STATUS`, `FILES`, `TEST` (see
+`implementer-prompt.md`). Nothing else reaches your context from it — no
+diff, no log, no narrative. Record those three lines verbatim as the task's
+checklist annotation in `vault/<project>/<feature>/plan.md` before doing anything else; that is
+now the only place the attempt's detail lives.
 
-**DONE:** First run the drift check — `aikit:checking-plan-drift`, using the
-BASE you recorded before dispatching. It is mechanical and takes seconds, and
-it is the only thing that catches a plan quietly abandoned. Drift is routed
-with `aikit:routing-failures` before any review: reviewing code whose scope
-already left the plan reviews the wrong question.
+**`STATUS: SUCCESS` or `STATUS: SUCCESS (concern: ...)`:** First run the
+drift check — `aikit:checking-plan-drift`, using the BASE you recorded before
+dispatching. It is mechanical and takes seconds, and it is the only thing
+that catches a plan quietly abandoned. Drift is routed with
+`aikit:routing-failures` before any review: reviewing code whose scope
+already left the plan reviews the wrong question. A concern about
+correctness or scope gets addressed before review; an observational concern
+(e.g. "this file is getting large") is noted in `vault/<project>/<feature>/plan.md` and does
+not block review.
 
-Then generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), and dispatch the task reviewer with the printed path.
+Then get the diff directly — `git diff BASE..HEAD -U10` (BASE is the commit
+you recorded before dispatching the implementer, so this diff is exactly
+this task's attempt — never `HEAD~1`, which means "the single most recent
+commit" and silently drops everything earlier in a multi-commit task) — and
+dispatch the task reviewer with the commit list (`git log --oneline BASE..HEAD`),
+the stat summary (`git diff --stat BASE..HEAD`), and that diff. Hand these to
+the reviewer as a file path when your harness supports one (write the diff to
+your scratch directory, not the vault or the project repository — it is not
+a method or project artifact), so it never enters your own context; paste it
+inline only when no scratch file is available. There is no separate review-package
+step — the diff itself is the package.
 
-**DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
-
-**NEEDS_CONTEXT:** The implementer needs information that wasn't provided. Provide the missing context and re-dispatch.
-
-**BLOCKED:** The implementer cannot complete the task. **Route it with
-`aikit:routing-failures`** — the nature of the failure decides whether you go
-down, up, or out, and guessing that wrongly is the most expensive mistake
-available to you:
-1. Context problem → down: provide more context, re-dispatch, **record the attempt in the ledger**
-2. Needs more reasoning → down: change the brief — add the interfaces, the constraint or the trap it hit — and record the attempt; the model escalates automatically after 2 recorded failures, this doesn't need a separate judgement call
-3. Technical unknown → down: dispatch `aikit:probe` with one written question and a stated bound
-4. Task too large, or files outside its declared set → **up**: finish the independent tasks, then re-split
-5. The plan or spec is wrong → **up**: stop, write the cycle report, do not re-dispatch
-6. A behaviour decision is missing, current work not wrong → **out**: see `aikit:routing-failures` for the derived-need/candidate discriminant
+**`STATUS: FAILURE: <reason>`:** **Route it with `aikit:routing-failures`** —
+the reason names the kind of stop, and the nature of the failure decides
+whether you go down, up, or out. Guessing that wrongly is the most expensive
+mistake available to you:
+1. Missing context or fact → down: provide it, re-dispatch (resume the same
+   agent), **record the attempt in `vault/<project>/<feature>/plan.md`**
+2. Needs more reasoning → down: add the interface, constraint, or trap it
+   hit — resume the same agent — and record the attempt; after 2 recorded
+   failures, stop and ask your human partner for arbitration instead of
+   dispatching a third
+3. Technical unknown → down: dispatch `aikit:probe` with one written question
+   and a stated bound
+4. Task too large, or files outside its declared set → **up**: finish the
+   independent tasks, then re-split
+5. The plan or spec is wrong (the reason states a plan/code contradiction) →
+   **up**: stop, write the cycle report, do not re-dispatch
+6. A behaviour decision is missing, current work not wrong → **out**: see
+   `aikit:routing-failures` for the derived-need/candidate discriminant
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 
 If the implementer asks questions — before starting or mid-task — answer
 clearly and completely, provide additional context if needed, and don't
-rush it into implementation.
+rush it into implementation. Questions and answers happen in the live
+conversation with the agent; they never enter the three-line contract.
 
 ### 3. Review the task
 
@@ -343,18 +356,19 @@ report missing either verdict — spec compliance AND task quality are both
 required. Implementer self-review never replaces the task review; both are
 needed.
 
-- Hand the reviewer its diff as a file: run this skill's
-  `scripts/review-package PLAN_FILE BASE HEAD` and pass the reviewer the file path
-  it prints (or, without bash: `git log --oneline`, `git diff --stat`,
-  and `git diff -U10` for the range, redirected to one uniquely named
-  file). The output never enters your own context, and the reviewer sees
-  the commit list, stat summary, and full diff with context in one Read
-  call. Use the BASE you recorded before dispatching the implementer —
-  never `HEAD~1`, which silently truncates multi-commit tasks. Never
-  dispatch a task reviewer without a diff file.
-- **Reviewer inputs:** the task reviewer gets three paths — the same brief
-  file, the report file, and the review package — plus the global
-  constraints that bind the task.
+- Hand the reviewer the diff directly: `git log --oneline BASE..HEAD`,
+  `git diff --stat BASE..HEAD`, and `git diff -U10 BASE..HEAD` for the range.
+  Redirect the three to one scratch file and pass the reviewer that path so
+  the output never enters your own context and the reviewer sees the commit
+  list, stat summary, and full diff with context in one Read call — or paste
+  them inline when no scratch file is available. Use the BASE you recorded
+  before dispatching the implementer — never `HEAD~1`, which silently
+  truncates multi-commit tasks. Never dispatch a task reviewer without the
+  diff.
+- **Reviewer inputs:** the task reviewer gets two things — Task N's section
+  in `vault/<project>/<feature>/plan.md` and the diff — plus the global constraints that
+  bind the task. There is no separate report file; the implementer's
+  three-line return is already recorded in `vault/<project>/<feature>/plan.md`'s checklist.
 - The global-constraints block you hand the reviewer is its attention
   lens. Copy the binding requirements verbatim from the plan's Global
   Constraints section or the spec: exact values, exact formats, and the
@@ -365,7 +379,7 @@ needed.
 - Do not add open-ended directives like "check all uses" or "run race tests
   if useful" without a concrete, task-specific reason
 - Do not ask a reviewer to re-run tests the implementer already ran on the
-  same code — the implementer's report carries the test evidence
+  same code — the `TEST:` line in `vault/<project>/<feature>/plan.md` names the command and result
 - Do not pre-judge findings for the reviewer — never instruct a reviewer to
   ignore or not flag a specific issue. If you believe a finding would be a
   false positive, let the reviewer raise it and adjudicate it in the review
@@ -377,144 +391,125 @@ that live in unchanged code or span tasks. These do not block the rest of the
 review, but you must resolve each one yourself before marking the task
 complete: you hold the plan and cross-task context the reviewer
 lacks. If you confirm an item is a real gap, treat it as a failed spec
-review — it enters the fix rounds with the other findings.
+review — it enters the fix loop with the other findings.
 
 Template: [task-reviewer-prompt.md](task-reviewer-prompt.md)
 
-### 4. The fix rounds
+### 4. Fix, then stop at two attempts
 
-The loop triggers when the review reports spec ❌, any Critical or Important
-finding, or a ⚠️ item you confirmed as a real gap.
+The loop triggers when the review reports `REJECT`, or a ⚠️ item you
+confirmed as a real gap. `APPROVE` — even with non-blocking suggestions
+attached — does not trigger it.
 
 Before the loop starts, two routes leave it immediately:
 
-- Record Minor findings in the progress ledger as you go
-  (`Task <N>: minor (deferred): <one-liner>`), and point the final
-  whole-branch review at that list so it can triage which must be fixed
-  before merge. A roll-up nobody reads is a silent discard. Minor findings
-  never enter the loop.
-- A finding labeled plan-mandated — or any finding that conflicts with
+- Record non-blocking suggestions in `vault/<project>/<feature>/plan.md` as you go under the task
+  (`- [ ] suggestion (deferred): <one-liner>`), and point the final whole-branch
+  review at that list so it can triage which must be fixed before merge. A
+  roll-up nobody reads is a silent discard. Non-blocking suggestions never
+  enter the loop.
+- A `REJECT` finding labeled plan-mandated — or any finding that conflicts with
   what the plan's text requires — is yours to rule on: weigh the finding
   against the plan text, decide with the spec as the binding authority, and
-  ledger the ruling before you act on it. Do not dismiss the finding because
-  the plan mandates it, and do not dispatch a fix that contradicts the plan
-  without a recorded ruling.
-Everything else enters the loop. A fix round is one fix dispatch plus one
-scoped re-review. Five rounds maximum per task:
+  record the ruling in `vault/<project>/<feature>/plan.md` before you act on it. Do not dismiss
+  the finding because the plan mandates it, and do not dispatch a fix that
+  contradicts the plan without a recorded ruling.
 
-**Rounds 1-2 — resume the original implementer, at sonnet.** Send it the open
-findings verbatim. Its context is intact: it knows the task, the code, and its
-own choices. If your harness cannot send another message to a live subagent,
-dispatch a fresh implementer carrying the brief path, the report-file path,
-and the findings — the report file is the persistent memory either way.
+Everything else enters the loop. **The attempt budget is two.** Resume the
+original implementer, at its fixed model (sonnet by default, or its expert's
+tier). Send it the open findings verbatim — its context is intact: it knows
+the task, the code, and its own choices. If your harness cannot send another
+message to a live subagent, dispatch a fresh implementer with Task N's
+section in `vault/<project>/<feature>/plan.md`, its checklist line recording the first
+attempt's three-line return, and the open findings — that line is what
+persists between attempts, since there is no separate report file.
 
-**Rounds 3-5 — dispatch a fresh implementer on opus** (per Model Selection),
-with the brief path, the report-file path, the open findings, and this
-framing: "A prior implementer attempted this task [N] times; you own it now.
-Read the report file for what was tried." Two failed rounds is the ledger
-trigger for this task's one escalation — `aikit:probe` earns the same rung on
-its own attempt budget — a loop that survives two resumes usually means the
-implementer cannot see its own problem, and fresh eyes plus the capability
-bump arrive together.
+**Every attempt:** the implementer fixes, re-runs the test command, and
+returns the same three-line contract. Before re-dispatching the reviewer,
+confirm the `TEST:` line names the covering command and a passing result;
+then re-review. A one-line fix does not need the whole suite re-run.
 
-**Every round, either way:** the implementer fixes, re-runs the tests
-covering the amended code, appends its fix report to the same report file,
-and returns the short contract. Before re-dispatching the reviewer, confirm
-the fix report contains the covering tests, the command run, and the
-output; dispatch the re-review once all three are present. Name the
-covering test files in the fix message — a one-line fix does not need the
-whole suite.
+**The re-review is scoped.** Get the diff directly — `git diff FIX_BASE..HEAD -U10`,
+where FIX_BASE is the head the previous review saw — and dispatch
+[re-review-prompt.md](re-review-prompt.md) with the findings list, Task N's
+section, and that diff. The re-reviewer verdicts each finding ADDRESSED or
+NOT ADDRESSED and flags new breakage in the fix diff only. Any new breakage
+that would itself be a `REJECT` (functional bug, spec violation, security
+regression) joins the open findings list. Out-of-scope observations go to
+`vault/<project>/<feature>/plan.md` as deferred non-blocking suggestions — they never extend
+the loop.
 
-**The re-review is scoped.** Run `scripts/review-package PLAN_FILE FIX_BASE HEAD`
-where FIX_BASE is the head the previous review saw, and dispatch
-[re-review-prompt.md](re-review-prompt.md) with the findings list, the
-brief, the report file, and the printed diff path. The re-reviewer verdicts
-each finding ADDRESSED or NOT ADDRESSED and flags new breakage in the fix
-diff only. New Critical/Important breakage in the fix diff joins the open
-findings list. Out-of-scope observations go to the ledger as deferred
-minors — they never extend the loop.
-
-**After each round,** append to the ledger:
-`Task <N>: fix round <R>/5 (<X> addressed, <Y> open — <finding one-liners>; commits <a7>..<b7>)`
+**After each attempt,** update the task's checklist line in `vault/<project>/<feature>/plan.md`:
+`- [ ] Task <N> — attempt <K>/2: <X> addressed, <Y> open — <finding one-liners>; commits <a7>..<b7>`
 
 Never fix findings yourself in the orchestrator session — your context stays
 clean for coordination, and orchestrator fixes skip review.
 
-**The round cap.** When round 5's re-review still leaves findings open, stop
-dispatching. Adjudicate each open finding yourself — you hold the plan and
-the cross-task context the reviewer lacks:
+**When attempt 2's re-review still leaves findings open, stop dispatching.**
+Do not open a third attempt. Report to your human partner:
 
-- **The reviewer is wrong, or the point is contestable:** park it —
-  `Task <N>: parked — <finding> — Ruling: <why the code stands>`. The final
-  review sees both sides.
-- **Real, but nothing downstream builds on it:** park it the same way, with
-  a ruling that says it's real and deferred.
-- **Real and load-bearing** — a later task builds on it, or it reveals a
-  plan defect: rule on the smallest change that unblocks the dependent work,
-  ledger it as `Task <N>: Ruling: <finding> — <what you decided and why>`,
-  and carry it into the next task's dispatch. Parking a structural failure
-  silently lets every dependent task build on it. Stop only when the defect
-  leaves every path forward a guess.
+- the open findings, worst first;
+- what both attempts tried and what each changed;
+- your recommendation — fix it yourself, accept it as-is, or re-plan the
+  task — and what you will do if they say nothing.
 
-Adjudicate only at the cap. Adjudicating earlier to end a loop is
-pre-judging with a different name. Every adjudication is a ledger entry —
-a silent discard is forbidden.
+Wait for their ruling, then record it in `vault/<project>/<feature>/plan.md` under the task
+(`Ruling: <what was decided> — <why> — <cost if wrong>`) before moving on.
+This is the one point in the loop that is not yours to adjudicate alone —
+two failed attempts means the method's own judgement stopped being enough.
 
 ### 5. Complete the task
 
-When the review comes back clean — or every open finding is parked with a
-ruling at the cap — append the completion line to the ledger in the same
-message as your other bookkeeping:
+When the review comes back clean — or your human partner has ruled on every
+open finding after the second attempt — check the task's box in
+`vault/<project>/<feature>/plan.md` and add a one-line note in the same edit:
 
-- `Task <N>: complete (commits <base7>..<head7>, review clean)`
-- `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after the
-  round cap is reached
+- `- [x] Task <N> (commits <base7>..<head7>, review clean)`
+- `- [x] Task <N> (commits <base7>..<head7>, ruling: <one-liner>)` after
+  human arbitration
 
 Then mark the todo complete and move on. Never move to the next task while
-the review has open Critical/Important issues that are neither fixed nor
-parked-with-ruling at the cap.
+the review is `REJECT` and neither fixed nor ruled on by your human partner.
 
 ## Final Review
 
-The final whole-branch review gets a package too: run
-`scripts/review-package PLAN_FILE MERGE_BASE HEAD` (MERGE_BASE = the commit the
-branch started from, e.g. `git merge-base main HEAD`) and include the
-printed path in the final review dispatch, so the final reviewer reads
-one file instead of re-deriving the branch diff with git commands. Dispatch
-on the most capable available model (see Model Selection), using
+The final whole-branch review gets a diff too: get it directly
+(`git diff MERGE_BASE..HEAD -U10`, MERGE_BASE = the commit the branch started
+from, e.g. `git merge-base main HEAD`) to a scratch file and include that
+path in the final review dispatch, so the final reviewer reads one file
+instead of re-deriving the branch diff with git commands. Dispatch on the
+most capable available model (see Model Selection), using
 aikit:requesting-code-review's
 [code-reviewer.md](../requesting-code-review/code-reviewer.md). Point it at
-the ledger's deferred-minor and parked lines so it can triage which must be
-fixed before merge.
+`vault/<project>/<feature>/plan.md`'s deferred-minor and parked lines so it can triage which
+must be fixed before merge.
 
 If the final whole-branch review returns findings, dispatch ONE fix subagent
 with the complete findings list — not one fixer per finding.
 Per-finding fixers each rebuild context and re-run suites; a real
 session's final-review fix wave cost more than all its tasks combined.
-Then run exactly one scoped re-review of the fix wave
-(`scripts/review-package PLAN_FILE FIX_BASE HEAD` over the fix range,
-[re-review-prompt.md](re-review-prompt.md)).
-Adjudicate any residual findings as in the task sequence's round cap: park with
-rulings, or rule on the load-bearing ones and ledger what you decided. Only
-the four classes above stop you here. There is no second fix wave —
-residual load-bearing findings surface to your human partner when
+Then run exactly one scoped re-review of the fix wave (get the diff
+directly over the fix range, [re-review-prompt.md](re-review-prompt.md)).
+Adjudicate any residual findings the same way a task's spent attempt budget
+is handled: stop and ask your human partner to rule on the load-bearing
+ones, and record what they decided in `vault/<project>/<feature>/plan.md`. Only the five
+classes above stop you here. There is no second fix wave — residual
+load-bearing findings surface to your human partner when
 finishing-a-development-branch presents the options.
 
 ## Finish
 
-Before you delete anything, collect every ledger line containing `Ruling:` —
-preflight rulings, parked findings, round-cap adjudications, all of them — into
-your final message under "Rulings I made", in the order you made them, each
-with what it costs if wrong. The list is exhaustive: if the ledger holds a
-ruling, the list holds it. That list is the only place the decisions you
-took on your human partner's behalf reach them — they read it and rework
-whatever you got wrong. A ruling that dies with the workspace was a decision
-made in secret.
+Before you delete anything, collect every `Ruling:` line in `vault/<project>/<feature>/plan.md` —
+preflight rulings, human arbitrations, all of them — into your final message
+under "Rulings I made", in the order you made them, each with what it costs
+if wrong. The list is exhaustive: if `vault/<project>/<feature>/plan.md` holds a ruling, the
+list holds it. That list is the only place the decisions you took on your
+human partner's behalf reach them — they read it and rework whatever you got
+wrong. A ruling that dies with the file was a decision made in secret.
 
 When the final whole-branch review is clean and its fixes are merged,
-delete this plan's workspace (`rm -rf <workspace>`) — the git history is
-the record now. Sibling directories belong to other plans; leave them
-alone.
+delete `vault/<project>/<feature>/plan.md` (`rm vault/<project>/<feature>/plan.md`) — the git history is
+the record now.
 
 Use aikit:finishing-a-development-branch.
 
@@ -522,14 +517,14 @@ Use aikit:finishing-a-development-branch.
 
 | Excuse | Reality |
 |--------|---------|
-| "Close enough on spec compliance" | Reviewer found spec gaps = not done. Fix or hit the cap and adjudicate — those are the only exits. |
+| "Close enough on spec compliance" | Reviewer found spec gaps = not done. Fix it, or spend the second attempt and ask for arbitration — those are the only exits. |
 | "I'll fix it myself, dispatching is overhead" | Orchestrator fixes pollute your context and skip review. Resume the implementer. |
-| "One more round will converge" | Past the cap, rounds don't converge — the failure is structural. Adjudicate and route. |
-| "The reviewer will just find something new anyway" | Scoped re-reviews verify fixes; they cannot wander. New findings on untouched code go to the ledger, not the loop. |
-| "This finding is obviously wrong, I'll drop it" | You adjudicate only at the cap, and every ruling is a ledger entry. Silent discards are forbidden. |
-| "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every round ends with a scoped re-review. |
+| "One more attempt will converge" | Past two attempts, retries don't converge — the failure is structural. Stop and ask. |
+| "The reviewer will just find something new anyway" | Scoped re-reviews verify fixes; they cannot wander. New findings on untouched code go to `vault/<project>/<feature>/plan.md`, not the loop. |
+| "This finding is obviously wrong, I'll drop it" | Silent discards are forbidden — raise it with your human partner, or fix it. |
+| "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every attempt ends with a scoped re-review. |
 | "Reviews slow the loop down" | The loop without reviews is just unverified churn. Reviews are the loop's brakes and steering. |
-| "Ledger bookkeeping is overhead" | The ledger is what survives compaction. Orchestrators without one have re-dispatched entire completed task sequences. |
+| "Plan bookkeeping is overhead" | `vault/<project>/<feature>/plan.md` is what survives compaction. Orchestrators without one have re-dispatched entire completed task sequences. |
 | "The implementer spawned its own reviewer — free extra assurance" | It's a duplicate seat reviewing the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag, not rigor. |
 
 ## Example Workflow
@@ -538,63 +533,60 @@ Use aikit:finishing-a-development-branch.
 You: I'm using executing-plans to execute this plan.
 
 [Setup: worktree verified]
-[Read plan file once: vault/<project>/<feature>/plan.md]
-[Resolve workspace: scripts/run-workspace vault/<project>/<feature>/plan.md — no ledger inside, fresh start]
+[Read vault/<project>/<feature>/plan.md once — no existing checkmarks, fresh start]
 [Create todos for all tasks]
 
 Task 1: Hook installation script
 
-[Run task-brief for Task 1; dispatch implementer with brief + report paths + context]
+[Dispatch implementer: "Task 1" + Files block paths + test command — read vault/<project>/<feature>/plan.md yourself]
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
 You: "User level (~/.config/aikit/hooks/)"
 
-Implementer: [Later]
-  - Implemented install-hook command
-  - Added tests, 5/5 passing
-  - Self-review: Found I missed --force flag, added it
-  - Committed
+Implementer: STATUS: SUCCESS
+  FILES: bin/install-hook, tests/install-hook.test.js
+  TEST: npm test -- install-hook: 5 passed
 
-[Run review-package PLAN_FILE BASE HEAD; dispatch task reviewer with the printed path]
+[git diff BASE..HEAD -U10; dispatch task reviewer with the diff]
 Task reviewer: Spec ✅ - all requirements met, nothing extra.
-  Strengths: Good test coverage, clean. Issues: None. Task quality: Approved.
+  Strengths: Good test coverage, clean. Non-blocking suggestions: none.
+  Verdict: APPROVE.
 
-[Ledger: Task 1: complete (commits a1b2c3d..d4e5f6a, review clean)]
+[vault/<project>/<feature>/plan.md: - [x] Task 1 (commits a1b2c3d..d4e5f6a, review clean)]
 
 Task 2: Recovery modes
 
-[Run task-brief for Task 2; dispatch implementer with brief + report paths + context]
+[Dispatch implementer: "Task 2" + Files block paths + test command — read vault/<project>/<feature>/plan.md yourself]
 
-Implementer: [No questions]
-  - Added verify/repair modes
-  - 8/8 tests passing
-  - Committed
+Implementer: STATUS: SUCCESS
+  FILES: src/recovery.js
+  TEST: npm test -- recovery: 8 passed
 
-[Run review-package PLAN_FILE BASE HEAD; dispatch task reviewer with the printed path]
+[git diff BASE..HEAD -U10; dispatch task reviewer with the diff]
 Task reviewer: Spec ❌:
   - Missing: Progress reporting (spec says "report every 100 items")
-  Issues (Important): Magic number (100)
+  Blocking issues: spec violation — no progress reporting (src/recovery.js)
+  Verdict: REJECT.
 
-[Fix round 1: resume the implementer with both findings]
-Implementer: Added progress reporting, extracted PROGRESS_INTERVAL constant.
-  Re-ran test/recovery.test.js — 10/10 passing. Fix report appended.
+[Fix attempt 1/2: resume the implementer with the finding]
+Implementer: STATUS: SUCCESS
+  FILES: src/recovery.js
+  TEST: npm test -- recovery: 10 passed
 
-[Run review-package PLAN_FILE FIX_BASE HEAD; dispatch scoped re-review]
+[git diff FIX_BASE..HEAD -U10; dispatch scoped re-review]
 Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
-  Magic number — ADDRESSED (src/recovery.js:7). New breakage: none.
-  Verdict: all findings addressed.
+  New breakage: none. Verdict: all findings addressed.
 
-[Ledger: Task 2: fix round 1/5 (2 addressed, 0 open; commits d4e5f6a..b7c8d9e)]
-[Ledger: Task 2: complete (commits d4e5f6a..b7c8d9e, review clean)]
+[vault/<project>/<feature>/plan.md: - [x] Task 2 (commits d4e5f6a..b7c8d9e, review clean; attempt 1/2 used)]
 
 ...
 
 [After all tasks]
-[Run review-package PLAN_FILE MERGE_BASE HEAD; dispatch final code-reviewer, most capable model]
+[git diff MERGE_BASE..HEAD -U10; dispatch final code-reviewer, most capable model]
 Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
-[Delete this plan's workspace — the record now lives in git]
+[Delete vault/<project>/<feature>/plan.md — the record now lives in git]
 
 Done! Using aikit:finishing-a-development-branch.
 ```

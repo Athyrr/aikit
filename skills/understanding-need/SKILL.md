@@ -91,10 +91,10 @@ this estimate.
 
 **Fast-Path dispatch:** the request itself, restated with the exact files
 named, is the brief — there is no plan to extract it from. Dispatch
-`aikit:implementer` (sonnet by default; see `aikit:using-aikit`'s model table
-for when it escalates). When it reports done, run `git diff --name-only`
-yourself against the files you named in step 4 — a match is the proof: no
-reviewer, no ledger, no workspace. A mismatch is drift — route it with
+`aikit:implementer` at its fixed model, sonnet. When it reports done, run
+`git diff --name-only` yourself against the files you named in step 4 — a
+match is the proof: no reviewer, no `vault/<project>/<feature>/plan.md`, no intermediate
+documentation of any kind. A mismatch is drift — route it with
 `aikit:routing-failures` rather than accepting a "close enough" diff.
 
 ## 3. Open or resume the feature directory (Heavy-Path only)
@@ -111,13 +111,16 @@ what is being built, stable for the whole life of the work.
 **Look before you create.** If the directory already exists, this is a
 resumption:
 
-1. Read `status.md` first — it says where the last loop stopped and why.
-2. Read `spec.md` and `plan.md` if they exist.
-3. Re-enter at the phase the status file names. Do not restart from phase 1
-   because restarting is easier than reading.
+1. Read `vault/<project>/<feature>/plan.md` first — it says where the last
+   loop stopped and why.
+2. Read `spec.md` in the vault feature directory if it exists.
+3. Re-enter at the phase `vault/<project>/<feature>/plan.md`'s `## Re-enter at` heading names.
+   Do not restart from phase 1 because restarting is easier than reading.
 
-**A new directory gets its `status.md` before anything else is written.** Not a
-placeholder — what a resumption needs and cannot re-derive:
+**A new cycle gets its `vault/<project>/<feature>/plan.md` before anything else is written.**
+Not a placeholder — what a resumption needs and cannot re-derive. It starts
+as a small status stub in phase 1 and grows into the full plan at phase 4,
+in the same file:
 
 ```markdown
 ---
@@ -151,7 +154,7 @@ parent named in its frontmatter, never sideways into a grandchild. Anything
 that does not block its own progress is a candidate, same as anywhere else
 (`aikit:routing-failures`).
 
-A resumed feature whose `status.md` names an unresolved blocker resumes at
+A resumed feature whose `vault/<project>/<feature>/plan.md` names an unresolved blocker resumes at
 `aikit:routing-failures`, not at execution.
 
 ## 4. Confirm before moving on
@@ -168,5 +171,5 @@ to touch. Get agreement, then continue.
 |---|---|
 | "The project is obvious, skip the registry" | The registry holds the completion criterion. You cannot finish without it. |
 | "I'll create the directory and figure out the name later" | The slug is the identity of the work. Renaming it orphans the artifacts. |
-| "There's a status.md but I know what to do" | The status file is the previous loop's report. It knows things you don't. |
+| "There's a `vault/<project>/<feature>/plan.md` but I know what to do" | It is the previous loop's report. It knows things you don't. |
 | "Let me look at the code first" | Code tells you what is. The human tells you what should be. |

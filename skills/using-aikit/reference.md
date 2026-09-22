@@ -9,13 +9,14 @@ of a file that is read in full every time the method loads.
 ## Fast-Path vs Heavy-Path
 
 `aikit:understanding-need` classifies every build/change/remove request into
-one of two routes before phase 2 starts:
+one of two routes before phase 2 starts. The condition is strict, not a
+judgement call:
 
 | | Fast-Path | Heavy-Path |
 |---|---|---|
-| When | ≤2 files, no API/contract break, no critical dependency | new component, refactor, contract change, or the estimate is wrong |
-| Artifacts | none — no `spec.md`, no `plan.md` | the full chain in `SKILL.md` |
-| Execution | one light dispatch, direct | phases 2 through 5 |
+| When | **≤2 files changed, and no public API / data-schema change** | new component, refactor, contract change, or the estimate is wrong |
+| Artifacts | none — no `spec.md`, no `vault/<project>/<feature>/plan.md`, no intermediate documentation of any kind | the full chain in `SKILL.md` |
+| Execution | one light dispatch, direct, in the main session | phases 2 through 5, subagent-driven |
 | Validation | `git diff --name-only` against the stated file set | `aikit:checking-plan-drift` per task |
 
 Fast-Path is a bet, not a discount on rigor: if the diff exceeds the stated
@@ -33,28 +34,30 @@ one artifact phase 2 and 3 share.
 
 ## Why each archetype gets the model it gets
 
-Opus is not escalation-only: it is planner and reviewer's standing default,
-since a wrong plan or a missed review finding is the most expensive kind of
-failure this method has. `aikit:probe` and `aikit:implementer` both start
-below the ceiling, at sonnet, and both carry the same ledger-triggered
-escalation to opus after two recorded attempt failures — never a per-task
-judgement call.
+Opus is `aikit:planner`'s standing default, since a wrong plan is the most
+expensive kind of failure this method has. `aikit:reviewer` runs at sonnet by
+default — a human partner escalates it to opus by hand, for a
+security-sensitive audit or after two consecutive fix attempts still fail
+review. `aikit:probe` and `aikit:implementer` are fixed at sonnet with no
+automatic escalation at all: two failed attempts stop the loop and hand the
+decision to a human, rather than buying a bigger model.
 
-Full table with the rationale per role, and the escalation contract:
-`aikit:executing-plans`.
+Full table with the rationale per role: `aikit:executing-plans`.
 
 ## The failure matrix, row by row
 
 | What happened | Direction |
 |---|---|
 | Technical unknown | **down** — probe, bounded. The plan does not move. |
-| Execution error (red test, broken build) | **down** — fix rounds, bounded by the attempt budget. |
+| Execution error (red test, broken build) | **down** — two attempts, bounded by the attempt budget. |
 | Unplanned dependency, task too large | **up** — finish the independents, then re-plan. |
 | Ambiguous or contradictory spec | **up** — stop now, back to phase 2 with the human. |
 | A behaviour decision is missing, current work not wrong | **out** — a derived need (own directory, spec, cycle) if this cycle needs the answer to continue; otherwise a candidate in `candidates.md`. |
 
 Going down is cheap, going up is expensive — but retrying a wrong plan is the
 most expensive thing of all. Never spend an attempt budget on a failure that
-belongs upward. **The attempt budget is counted in the ledger, not in your head.**
+belongs upward. **The attempt budget is two, counted in `vault/<project>/<feature>/plan.md`, not
+in your head.** When it's spent, stop and ask a human partner for
+arbitration — there is no third attempt and no automatic model escalation.
 
-Full protocol, escalation contract and cycle report: `aikit:routing-failures`.
+Full protocol and cycle report: `aikit:routing-failures`.

@@ -26,20 +26,17 @@ exists to prevent.
 | **task** | the smallest unit with its own test cycle and its own reviewer gate | a step, a phase | one brief, one file set, one commit |
 | **step** | one action inside a task, 2 to 5 minutes | a pass, a round, a phase | it fits in a checkbox |
 | **pass** | one traversal of the question tree in `aikit:grilling` | a round, a step | it belongs to phase 2 and nothing else |
-| **attempt budget** | 3 — the cap on attempts at one task | "the budget" | counted per task, in the ledger |
-| **round budget** | 5 — the cap on fix rounds after a review | "the budget" | counted per review cycle, in the ledger |
-| **round** | one fix cycle after a review finding | a pass, an attempt, a `grilling` traversal | bounded by the round budget |
-| **the round cap** | the point where the round budget is spent and findings are ruled | "the breaker" | it produces rulings, not retries |
+| **attempt budget** | 2 — the cap on attempts at one task before stopping for human arbitration | "the budget" | counted per task, in `vault/<project>/<feature>/plan.md` |
 | **orchestrator** | the session that holds the plan and dispatches | controller, coordinator, driver | it never implements |
 | **human partner** | the person the orchestrator works with | user, client, operator | it is the only party that can approve a spec |
 | **probe** | a bounded investigation answering one written question | spike, exploration, research | it returns a finding, never an implementation |
 | **feasibility** | the class of request that asks whether a thing can be done | a probe, a spike | it is a request class, not an activity |
 | **candidate** | a real problem that nothing is waiting on | parked, backlog, TODO | it lives at project level and survives the need |
-| **parked** | a review finding ruled at the round cap | a candidate | it lives in the ledger and dies with the plan |
+| **parked** | a review finding the human partner ruled acceptable to leave, after the attempt budget was spent | a candidate | it lives in `vault/<project>/<feature>/plan.md` and dies with the plan |
+| **heuristic** | one empirical rule or trap, written as Condition -> Action | a convention, a trap (registry §6) | it lives in `heuristics.md`, one bullet, orchestrator-written, only at phase 6 |
 
-The word **budget**, unqualified, is retired. Write `attempt budget` or
-`round budget`. Never `loop` as a technical term; write `cycle`, `round`,
-or `pass` and say which.
+The word **budget**, unqualified, is retired. Write `attempt budget`. Never
+`loop` as a technical term; write `cycle` or `attempt` and say which.
 
 ## Two rules that follow from the terms
 

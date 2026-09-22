@@ -1,6 +1,6 @@
 ---
 name: routing-failures
-description: Use when a task fails, stalls, or surprises you - decides whether to go down (probe, fix rounds), up (re-plan, re-spec), or out (a derived need), enforces the attempt budget, and defines what an escalation must contain
+description: Use when a task fails, stalls, or surprises you - decides whether to go down (probe, two fix attempts), up (re-plan, re-spec), or out (a derived need), enforces the attempt budget, and defines what an escalation must contain
 ---
 
 # Routing Failures
@@ -14,7 +14,7 @@ description: Use when a task fails, stalls, or surprises you - decides whether t
 | What happened | Direction | Mechanism |
 |---|---|---|
 | Technical unknown — "I don't know how X works" | **down** | Probe. The plan does not move. |
-| Execution error — red test, broken build, wrong output | **down** | The fix rounds, bounded by the attempt budget. |
+| Execution error — red test, broken build, wrong output | **down** | Two attempts, bounded by the attempt budget. |
 | Unplanned dependency; files outside the task's declared set; task too large | **up** | Finish the independent tasks, then re-split or re-plan. |
 | Spec ambiguous, contradictory, or silent on the case at hand | **up** | Stop now. Back to phase 2, with the human. |
 | A behaviour decision is missing, and the current work is not wrong | **out** | A derived need — its own directory, spec and cycle. |
@@ -46,7 +46,7 @@ A probe answers one question. It is not a smaller version of the task.
   emit a correlation id on partial batches?" — not "look into uploads".
 - **Bounded**: a stated bound on attempts or tool calls, agreed before dispatch.
 - **Produces a finding, not code.** Write it to
-  `vault/<project>/<feature>/runs/<plan>/probe-<slug>.md`: the question, what was
+  `vault/<project>/<feature>/probe-<slug>.md`: the question, what was
   tried, what was observed (with file paths, line numbers, command output), the
   answer, and what it implies for the task.
 - Any code written during a probe is thrown away. If the probe's code looks
@@ -57,46 +57,39 @@ A probe answers one question. It is not a smaller version of the task.
 If the probe exhausts its stated bound without an answer, that is not a failed
 probe — it is an unplanned dependency. **Go up.**
 
-## Down — the fix rounds
+## Down — two attempts, then stop and ask
 
-- The **attempt budget** is three unless the plan says otherwise.
-- Each attempt must change something real: more context in the brief, a
-  narrower target, or a probe first so the attempt stops guessing.
-  Re-dispatching the same brief to the same tier is not an attempt, it is a
-  coin flip charged to your attempt budget.
-- `aikit:implementer` defaults to **sonnet**. **Attempts 1-2 stay on sonnet.**
-  If both fail, attempt 3 escalates to **opus**. What triggers it is the ledger,
-  never a per-task judgement call made in the moment: two recorded failures,
-  then the tier moves. `aikit:probe` keeps the same move under the same
-  argument — it too defaults to sonnet, and two recorded failures buy it the
-  same rung. Escalating the model does not excuse you from also changing the
-  brief — a bigger model on the same brief is still a coin flip.
-- **`aikit:planner` and `aikit:reviewer` have no rung above.** Both already run
-  at the top tier, so a failed planning pass or a review that missed something
-  cannot be answered by escalating the model. What replaces escalation for
-  those two, in order of cost: more context in the brief; a narrower target;
-  a probe first, so the next pass stops guessing; **fresh eyes at the same
-  tier** — a new instance with the failure written into its brief, which is not
-  a coin flip when the brief has changed; and finally a higher `effort`, an
-  accepted frontmatter field for plugin agents and the only genuine notch above
-  once a role is already at its ceiling.
-- After the attempt budget: escalate. Do not extend it silently.
+- **The attempt budget is two.** Each attempt must change something real: more
+  context in the brief, a narrower target, or a probe first so the attempt
+  stops guessing. Re-dispatching the same brief unchanged is not an attempt,
+  it is a coin flip charged to your attempt budget.
+- Every archetype — `aikit:implementer`, `aikit:probe`, `aikit:planner`,
+  `aikit:reviewer` — runs at its one fixed model (`aikit:executing-plans`'s
+  Model Selection table). There is no automatic model escalation: a second
+  failure does not buy a bigger model, it buys a stop.
+- **When the second attempt also fails, stop dispatching and ask your human
+  partner for arbitration.** Do not open a third round, and do not keep
+  inflating the dispatch history hoping the next one lands. State what was
+  tried, what happened both times, and what you recommend — then wait.
+- A finding the reviewer raised that you believe is wrong, or not worth
+  fixing, does not consume an attempt: say so to your human partner and let
+  them rule, rather than spending a dispatch to argue with the reviewer.
 
-## The attempt budget lives in the ledger, not in your head
+## The attempt budget lives in `vault/<project>/<feature>/plan.md`, not in your head
 
-An agent that retries does not reliably remember it is on attempt three;
+An agent that retries does not reliably remember it is on attempt two;
 compaction erases that first. **An attempt budget that is not written down
 does not exist.**
 
-Write, in the plan's ledger, before each attempt:
+Write, under the task's checklist in `vault/<project>/<feature>/plan.md`, before each attempt:
 
 ```
-Task 4: attempt 2/3 — reviewer flagged the consumer name; re-dispatching with the naming table in the brief
+- [ ] Task 4 — attempt 2/2: reviewer flagged the consumer name; re-dispatching with the naming table in the brief
 ```
 
-Before starting any attempt, read the ledger's lines for this task. If you find
-attempt 3 already recorded, the attempt budget is spent — escalate, even if you
-have no memory of the earlier attempts.
+Before starting any attempt, read that task's existing lines. If you find
+attempt 2 already recorded and still open, the attempt budget is spent — stop
+and ask for arbitration, even if you have no memory of the earlier attempt.
 
 ## Out — the derived need
 
@@ -109,10 +102,10 @@ That problem goes **out**: it becomes a need of its own, with its own directory,
 its own spec, and its own cycle — entered at phase 1 like any other need, not
 bolted onto the one that found it.
 
-**The lineage is written down, in both directions.** The parent's `status.md`
-gets `derived: <child-slug>`; the child's `spec.md` and `status.md` get
-`derived_from: <parent-slug>`. Without both, the derived need reads months later
-as an orphan nobody can explain.
+**The lineage is written down, in both directions.** The parent's
+`vault/<project>/<feature>/plan.md` gets a `derived: <child-slug>` line; the child's `spec.md`
+and `vault/<project>/<feature>/plan.md` get `derived_from: <parent-slug>`. Without both, the
+derived need reads months later as an orphan nobody can explain.
 
 **Depth is capped at one.** A derived need may never itself derive. Anything
 discovered inside one that **blocks its own progress** goes **up**, to the
@@ -121,7 +114,7 @@ again. Anything that does not block its own progress is a candidate, same as
 anywhere else. The cap is what stops a single feature from spawning a tree of
 half-specified children, each blocked on the next.
 
-**The discriminant, answered in writing, in the ledger:**
+**The discriminant, answered in writing, in `vault/<project>/<feature>/plan.md`:**
 
 > **Does the current cycle need the answer to continue?**
 
@@ -133,7 +126,7 @@ half-specified children, each blocked on the next.
   line now; a derived need costs a full cycle, and deriving one the current
   work did not need is how a plan quietly doubles in size.
 
-The answer goes in the ledger because the question is easy to re-answer
+The answer goes in `vault/<project>/<feature>/plan.md` because the question is easy to re-answer
 differently an hour later, under the pressure of wanting to be done.
 
 ## Up — the cycle report
@@ -144,7 +137,8 @@ Going up does not mean stopping everything.
    plan delivered is better than a plan abandoned mid-flight, and the finished
    work narrows what the next plan has to cover.
 2. Do not start any task that touches the broken assumption.
-3. Write the cycle report to `vault/<project>/<feature>/status.md`:
+3. Write the cycle report into `vault/<project>/<feature>/plan.md`, under a `## Cycle report`
+   heading:
 
 ```markdown
 ## Cycle 2 — stopped at execution, going up to planning
@@ -180,9 +174,9 @@ reconstructing the context. An escalation contains:
 
 | Thought | Reality |
 |---|---|
-| "One more try and it'll work" | Attempt four is where the method stops paying. Read the ledger. |
+| "One more try and it'll work" | Attempt three is where the method stops paying. Read `vault/<project>/<feature>/plan.md`. |
 | "I'll just adjust the plan a bit as I go" | Silent re-planning is the drift the method exists to prevent. Go up, in writing. |
 | "The spec doesn't say, I'll pick something sensible" | An unspecified case is an upward failure. Ask. |
 | "A probe will sort this out" | Probes answer questions. They do not fix wrong plans. |
-| "I'll note the blocker in my todo" | Todos die with the context. The ledger and status file don't. |
+| "I'll note the blocker in my todo" | Todos die with the context. `vault/<project>/<feature>/plan.md` doesn't. |
 | "Escalating looks like failure" | Escalating late is the failure. |

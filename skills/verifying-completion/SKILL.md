@@ -58,13 +58,13 @@ Once step 5 passes, close the artifact: set `status: done` and `updated` in
 this feature is finished; a passing test suite nobody recorded leaves it
 looking in flight.
 
-## Closing `status.md` — the happy path too
+## Closing `vault/<project>/<feature>/plan.md` — the happy path too
 
-`status.md` used to be written only when a cycle went **up**. On the happy path
-nobody wrote it, and the ledger was deleted at the end of the plan — so after a
-successful run there was neither a record nor a state.
+Its frontmatter used to be written only when a cycle went **up**. On the happy
+path nobody wrote it, and the file was deleted at the end of the plan — so
+after a successful run there was neither a record nor a state.
 
-Phase 6 closes it. Before the verdict is reported:
+Phase 6 closes it, before deleting it. Before the verdict is reported:
 
 - `status:` becomes `done`, `phase:` becomes `verify`, `updated:` gets today's
   date.
@@ -74,15 +74,44 @@ Phase 6 closes it. Before the verdict is reported:
   hides its blind spots is worse than no verdict, because it is believed.
 - Harvested candidates are listed, with a pointer to `candidates.md`.
 
-Phase 1 initialises this file, `aikit:routing-failures` writes to it when a
-cycle goes up, and phase 6 closes it. It is never absent after a successful run.
+Phase 1 initialises `vault/<project>/<feature>/plan.md`, `aikit:routing-failures` writes to it
+when a cycle goes up, and phase 6 closes it before the file is removed. It is
+never absent after a successful run, until the run itself is over.
+
+## Writing to `heuristics.md` — orchestrator only, at close, one bullet
+
+`vault/<project>/heuristics.md` is a living, append-only record of empirical
+rules and traps for this project, capped at 50 lines. Two rules govern it:
+
+- **Only the orchestrator writes to it, and only here, at phase 6.** A
+  subagent never writes to it — heuristics earn their place by surviving to
+  the end of a cycle, not by seeming true mid-task.
+- **Write one bullet, and only if this cycle hit an unexpected trap** — a
+  fact about this project nothing already written down would have told you,
+  that cost real time to discover. A clean run that hit no surprises adds
+  nothing; padding the file with things everyone already knew is how a
+  50-line cap stops meaning anything.
+
+Format, one line:
+
+```markdown
+- <Condition> -> <Action or thing to avoid>
+```
+
+If the file is at or near 50 lines, the new bullet earns its place only by
+being more load-bearing than the oldest one — replace, don't just append.
+
+A rule about this **machine** (OS, shell, environment) rather than this
+project belongs in `vault/_global/heuristics.md` instead, under the same two
+rules.
 
 ## Candidates — what survives the need
 
 A **candidate** is a real problem that nothing is waiting on. It is not a
 derived need — a missing decision the current cycle needs in order to continue,
 which routes `out` — see `aikit:routing-failures` — and it is not a review
-finding ruled at the round cap (that is **parked**, and it dies with the plan).
+finding the human partner ruled acceptable after the attempt budget was spent
+(that is **parked**, and it dies with the plan).
 
 They live at **project** level, durable:
 

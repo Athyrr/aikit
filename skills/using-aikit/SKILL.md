@@ -29,10 +29,20 @@ checklist, create a todo per item.
 not once per message: answering clarifying questions inside a need already
 routed does not re-invoke it. It names the project, reads its registry, routes.
 
-Route first: `aikit:understanding-need` splits every request into **Fast-Path**
-(≤2 files, no contract break — no spec, no plan, one dispatch, proven by
-`git diff --name-only`) or **Heavy-Path** (everything else, or a wrong
-estimate — the phases below, drift-checked per task). Tables: `reference.md`.
+## Execution routing — mandatory
+
+- **Fast-Path** (Session principale directe, sans `vault/<project>/<feature>/plan.md`, sans
+  sous-agent dédié) — strict condition: **≤2 files changed, and no public
+  API / data-schema change.** Action: implement and run a targeted test
+  immediately. Generating any intermediate documentation is forbidden.
+- **Heavy-Path** (Subagent-Driven Development) — condition: multi-file
+  refactors, new features, or an API/contract break. Action: the minimal
+  spec, broken into micro-tasks, delegated to disposable subagents — the
+  full phase table below.
+
+`aikit:understanding-need` makes this call and proves it: Fast-Path with
+`git diff --name-only` against the files it named; Heavy-Path drift-checked
+per task. Tables: `reference.md`.
 
 ## The Phases (Heavy-Path)
 
@@ -40,12 +50,12 @@ estimate — the phases below, drift-checked per task). Tables: `reference.md`.
 
 | # | Phase | Skill | Artifact |
 |---|---|---|---|
-| 1 | Understand | `aikit:understanding-need` | the need's directory, `status.md` initialised |
+| 1 | Understand | `aikit:understanding-need` | the need's directory, `vault/<project>/<feature>/plan.md` initialised |
 | 2 | Design | `aikit:designing-the-solution` then `aikit:writing-specs` | `spec.md` |
 | 3 | Assess | the domain expert, consultatively | the `## Impact` section of `spec.md` |
-| 4 | Plan | `aikit:writing-plans` | `plan.md` |
-| 5 | Execute | `aikit:executing-plans` | the code, and `runs/<plan>/` |
-| 6 | Verify | `aikit:verifying-completion` | the verdict, `status.md` closed, candidates harvested |
+| 4 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md` filled in with tasks |
+| 5 | Execute | `aikit:executing-plans` | the code, and `vault/<project>/<feature>/plan.md`'s checkboxes |
+| 6 | Verify | `aikit:verifying-completion` | the verdict, `vault/<project>/<feature>/plan.md` closed, candidates harvested |
 
 Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:routing-failures` on any
@@ -53,6 +63,12 @@ failure, `aikit:handling-secrets` before writing config or committing anything
 that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
 a project's own MCP servers, `aikit:receiving-code-review` when incorporating
 feedback from outside the method's own review loop.
+
+**Heuristics** — two more vault files, both capped at 50 lines, read in
+cascade (`_global/` then `<project>/`) while writing the plan, written only
+by the orchestrator at phase 6 and only when a cycle hit a real, unexpected
+trap: `vault/_global/heuristics.md` (this machine's environment/OS/shell),
+`vault/<project>/heuristics.md` (this project's empirical traps).
 
 ## What loads where
 
@@ -72,17 +88,20 @@ ask a question, and a delegated spec is an invented spec.
 file. Never chain two phases in one context hoping to remember the first.
 
 **aiKit writes nothing inside the project repositories** except the code
-changes themselves. Specs, plans, ledgers and scratch all live under the vault
-that owns the project — an **Obsidian vault**: invoke `obsidian:obsidian-markdown`
-before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`.
+changes themselves. The plan, its live status, and checkbox task tracking
+all live in one per-feature file, `vault/<project>/<feature>/plan.md`,
+removed when the feature closes. Specs, probe findings and scratch live
+alongside it — the vault that owns the project is an **Obsidian vault**:
+invoke `obsidian:obsidian-markdown` before writing its syntax,
+`obsidian:obsidian-bases` before editing `aikit.base`.
 
 ## The archetypes, and their fixed models
 
 | Role | Model |
 |---|---|
-| `aikit:planner`, `aikit:reviewer` | **opus** — evaluative work where a wrong judgement is the most expensive kind of failure: planning, judging a diff |
-| `aikit:probe` | **sonnet**, escalating to **opus** after 2 recorded attempt failures — bounded, low-stakes investigation; closer to explorer's shape of work than to planning or review |
-| `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-round attempts (`aikit:routing-failures`) — never a per-task choice |
+| `aikit:planner` | **opus** — evaluative work where a wrong judgement is the most expensive kind of failure: reading the spec against the codebase and deciding what the tasks are |
+| `aikit:reviewer` | **sonnet** by default — a human partner dispatches it manually on opus for a security-sensitive audit, or after 2 consecutive fix attempts still fail review |
+| `aikit:probe`, `aikit:implementer` | **sonnet**, fixed — no automatic escalation; two failed attempts stop the loop and ask a human for arbitration (`aikit:routing-failures`) |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
 
 Rationale per role: `reference.md`, next to this skill.
@@ -96,13 +115,13 @@ work: experts carry their own tier and it is often lower.
 ## When something fails, the nature of the failure decides the direction
 
 **Down**, plan unmoved: technical unknown → bounded probe; red test or broken
-build → fix rounds, bounded by the attempt budget. **Up**: unplanned dependency, a file
+build → two attempts, bounded by the attempt budget. **Up**: unplanned dependency, a file
 outside the task's declared set, or a task too large → finish the independents,
 then re-plan; spec ambiguous or contradictory → stop, back to phase 2 with the
 human. **Out**: a missing behaviour decision, current work not wrong → a derived
 need (own directory, spec, cycle) if this cycle needs the answer to continue, else a candidate. Going up is expensive, but
-retrying a wrong plan is the most expensive of all. **The attempt budget lives
-in the ledger.** Protocol: `aikit:routing-failures`.
+retrying a wrong plan is the most expensive of all. **The attempt budget is two,
+and it lives in `vault/<project>/<feature>/plan.md`.** Protocol: `aikit:routing-failures`.
 
 ## Red Flags
 

@@ -44,8 +44,8 @@ surfacing as drift.
 
 **UNTOUCHED — declared but not touched.** Either the task is incomplete, or the
 plan named a file the work did not need. Both are real findings. Decide which,
-**in writing**, in the ledger. An untouched test file almost always means the
-test was never written.
+**in writing**, in `vault/<project>/<feature>/plan.md`. An untouched test file almost always means
+the test was never written.
 
 ## Exit 2 — the plan cannot be checked
 
@@ -64,15 +64,15 @@ rerun; never interpret an exit 2 as either CLEAN or DRIFT.
 
 A project with no git repository has no diff to compare against, so this check
 is unavailable. Compare against the declared list by
-hand, or record the gap explicitly in `status.md`. Do not report a task as
+hand, or record the gap explicitly in `vault/<project>/<feature>/plan.md`. Do not report a task as
 verified on a check that never ran.
 
 ## Why this works at all
 
-Because aiKit writes nothing inside the project repositories. Specs, plans,
-ledgers and scratch all live under `vault/`, so **every file in the diff is
-production code by construction**. Method artifacts can never show up as false
-drift.
+Because aiKit writes nothing inside the project repositories. The plan, its
+status, specs and scratch all live under `vault/`, so **every file in the
+diff is production code by construction**. Method artifacts can never show
+up as false drift.
 
 ## Red flags
 

@@ -1,6 +1,6 @@
 # Scoped Re-Review Prompt Template
 
-Use this template when dispatching a re-review after a fix round. The
+Use this template when dispatching a re-review after a fix attempt. The
 re-reviewer verifies the findings were addressed and checks the fix diff for
 new breakage. It is not a fresh review — the full review already happened.
 
@@ -9,17 +9,17 @@ that the fix itself broke nothing.
 
 ```
 Subagent (aikit:reviewer):
-  description: "Re-review Task N fix round R"
+  description: "Re-review Task N fix attempt K"
   model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
          model silently inherits the session's most expensive one]
   prompt: |
-    You are re-reviewing one task's fix round. A previous review produced
+    You are re-reviewing one task's fix attempt. A previous review produced
     findings; an implementer has attempted to fix them. Your job is to
     verdict each finding and inspect the fix diff — nothing else.
 
     ## The Task
 
-    Read the task brief: [BRIEF_FILE]
+    Read `vault/<project>/<feature>/plan.md`, Task N's section — that is the requirements.
 
     ## The Findings Under Verification
 
@@ -27,8 +27,9 @@ Subagent (aikit:reviewer):
 
     ## The Fix
 
-    Read the implementer's report (fix reports are appended at the end):
-    [REPORT_FILE]
+    Task N's checklist line in `vault/<project>/<feature>/plan.md` carries the implementer's
+    fix-attempt return (STATUS / FILES / TEST) — that is the whole claim.
+    There is no separate report file.
 
     **Fix base:** [FIX_BASE_SHA] (the head the previous review saw)
     **Head:** [HEAD_SHA]
@@ -63,13 +64,11 @@ Subagent (aikit:reviewer):
 
     ## Tests
 
-    The implementer re-ran the tests covering the amended code and appended
-    the results to the report file. Treat the report as unverified claims:
-    confirm the fix report names the covering tests and shows their output,
-    and verify the claims against the diff. Do not re-run the suite to
-    confirm their report. Run a test only when reading the code raises a
-    specific doubt that no existing run answers — and then a focused test,
-    never a package-wide suite.
+    The `TEST:` line names the command the implementer re-ran and its
+    result. Treat it as an unverified claim: verify it against the diff. Do
+    not re-run the suite to confirm it. Run a test only when reading the
+    code raises a specific doubt that no existing run answers — and then a
+    focused test, never a package-wide suite.
 
     ## Empirical Claims
 
@@ -92,30 +91,31 @@ Subagent (aikit:reviewer):
 
     ### New Breakage in the Fix Diff
 
-    Anything the fix itself broke or introduced, with severity
-    (Critical/Important/Minor) and file:line. "None" if clean.
+    Anything the fix itself broke or introduced that would itself be a
+    `REJECT` (functional bug, spec violation, security regression), with
+    file:line. "None" if clean.
 
     ### Out-of-Scope Observations
 
     Issues you noticed entirely outside the fix diff. Non-blocking; the
-    orchestrator ledgers these for the final review. "None" if none.
+    orchestrator records these in `vault/<project>/<feature>/plan.md` for the final review.
+    "None" if none.
 
     ### Verdict
 
-    **Fix round:** [All findings addressed, no new Critical/Important
-    breakage | Findings remain open] — list the open ones.
+    **Fix attempt:** [All findings addressed, no new breakage | Findings
+    remain open] — list the open ones.
 ```
 
 **Placeholders:**
 - `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection; scoped
   re-reviews of small fix diffs take a cheap-to-mid tier
-- `[BRIEF_FILE]` — the task brief file (same file the implementer worked from)
-- `[FINDINGS]` — the Critical/Important findings and spec gaps from the
-  previous review, copied verbatim, one per bullet
-- `[REPORT_FILE]` — the implementer's report file (fix reports appended)
+- `[FINDINGS]` — the `REJECT`-level findings from the previous review,
+  copied verbatim, one per bullet
 - `[FIX_BASE_SHA]` — the head the previous review saw
 - `[HEAD_SHA]` — current commit
-- `[DIFF_FILE]` — the path `scripts/review-package PLAN_FILE FIX_BASE HEAD` printed
+- `[DIFF_FILE]` — the diff over that range, captured directly
+  (`git diff FIX_BASE..HEAD -U10`) to a scratch file
 
 **Re-reviewer returns:** per-finding verdicts (ADDRESSED / NOT ADDRESSED),
 new breakage in the fix diff, out-of-scope observations, and a round verdict.

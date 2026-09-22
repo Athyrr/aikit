@@ -15,8 +15,26 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** If working in an isolated worktree, it should have been created via the `aikit:isolating-the-workspace` skill at execution time.
 
-**Save plans to:** `vault/<project>/<feature>/plan.md`
+**Save plans to:** `vault/<project>/<feature>/plan.md`. One file for the whole
+feature — it carries the plan, the spec pointer, and the live status; task
+state is tracked with standard GitHub checkboxes (`- [ ]` → `- [x]`), not a
+separate ledger. aiKit writes nothing inside the project repository itself.
 - (Your human partner's preferences for plan location override this default)
+
+## Read the heuristics cascade first
+
+Before drafting tasks, read two files, in this order, if they exist:
+
+1. `vault/_global/heuristics.md` — rules about this machine's environment,
+   OS and shell that apply everywhere.
+2. `vault/<project>/heuristics.md` — empirical rules and traps specific to
+   this project, learned from prior features.
+
+Both are short (capped at 50 lines) — reading them in full costs little and
+saves a task from repeating a mistake already paid for once. When a task's
+dispatch (`aikit:executing-plans`) would benefit from one specific line,
+inject that line alone as the task's one allowed constraint — never the
+whole file, and never a heuristic that doesn't bear on the task at hand.
 
 ## Scope Check
 
@@ -189,17 +207,17 @@ placeholders and type drift. It cannot catch what you did not think of, because
 it is you thinking again.
 
 **Before the handoff, dispatch `plan-document-reviewer-prompt.md` (next to this
-skill) on a fresh `aikit:reviewer`, on opus.** It has not read the conversation
-that produced the plan, which is the entire point.
+skill) on a fresh `aikit:reviewer`, at its fixed model, sonnet.** It has not
+read the conversation that produced the plan, which is the entire point.
 
 Every diff in this method already faces a reviewer who did not write it. The
 plan — the one artifact where a mistake is paid by every task downstream — had
 only its author. This closes that.
 
 Handle its findings the way a task handles review findings: fix, or rule and
-record the ruling in `status.md` — the ledger doesn't exist yet at this point,
-`status.md` is what a resumption can read. Do not argue with it in your own
-head and move on.
+record the ruling directly in `vault/<project>/<feature>/plan.md`, under a `## Rulings` section —
+that file is what a resumption reads. Do not argue with it in your own head
+and move on.
 
 **The spec gets no such guard.** Its authority comes from a human partner having
 signed it. A subagent re-reading an approved spec adds nothing and invites
@@ -210,7 +228,8 @@ re-litigating a settled contract.
 After saving the plan, hand it off. **There is no choice to offer:** one skill
 carries execution, and its subagent mode is the method.
 
-**"Plan complete and saved to `<vault>/<project>/<feature>/plan.md`.**
+**"Plan complete and saved to `vault/<project>/<feature>/plan.md`.**
 **REQUIRED SUB-SKILL:** `aikit:executing-plans` — a fresh subagent
-per task, a fresh reviewer per diff, the ledger between them. Its final section
-covers the degraded inline mode for a session where subagents are unavailable.
+per task, a fresh reviewer per diff, checkboxes tracking state in between.
+Its final section covers the degraded inline mode for a session where
+subagents are unavailable.
