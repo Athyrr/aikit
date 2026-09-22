@@ -36,8 +36,8 @@ override it:
   this repo: a new flag, a small endpoint, a one-file fix.
   Understanding the kind of app is not enough — bounded means the flow
   you are changing is already here to read. If there is no existing
-  flow to change, the task is not bounded. Ask the clarifying
-  questions that matter, present a short design IN CHAT (a few
+  flow to change, the task is not bounded. Question the design with
+  `aikit:grilling`, present a short design IN CHAT (a few
   sentences to a few short paragraphs), and STOP. Implementation
   starts only after your human partner says yes to that design — a
   bounded task's approval is as hard a gate as an architectural
@@ -98,12 +98,9 @@ your path and complete them in order.
 **Architectural:**
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
-3. **Question the design with `aikit:grilling`** — invoke it via the
-   Skill tool; it works the question tree in passes, asking only
-   questions whose prerequisites are already settled, and requires you
-   to recommend an answer to every question you ask — never a bare
-   question handed to your human partner. Purpose/constraints/success
-   criteria are what the tree is settling.
+3. **Question the design with `aikit:grilling`** — same as the bounded
+   path's step 2. Purpose/constraints/success criteria are what the
+   tree is settling.
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get your human partner's approval after each section
 6. **Write design doc** — save to `vault/<project>/<feature>/spec.md` (never committed — artifacts live outside the repositories)
@@ -117,13 +114,13 @@ your path and complete them in order.
 digraph designing_the_solution {
     "Classify: feasibility / bounded / architectural" [shape=diamond];
     "Present question + probe (2-3 sentences)" [shape=box];
-    "Ask clarifying questions (bounded)" [shape=box];
+    "Question with aikit:grilling (bounded)" [shape=box];
     "Present short design in chat" [shape=box];
     "Human approves?" [shape=diamond];
     "Investigate; report recommendation" [shape=doublecircle];
     "Implement via normal workflow (no plan doc)" [shape=doublecircle];
     "Explore project context" [shape=box];
-    "Ask clarifying questions" [shape=box];
+    "Question with aikit:grilling" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "Human approves design?" [shape=diamond];
@@ -134,16 +131,16 @@ digraph designing_the_solution {
     "Hidden complexity? Upgrade path" [shape=box];
 
     "Classify: feasibility / bounded / architectural" -> "Present question + probe (2-3 sentences)" [label="feasibility"];
-    "Classify: feasibility / bounded / architectural" -> "Ask clarifying questions (bounded)" [label="bounded"];
+    "Classify: feasibility / bounded / architectural" -> "Question with aikit:grilling (bounded)" [label="bounded"];
     "Classify: feasibility / bounded / architectural" -> "Explore project context" [label="architectural"];
     "Present question + probe (2-3 sentences)" -> "Human approves?";
-    "Ask clarifying questions (bounded)" -> "Present short design in chat";
+    "Question with aikit:grilling (bounded)" -> "Present short design in chat";
     "Present short design in chat" -> "Human approves?";
     "Human approves?" -> "Investigate; report recommendation" [label="feasibility: yes"];
     "Human approves?" -> "Implement via normal workflow (no plan doc)" [label="bounded: yes"];
     "Hidden complexity? Upgrade path" -> "Classify: feasibility / bounded / architectural";
-    "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Explore project context" -> "Question with aikit:grilling";
+    "Question with aikit:grilling" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "Human approves design?";
     "Human approves design?" -> "Present design sections" [label="no, revise"];
@@ -176,16 +173,9 @@ is the whole process.
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help your human partner decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
 - For appropriately-scoped projects, **question the design with
-  `aikit:grilling`**. Invoke it via the Skill tool. It works the
-  question tree in passes, asks only the questions whose prerequisites
-  are already settled, and requires you to recommend an answer to
-  every question you ask — never a bare question handed to your human
-  partner.
-- `grilling` also requires that facts be found by subagent and never
-  asked of the human partner. That is already `aikit:budgeting-context`;
-  the two agree, and neither needs restating in the other.
+  `aikit:grilling`** (see Bounded step 2 above).
+- `grilling` relies on `aikit:budgeting-context` for facts, never asking the human partner.
 - Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
 
 **Exploring approaches:**
