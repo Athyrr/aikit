@@ -33,16 +33,14 @@ one artifact phase 2 and 3 share.
 
 ## Why each archetype gets the model it gets
 
-Opus is not escalation-only here: on a machine with no cheaper evaluative-tier
-model (this method originally ran planner/reviewer/probe on **fable**), opus
-is also planner and reviewer's standing default — the probe moved to sonnet
-instead, since a bounded investigation carries less downside than a bad plan
-or a missed review finding. Restore the cheaper tier for planner and reviewer
-if one becomes available again — probe stays on sonnet either way, since it
-already carries its own ledger-triggered escalation rather than a fixed
-ceiling.
+Opus is not escalation-only: it is planner and reviewer's standing default,
+since a wrong plan or a missed review finding is the most expensive kind of
+failure this method has. `aikit:probe` and `aikit:implementer` both start
+below the ceiling, at sonnet, and both carry the same ledger-triggered
+escalation to opus after two recorded attempt failures — never a per-task
+judgement call.
 
-Full table with the rationale per role, and the ledger-triggered escalation:
+Full table with the rationale per role, and the escalation contract:
 `aikit:executing-plans`.
 
 ## The failure matrix, row by row
@@ -53,6 +51,7 @@ Full table with the rationale per role, and the ledger-triggered escalation:
 | Execution error (red test, broken build) | **down** — fix rounds, bounded by the attempt budget. |
 | Unplanned dependency, task too large | **up** — finish the independents, then re-plan. |
 | Ambiguous or contradictory spec | **up** — stop now, back to phase 2 with the human. |
+| A behaviour decision is missing, current work not wrong | **out** — a derived need: its own directory, spec and cycle. |
 
 Going down is cheap, going up is expensive — but retrying a wrong plan is the
 most expensive thing of all. Never spend an attempt budget on a failure that

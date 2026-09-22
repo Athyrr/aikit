@@ -85,7 +85,7 @@ before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`
 | `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-round attempts (`aikit:routing-failures`) — never a per-task choice |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
 
-Rationale per role, and the fable note: `reference.md`, next to this skill.
+Rationale per role: `reference.md`, next to this skill.
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.
 
@@ -99,8 +99,10 @@ work: experts carry their own tier and it is often lower.
 build → fix rounds, bounded by the attempt budget. **Up**: unplanned dependency, a file
 outside the task's declared set, or a task too large → finish the independents,
 then re-plan; spec ambiguous or contradictory → stop, back to phase 2 with the
-human. Going up is expensive, but retrying a wrong plan is the most expensive
-of all. **The attempt budget lives in the ledger.** Protocol: `aikit:routing-failures`.
+human. **Out**: a missing behaviour decision, current work not wrong → a derived
+need (own directory, spec, cycle) or a candidate. Going up is expensive, but
+retrying a wrong plan is the most expensive of all. **The attempt budget lives
+in the ledger.** Protocol: `aikit:routing-failures`.
 
 ## Red Flags
 
