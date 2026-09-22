@@ -182,6 +182,27 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
+## The fresh-eye guard — before any execution dispatch
+
+Your Self-Review above is the author checking their own work. It catches
+placeholders and type drift. It cannot catch what you did not think of, because
+it is you thinking again.
+
+**Before the handoff, dispatch `plan-document-reviewer-prompt.md` (next to this
+skill) on a fresh `aikit:reviewer`, on opus.** It has not read the conversation
+that produced the plan, which is the entire point.
+
+Every diff in this method already faces a reviewer who did not write it. The
+plan — the one artifact where a mistake is paid by every task downstream — had
+only its author. This closes that.
+
+Handle its findings the way a task handles review findings: fix, or rule and
+record the ruling. Do not argue with it in your own head and move on.
+
+**The spec gets no such guard.** Its authority comes from a human partner having
+signed it. A subagent re-reading an approved spec adds nothing and invites
+re-litigating a settled contract.
+
 ## Execution Handoff
 
 After saving the plan, hand it off. **There is no choice to offer:** one skill
