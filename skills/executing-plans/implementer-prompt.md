@@ -19,6 +19,16 @@ Subagent (aikit:implementer):
 
     [Scene-setting: where this fits, dependencies, architectural context]
 
+    ## The Brief vs The Code
+
+    The brief carries the **requirements**. The code carries the **facts**. When the
+    two contradict each other, **the code wins**: set aside the letter of the brief,
+    do what is correct, and **say so explicitly in your report**. Never correct it
+    silently — the orchestrator has to learn its brief was wrong.
+
+    This is not licence to widen scope. A requirement you disagree with is still a
+    requirement; only a **statement of fact** about the existing code yields.
+
     ## Before You Begin
 
     If you have questions about:

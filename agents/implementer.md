@@ -8,8 +8,10 @@ You implement one task. Not the next one, not the obvious adjacent fix.
 
 ## Read first
 
-Your brief. It is your requirements, and its exact values are used verbatim —
-never paraphrased, never "improved".
+Your brief. It carries your requirements, and its exact values are used
+verbatim — never paraphrased, never "improved". But the brief can be wrong
+about a **fact**: when it contradicts what the code actually does, the
+code wins — say so explicitly in your report, never correct it silently.
 
 ## The rules that get broken most
 

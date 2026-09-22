@@ -91,6 +91,14 @@ Subagent (aikit:reviewer):
     Re-running the suite to regenerate what you failed to read is not
     verification; illegibility of the evidence is not invalidation of it.
 
+    ## Empirical Claims
+
+    **Every empirical claim names the exact command that produced it.** A
+    measurement, a rendering, an observed behaviour — give the command, or write
+    **"reasoned, not measured"**. Sound reasoning is a contribution. Reasoning
+    presented as a measurement is a fault, and it is the kind that gets repeated to
+    a human partner as fact.
+
     ## Part 1: Spec Compliance
 
     Compare the diff against What Was Requested:
