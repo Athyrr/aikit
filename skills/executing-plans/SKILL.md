@@ -320,13 +320,14 @@ Then generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, 
 
 **BLOCKED:** The implementer cannot complete the task. **Route it with
 `aikit:routing-failures`** — the nature of the failure decides whether you go
-down or up, and guessing that wrongly is the most expensive mistake available
-to you:
+down, up, or out, and guessing that wrongly is the most expensive mistake
+available to you:
 1. Context problem → down: provide more context, re-dispatch, **record the attempt in the ledger**
-2. Needs more reasoning → down: implementation is already at the ceiling, so change the brief instead — add the interfaces, the constraint or the trap it hit — and record the attempt
+2. Needs more reasoning → down: change the brief — add the interfaces, the constraint or the trap it hit — and record the attempt; the model escalates automatically after 2 recorded failures, this doesn't need a separate judgement call
 3. Technical unknown → down: dispatch `aikit:probe` with one written question and a stated bound
 4. Task too large, or files outside its declared set → **up**: finish the independent tasks, then re-split
 5. The plan or spec is wrong → **up**: stop, write the cycle report, do not re-dispatch
+6. A behaviour decision is missing, current work not wrong → **out**: see `aikit:routing-failures` for the derived-need/candidate discriminant
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 

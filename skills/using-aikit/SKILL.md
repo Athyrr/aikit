@@ -100,7 +100,7 @@ build → fix rounds, bounded by the attempt budget. **Up**: unplanned dependenc
 outside the task's declared set, or a task too large → finish the independents,
 then re-plan; spec ambiguous or contradictory → stop, back to phase 2 with the
 human. **Out**: a missing behaviour decision, current work not wrong → a derived
-need (own directory, spec, cycle) or a candidate. Going up is expensive, but
+need (own directory, spec, cycle) if this cycle needs the answer to continue, else a candidate. Going up is expensive, but
 retrying a wrong plan is the most expensive of all. **The attempt budget lives
 in the ledger.** Protocol: `aikit:routing-failures`.
 
