@@ -186,7 +186,7 @@ implementation.
 | `aikit:planner` | **opus** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are — a wrong plan is the most expensive failure this method has, so it gets the strongest available judgement. |
 | `aikit:reviewer` | **opus** | Same shape of judgement, applied to a diff instead of a spec — the review is the safety net every task passes through. |
 | `aikit:probe` | **sonnet**, escalating to **opus** after 2 recorded attempt failures | A probe produces a finding, not code — bounded and low-stakes, closer to explorer's shape of work than to planning or review — but it shares the implementer's ledger-triggered escalation, since two failed attempts mean the same thing for either role: the tier stopped being the bottleneck. |
-| `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded fix-round failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
+| `aikit:implementer` | **sonnet**, escalating to **opus** after 2 recorded attempt failures | Most production work does not need the ceiling tier. The escalation is automatic and ledger-triggered — see below — never a per-task judgement call. |
 | `aikit:explorer` | sonnet | High-volume reading, low judgement. |
 | `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
 
@@ -411,9 +411,10 @@ and the findings — the report file is the persistent memory either way.
 with the brief path, the report-file path, the open findings, and this
 framing: "A prior implementer attempted this task [N] times; you own it now.
 Read the report file for what was tried." Two failed rounds is the ledger
-trigger for the one escalation this method allows — a loop that survives two
-resumes usually means the implementer cannot see its own problem, and fresh
-eyes plus the capability bump arrive together.
+trigger for this task's one escalation — `aikit:probe` earns the same rung on
+its own attempt budget — a loop that survives two resumes usually means the
+implementer cannot see its own problem, and fresh eyes plus the capability
+bump arrive together.
 
 **Every round, either way:** the implementer fixes, re-runs the tests
 covering the amended code, appends its fix report to the same report file,

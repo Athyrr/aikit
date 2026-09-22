@@ -81,7 +81,7 @@ before writing its syntax, `obsidian:obsidian-bases` before editing `aikit.base`
 | Role | Model |
 |---|---|
 | `aikit:planner`, `aikit:reviewer` | **opus** — evaluative work where a wrong judgement is the most expensive kind of failure: planning, judging a diff |
-| `aikit:probe` | sonnet — bounded, low-stakes investigation; closer to explorer's shape of work than to planning or review |
+| `aikit:probe` | **sonnet**, escalating to **opus** after 2 recorded attempt failures — bounded, low-stakes investigation; closer to explorer's shape of work than to planning or review |
 | `aikit:implementer` | **sonnet**, escalating to **opus** only when the ledger shows 2 failed fix-round attempts (`aikit:routing-failures`) — never a per-task choice |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
 

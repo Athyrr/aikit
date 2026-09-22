@@ -37,8 +37,10 @@ Opus is not escalation-only here: on a machine with no cheaper evaluative-tier
 model (this method originally ran planner/reviewer/probe on **fable**), opus
 is also planner and reviewer's standing default — the probe moved to sonnet
 instead, since a bounded investigation carries less downside than a bad plan
-or a missed review finding. Restore the cheaper tier for all three if one
-becomes available again.
+or a missed review finding. Restore the cheaper tier for planner and reviewer
+if one becomes available again — probe stays on sonnet either way, since it
+already carries its own ledger-triggered escalation rather than a fixed
+ceiling.
 
 Full table with the rationale per role, and the ledger-triggered escalation:
 `aikit:executing-plans`.
