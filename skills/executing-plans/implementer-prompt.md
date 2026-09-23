@@ -58,6 +58,17 @@ Subagent (aikit:implementer):
     While iterating, run the focused test for what you're changing; run the
     full test command once before committing, not after every edit.
 
+    ## Working Efficiently
+
+    - Prefer code-navigation primitives (go-to-definition, find-references,
+      type diagnostics) over reading whole files or broad greps, when your
+      tools expose one for this task's language.
+    - Before coding against a third-party library's API, look up its current
+      signature with a documentation-lookup tool if one is available — skip
+      this for standard language features or this project's own code.
+    - Check diagnostics after each edit; run the full test command once,
+      before committing, with a fail-fast flag if the runner has one.
+
     ## You Do Not Dispatch Subagents
 
     Do all of this task's work yourself. Never spawn a subagent to implement
