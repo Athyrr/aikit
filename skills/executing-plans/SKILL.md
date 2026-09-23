@@ -219,6 +219,19 @@ second attempt also fails, stop dispatching and ask for arbitration — see
 of these archetypes.** An omitted model inherits your session's, which
 silently defeats the table above.
 
+## Optional event log
+
+If the environment variable `AIKIT_EVENTS_FILE` names a writable file, append
+one JSON line to it (create the file if absent) each time you dispatch a
+subagent and again when its report arrives — never otherwise, and never a
+partial line.
+
+Dispatch: `{"event":"dispatch","role":"<archetype or agent name>","project":"<name>","feature":"<slug>","task":<N>,"attempt":<K>,"model":"<model>","ts":"<ISO 8601>"}`.
+Report: the same fields plus `"status":"success"` or `"status":"failure"`,
+read off the implementer's `STATUS:` line.
+
+`AIKIT_EVENTS_FILE` unset → skip this entirely: no file, no probing for one.
+
 ## The Task Sequence
 
 **Batch small same-shape work.** When the plan lists several tasks that are
@@ -270,7 +283,8 @@ absent — governs that task alone. Task N+1 is read fresh from its own
 ### 1. Dispatch the implementer — minimalist protocol
 
 Record BASE (`git rev-parse HEAD`) before dispatching — the review diff and
-fix-round diffs need it.
+fix-round diffs need it. If `AIKIT_EVENTS_FILE` is set, append the dispatch
+line (see Optional event log) before sending the prompt.
 
 **The dispatch prompt carries four things, and nothing else:**
 
@@ -321,7 +335,9 @@ The implementer returns exactly three lines: `STATUS`, `FILES`, `TEST` (see
 `implementer-prompt.md`). Nothing else reaches your context from it — no
 diff, no log, no narrative. Record those three lines verbatim as the task's
 checklist annotation in `vault/<project>/<feature>/plan.md` before doing anything else; that is
-now the only place the attempt's detail lives.
+now the only place the attempt's detail lives. If `AIKIT_EVENTS_FILE` is set,
+append the report line (see Optional event log) using the `STATUS` you just
+recorded.
 
 **`STATUS: SUCCESS` or `STATUS: SUCCESS (concern: ...)`:** First run the
 drift check — `aikit:checking-plan-drift`, using the BASE you recorded before
