@@ -162,3 +162,21 @@ stays yours.
 ## Attribution
 
 Derived from superpowers (MIT, Jesse Vincent). Keep the notice in `LICENSE`.
+
+### Commit and PR signature
+
+This project overrides the harness's default Claude attribution. Use these
+lines instead, on every commit and PR made from this repository:
+
+- Git commit trailer:
+  ```
+  Co-Authored-By: aiKit <noreply@aikit.dev>
+  ```
+- PR description footer:
+  ```
+  🤖 Generated with aiKit
+  ```
+
+No model name, no `anthropic.com` — the signature should stay stable across
+model changes, since aiKit is the thing doing the work, not whichever model
+happens to be running it this session.
