@@ -51,9 +51,14 @@ registry=""
 vault_count=0
 resolved=0
 stranded=""
+stale=""
 while IFS=$'\t' read -r vname vpath; do
     [ -n "$vname" ] || continue
     vault_count=$((vault_count + 1))
+    behind="$(vault_behind_commits "$vpath")"
+    if [ -n "$behind" ]; then
+        stale+="- \`${vname}\` — ${behind} commit(s) en retard sur son remote, pense a \`git pull\`"$'\n'
+    fi
     rows=""
     while IFS=$'\t' read -r n kind state path summary; do
         [ -n "$n" ] || continue
@@ -103,6 +108,7 @@ else
     # moitie d'information.
     [ -z "$stranded" ] || registry+=$'\n\n## Declared, but carrying no project registry\n\n'"${stranded}"$'\nThese route nowhere until fixed: correct the path in `~/.config/aikit/vaults`, or create the vault\'s missing `projects/` directory.'
 fi
+[ -z "$stale" ] || registry+=$'\n\n## Vault(s) en retard sur leur remote\n\n'"${stale}"
 # ---------------------------------------------------------------------------
 
 escape_for_json() {

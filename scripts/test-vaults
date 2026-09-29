@@ -249,6 +249,33 @@ grep -qi workspace hooks/session-start \
   && ko "le mot workspace a disparu du hook" "" "workspace present" \
   || ok "le mot workspace a disparu du hook"
 
+echo "hook : vault en retard sur son remote"
+CONF_RETARD="$TMP/vaults-retard"
+printf 'vault retard %s\n' "$SYNC_RETARD" > "$CONF_RETARD"
+reg_retard=$(AIKIT_VAULTS="$CONF_RETARD" bash hooks/session-start | json_ctx)
+case "$reg_retard" in
+  *"retard"*"2 commit"*"git pull"*) ok "le hook signale un vault en retard" ;;
+  *) ko "le hook signale un vault en retard" \
+        "retard ... 2 commit(s) ... git pull" "${reg_retard:-vide}" ;;
+esac
+
+CONF_AJOUR="$TMP/vaults-ajour"
+printf 'vault ajour %s\n' "$SYNC_AJOUR" > "$CONF_AJOUR"
+reg_ajour=$(AIKIT_VAULTS="$CONF_AJOUR" bash hooks/session-start | json_ctx)
+case "$reg_ajour" in
+  *"en retard sur leur remote"*) \
+    ko "un vault a jour ne declenche aucun message" \
+       "pas de section retard" "section presente" ;;
+  *) ok "un vault a jour ne declenche aucun message" ;;
+esac
+
+# Le fixture historique $VAULT n'a jamais de commit ni de branche amont
+# configuree (voir sa creation plus haut) : verrouille qu'il ne declenche
+# jamais de vrai `git fetch` reseau, conformement a "aucune dependance
+# reseau" en tete de ce fichier.
+is "le fixture \$VAULT existant reste sans amont (aucun fetch reseau)" \
+   "" "$(vault_behind_commits "$VAULT")"
+
 echo "hook : vaults declares mais sans fiche"
 # Un vault declare qui ne rend aucune fiche ne doit JAMAIS se taire : la methode
 # se chargerait sans routeur et sans explication. Trois cas qui ne doivent pas
