@@ -177,6 +177,42 @@ row() { resolve_projects espace | awk -F'\t' -v n="$1" '$1==n {print NF"|"$5}'; 
 is "cinq colonnes, summary comprise" "5|par remote ssh" "$(row avec-remote)"
 is "summary par defaut si la fiche n'en a pas" "5|-" "$(row sans-summary)"
 
+echo "vault_behind_commits"
+# Un vrai depot "remote" local (pas de reseau : un chemin de fichier suffit
+# comme remote git) et trois clones qui en divergent chacun a sa maniere.
+SYNC_REMOTE="$TMP/sync-remote"
+mkdir -p "$SYNC_REMOTE"; git -C "$SYNC_REMOTE" init -q -b main
+git -C "$SYNC_REMOTE" commit -q --allow-empty -m "un"
+
+# Clone AVANT les deux commits suivants : restera en retard de 2.
+SYNC_RETARD="$TMP/sync-en-retard"
+git clone -q "$SYNC_REMOTE" "$SYNC_RETARD"
+
+git -C "$SYNC_REMOTE" commit -q --allow-empty -m "deux"
+git -C "$SYNC_REMOTE" commit -q --allow-empty -m "trois"
+
+# Clone APRES : a jour des la naissance.
+SYNC_AJOUR="$TMP/sync-a-jour"
+git clone -q "$SYNC_REMOTE" "$SYNC_AJOUR"
+
+# Un depot solo, jamais clone : pas de branche amont configuree.
+SYNC_SANSAMONT="$TMP/sync-sans-amont"
+mkdir -p "$SYNC_SANSAMONT"; git -C "$SYNC_SANSAMONT" init -q -b main
+git -C "$SYNC_SANSAMONT" commit -q --allow-empty -m "solo"
+
+# Un clone dont le remote a ete casse apres coup : l'amont existe (le clone
+# a reussi), mais toute tentative de fetch echoue.
+SYNC_ECHEC="$TMP/sync-echec"
+git clone -q "$SYNC_REMOTE" "$SYNC_ECHEC"
+git -C "$SYNC_ECHEC" remote set-url origin "$TMP/n-existe-pas"
+
+is "clone a jour -> rien a signaler" "" "$(vault_behind_commits "$SYNC_AJOUR")"
+is "clone en retard de deux commits -> 2" "2" "$(vault_behind_commits "$SYNC_RETARD")"
+is "pas de branche amont configuree -> silence" "" "$(vault_behind_commits "$SYNC_SANSAMONT")"
+is "remote injoignable -> silence, pas d'erreur" "" "$(vault_behind_commits "$SYNC_ECHEC")"
+is "chemin qui n'est pas un depot git -> silence" "" "$(vault_behind_commits "$TMP/n-importe-quoi")"
+is "aucun argument -> silence" "" "$(vault_behind_commits)"
+
 echo "hook"
 # Le hook est un CONSOMMATEUR de lib/vaults : il tourne dans un autre processus,
 # en `set -euo pipefail`, et sa sortie est du JSON lu par le harnais. AIKIT_VAULTS

@@ -166,3 +166,28 @@ resolve_projects() {
     printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$state" "$hit" "$summary"
   done
 }
+
+# vault_behind_commits <chemin-du-clone>
+#   -> nombre de commits que HEAD n'a pas recus de sa branche amont, ou VIDE
+#      si inconnaissable. Ne leve JAMAIS : chaque garde rend le vide en
+#      silence plutot qu'une erreur -- ce fichier est SOURCE, pas execute, et
+#      herite donc du `set -euo pipefail` de hooks/session-start. Une commande
+#      git non gardee ici tuerait tout le hook sur un simple remote injoignable.
+vault_behind_commits() {  # vault_behind_commits <chemin>
+  local vpath="${1:-}" behind
+  [ -n "$vpath" ] && [ -d "$vpath/.git" ] || return 0
+  # Pas de branche amont configuree (jamais clone, ou HEAD detachee) : rien a
+  # comparer, et tenter quand meme ferait echouer rev-list plus bas.
+  git -C "$vpath" rev-parse --verify -q '@{u}' > /dev/null 2>&1 || return 0
+  # git fetch, jamais ls-remote seul : compter les commits demande les objets,
+  # pas seulement le SHA distant. --quiet + timeout court + stderr jete :
+  # un remote injoignable ou une cle SSH absente ne doivent produire ni
+  # sortie ni erreur, seulement un silence.
+  timeout 2 git -C "$vpath" fetch --quiet 2>/dev/null || return 0
+  behind="$(git -C "$vpath" rev-list --count 'HEAD..@{u}' 2>/dev/null)" || return 0
+  # Garde avant le test arithmetique : sous `set -e` herite, un `[ -gt ]` sur
+  # une valeur non numerique casserait tout le hook plutot que de rendre 0.
+  case "$behind" in ''|*[!0-9]*) return 0 ;; esac
+  [ "$behind" -gt 0 ] || return 0
+  printf '%s' "$behind"
+}
