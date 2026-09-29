@@ -109,7 +109,7 @@ gate_empty "5 no workspace-root resolution" \
 gate_empty "6 no 'aikit/projects'"    grep -rn 'aikit/projects' "${SCOPE[@]}"
 gate_empty "7 no workspace facts"     grep -rniIE '(ezytail|natseyes|periscope|reflex|kube-vigie)' . \
     --exclude-dir=.git --exclude-dir=.omc --exclude-dir=.claude \
-    --exclude-dir=.worktrees --exclude-dir=.private-journal
+    --exclude-dir=.worktrees --exclude-dir=.private-journal --exclude-dir=.idea
 
 echo "→ 8 core.hooksPath is .githooks"
 if [ "$(git config --get core.hooksPath || true)" != ".githooks" ]; then

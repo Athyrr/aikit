@@ -2,6 +2,7 @@
 .private-journal/
 .claude/
 .omc/
+.idea/
 .DS_Store
 node_modules/
 __pycache__/
