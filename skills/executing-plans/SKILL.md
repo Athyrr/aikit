@@ -75,7 +75,7 @@ digraph process {
     "More tasks remain?" [shape=diamond];
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [shape=box];
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" [shape=box];
-    "Final review clean: delete vault/<project>/<feature>/plan.md" [shape=box];
+    "Final review clean: leave vault/<project>/<feature>/plan.md for phase 6" [shape=box];
     "Use aikit:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Setup: worktree, read/init vault/<project>/<feature>/plan.md, pre-flight review" -> "Dispatch implementer subagent (./implementer-prompt.md)";
@@ -102,8 +102,8 @@ digraph process {
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [label="no"];
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
-    "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: delete vault/<project>/<feature>/plan.md";
-    "Final review clean: delete vault/<project>/<feature>/plan.md" -> "Use aikit:finishing-a-development-branch";
+    "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: leave vault/<project>/<feature>/plan.md for phase 6";
+    "Final review clean: leave vault/<project>/<feature>/plan.md for phase 6" -> "Use aikit:finishing-a-development-branch";
 }
 ```
 
@@ -550,7 +550,7 @@ finishing-a-development-branch presents the options.
 
 ## Finish
 
-Before you delete anything, collect every `Ruling:` line in `vault/<project>/<feature>/plan.md` —
+Before `plan.md` leaves your working view, collect every `Ruling:` line in `vault/<project>/<feature>/plan.md` —
 preflight rulings, human arbitrations, all of them — into your final message
 under "Rulings I made", in the order you made them, each with what it costs
 if wrong. The list is exhaustive: if `vault/<project>/<feature>/plan.md` holds a ruling, the
@@ -559,8 +559,8 @@ human partner's behalf reach them — they read it and rework whatever you got
 wrong. A ruling that dies with the file was a decision made in secret.
 
 When the final whole-branch review is clean and its fixes are merged,
-delete `vault/<project>/<feature>/plan.md` (`rm vault/<project>/<feature>/plan.md`) — the git history is
-the record now.
+leave `vault/<project>/<feature>/plan.md` in place — `aikit:verifying-completion` moves it to `traces/` at phase 6,
+or deletes `traces/` on `nothing to keep`. Never `rm` it here.
 
 Use aikit:finishing-a-development-branch.
 
@@ -637,7 +637,7 @@ Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
 [git diff MERGE_BASE..HEAD -U10; dispatch final code-reviewer, most capable model]
 Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
-[Delete vault/<project>/<feature>/plan.md — the record now lives in git]
+[Leave vault/<project>/<feature>/plan.md in place — phase 6 moves it to traces/]
 
 Done! Using aikit:finishing-a-development-branch.
 ```

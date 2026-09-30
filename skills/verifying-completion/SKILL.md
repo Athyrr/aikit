@@ -139,7 +139,7 @@ A **candidate** is a real problem that nothing is waiting on. It is not a
 derived need — a missing decision the current cycle needs in order to continue,
 which routes `out` — see `aikit:routing-failures` — and it is not a review
 finding the human partner ruled acceptable after the attempt budget was spent
-(that is **parked**, and it dies with the plan).
+(that is **parked**: not harvested, it stays only in the archived `traces/plan.md`).
 
 Each candidate is one **note**, one file, at project level:
 
