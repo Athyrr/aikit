@@ -72,16 +72,44 @@ Phase 6 closes it, before deleting it. Before the verdict is reported:
 - **What the verification does not cover** is named explicitly, as a list. Green
   gates say nothing about a screen nobody looked at. A completion verdict that
   hides its blind spots is worse than no verdict, because it is believed.
-- Harvested candidates are listed, with a pointer to `candidates.md`.
+- Harvested candidates are listed, each with the path of the note written for it.
 
 Phase 1 initialises `vault/<project>/<feature>/plan.md`, `aikit:routing-failures` writes to it
-when a cycle goes up, and phase 6 closes it before the file is removed. It is
+when a cycle goes up, and phase 6 closes it before the file moves to `traces/`. It is
 never absent after a successful run, until the run itself is over.
+
+## Archiving the need — last, after human verification
+
+A finished need leaves the working view without being lost. Only once the
+human partner has verified — or waived, in writing:
+
+1. `spec.md` (`diagnosis.md` or `etude.md` for those types) carries
+   `status: done`, or `status: abandonne` for a dropped need, and today's
+   `updated:`.
+2. **What survives.** Ask what this need teaches the next one:
+   - a lesson: append it to the project's `heuristics.md` (50-line cap — merge
+     or drop an older rule to make room);
+   - or write `nothing to keep` in the verdict. Then the need's `traces/`
+     is not kept: delete it, git holds it.
+3. Otherwise sort the execution files: `plan.md`, `task-*-brief.md`,
+   `task-*-report.md` and `progress.md` go to `traces/`; `review-*.diff`
+   and `sdd/` are deleted.
+4. Move the directory, with its history:
+   ```bash
+   git -C <vault> mv <project>/<feature> <project>/_archive/<feature>
+   ```
+5. Commit the move in the vault.
+
+Never before the human verification: a need under `_archive/` reads as
+finished, and `aikit:understanding-need` resumes one only on the human
+partner's word.
 
 ## Writing to `heuristics.md` — orchestrator only, at close, one bullet
 
 `vault/<project>/heuristics.md` is a living, append-only record of empirical
 rules and traps for this project, capped at 50 lines. Two rules govern it:
+
+It exists from registration, header only (`aikit:registering-a-project`): append below the header, never recreate the file.
 
 - **Only the orchestrator writes to it, and only here, at phase 6.** A
   subagent never writes to it — heuristics earn their place by surviving to
@@ -105,7 +133,7 @@ A rule about this **machine** (OS, shell, environment) rather than this
 project belongs in `vault/_global/heuristics.md` instead, under the same two
 rules.
 
-## Candidates — what survives the need
+## Candidates — written as notes, they survive the need
 
 A **candidate** is a real problem that nothing is waiting on. It is not a
 derived need — a missing decision the current cycle needs in order to continue,
@@ -113,29 +141,37 @@ which routes `out` — see `aikit:routing-failures` — and it is not a review
 finding the human partner ruled acceptable after the attempt budget was spent
 (that is **parked**, and it dies with the plan).
 
-They live at **project** level, durable:
+Each candidate is one **note**, one file, at project level:
 
 ```
-vault/<project>/candidates.md
+vault/<project>/_notes/<slug>.md
+vault/_notes/<slug>.md          when the idea would be another project
 ```
 
-**Classify by subject, record the origin.** A need's own documents — `spec.md`,
-`runs/` — are built to stop being read: a `status: done`, then an `rm -rf`.
-Writing something there that has to survive is burying it.
-
-Every entry carries four things, and the fourth is what keeps the file alive:
+A need's own documents are built to stop being read: a `status: done`, then a
+move to `_archive/`. Writing something there that has to survive is burying it.
 
 ```markdown
-## <subject>
+---
+type: note
+project: <project>
+origin: <need-slug>
+created: <today>
+---
+
+# <subject>
 
 - **Observed:** what actually happened, concretely.
 - **Where:** file, command, or the moment it showed up.
 - **Cost:** what handling it would take. An estimate, not a promise.
-- **Origin:** `from: <need-slug>, cycle N`
 ```
 
-**The cost estimate is mandatory.** Without it two entries can never be weighed
-against each other, and a file that cannot be arbitrated stops being read.
+`project:` is empty for a note at the vault root; `origin:` is empty when no
+need produced it. **The cost estimate is mandatory.** Without it two notes can
+never be weighed against each other.
+
+**Promotion:** a note that becomes work opens a need, and moves into it as its
+first file.
 
 Harvesting them is part of phase 6, not a nicety: a candidate noticed during
 execution and never written down is a problem discovered twice.
