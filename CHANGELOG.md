@@ -3,6 +3,23 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.17.0
+- **Forme fixe du vault.** Chaque projet porte `heuristics.md`, `_notes/` et
+  `_archive/` des son inscription (`aikit:registering-a-project`, bloc
+  `# skeleton:`) ; `_global/heuristics.md` et `_notes/` a la racine. Le
+  prefixe `_` est reserve : aucun slug de need ne commence par `_`.
+- **Un need fini part sous `<projet>/_archive/<need>/`** a la phase 6, apres
+  verification humaine ; `plan.md` et les traces vont dans `traces/`, sauf si
+  la cloture ecrit « rien a retenir » (`aikit:verifying-completion`).
+  `bin/scoped` et `aikit:understanding-need` l'y retrouvent, apres
+  `<projet>/<need>/`, et le signalent comme archive avant toute reprise.
+- **`candidates.md` remplace par des notes** : un fichier par idee sous
+  `<projet>/_notes/`, frontmatter `type: note`, corps *Observed / Where / Cost*.
+- **Quatre types de need** : `feature`, `diagnostic`, `etude`, `refonte` ; le
+  stub de phase 1 ecrit `type:` (`VOCABULARY.md`, `aikit:understanding-need`).
+- `aikit:writing-specs` : lien mort `[[status]]` retire, `type:` et
+  `abandonne` dans l'en-tete requis.
+
 ## 0.15.0
 - **Dispatch orchestrateur -> implementer reduit a quatre choses** : la tache
   (pointeur vers `plan.md`), les fichiers cibles, la commande de test, au
