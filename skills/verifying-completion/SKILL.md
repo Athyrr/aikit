@@ -64,7 +64,7 @@ Its frontmatter used to be written only when a cycle went **up**. On the happy
 path nobody wrote it, and the file was deleted at the end of the plan — so
 after a successful run there was neither a record nor a state.
 
-Phase 6 closes it, before deleting it. Before the verdict is reported:
+Phase 6 closes it, before it moves to `traces/`. Before the verdict is reported:
 
 - `status:` becomes `done`, `phase:` becomes `verify`, `updated:` gets today's
   date.
