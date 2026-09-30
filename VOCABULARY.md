@@ -37,7 +37,7 @@ exists to prevent.
 | **probe** | a bounded investigation answering one written question | spike, exploration, research | it returns a finding, never an implementation |
 | **feasibility** | the class of request that asks whether a thing can be done | a probe, a spike | it is a request class, not an activity |
 | **candidate** | a real problem that nothing is waiting on | parked, backlog, TODO | it is written as a `note` in `<project>/_notes/` and survives the need |
-| **parked** | a review finding the human partner ruled acceptable to leave, after the attempt budget was spent | a candidate | it lives in `vault/<project>/<feature>/plan.md` is not harvested, and stays only in the archived `traces/plan.md` |
+| **parked** | a review finding the human partner ruled acceptable to leave, after the attempt budget was spent | a candidate | it lives in `vault/<project>/<feature>/plan.md`, is not harvested, and stays only in the archived `traces/plan.md` |
 | **heuristic** | one empirical rule or trap, written as Condition -> Action | a convention, a trap (registry §6) | it lives in `<project>/heuristics.md`, or `_global/heuristics.md` for the machine; one bullet, orchestrator-written, only at phase 6 |
 
 The word **budget**, unqualified, is retired. Write `attempt budget`. Never
