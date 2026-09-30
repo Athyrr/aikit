@@ -594,6 +594,21 @@ has "un vault declare qui ne resout pas est nomme, avec l'endroit cherche" \
    "bidon ($TMP/pas-de-vault-ici/projects)" "$err_bidon"
 hasnt "... et la cause n'est pas imputee au projet" "no project named" "$err_bidon"
 
+echo "squelette d'un projet"
+# Le bloc est lu DANS le skill, jamais recopie ici : une copie derive.
+SK="$TMP/squelette.sh"
+awk '/^# skeleton:/{f=1} f&&/^```/{exit} f' skills/registering-a-project/SKILL.md > "$SK"
+has "le skill porte un bloc # skeleton:" "mkdir -p" "$(cat "$SK")"
+SV="$TMP/squelette-vault"; mkdir -p "$SV"
+p=neuf v="$SV" bash "$SK"
+for x in heuristics.md _notes/.gitkeep _archive/.gitkeep; do
+  [ -f "$SV/neuf/$x" ] && ok "le squelette cree neuf/$x" || ko "le squelette cree neuf/$x" "present" "absent"
+done
+is "heuristics.md part avec son en-tete seul" "# neuf — heuristics" "$(cat "$SV/neuf/heuristics.md")"
+printf -- '- garde -> moi\n' >> "$SV/neuf/heuristics.md"
+p=neuf v="$SV" bash "$SK"
+has "rejouer le squelette ne reecrit pas heuristics.md" "- garde -> moi" "$(cat "$SV/neuf/heuristics.md")"
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut

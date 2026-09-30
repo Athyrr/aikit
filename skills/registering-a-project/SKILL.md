@@ -5,7 +5,7 @@ description: Use when adding a project to the workspace registry or editing an e
 
 # Registering a Project
 
-One file per project, at `<workspace>/vault/projects/<name>.md`. It is **data,
+One file per project, at `<vault>/projects/<name>.md`. It is **data,
 not plugin code**: the hook reads it from the source tree, so an edit is live in
 the next session with no deploy.
 
@@ -110,9 +110,28 @@ python3 -c "import os;print(os.path.getsize('FILE')//4)"          # a whole file
 awk 'NR>=A && NR<=B' FILE | wc -c                                  # a section
 ```
 
+## The project's directory in the vault
+
+Every registered project owns `<vault>/<name>/`, with the same fixed shape,
+present even when empty:
+
+- `heuristics.md` — header only at first; written at phase 6, never here.
+- `_notes/` — one note per file (`type: note`).
+- `_archive/` — finished or abandoned needs, `<need>/` each.
+
+The `_` prefix is reserved: no need slug may start with it. git does not track
+empty directories, hence a `.gitkeep` in each. Set `p` and `v`, then run:
+
+```bash
+# skeleton: p=<name> v=<vault root>, then run as is — safe to replay
+mkdir -p "$v/$p/_notes" "$v/$p/_archive"
+touch "$v/$p/_notes/.gitkeep" "$v/$p/_archive/.gitkeep"
+[ -e "$v/$p/heuristics.md" ] || printf '# %s — heuristics\n' "$p" > "$v/$p/heuristics.md"
+```
+
 ## Adding one
 
-1. Create `<workspace>/vault/projects/<name>.md`, frontmatter first.
+1. Create `<vault>/projects/<name>.md`, frontmatter first, then its skeleton (above).
 2. Measure the project's docs; write the routing table.
 3. Establish the completion criterion by **running it**, not by reading a README.
 4. Check the hook picks it up:
