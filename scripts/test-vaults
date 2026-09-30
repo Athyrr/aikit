@@ -519,6 +519,42 @@ lance "$LCONF" bin/scoped --dry-run perim-defaut chantier bonjour > /dev/null
   && ko "un essai a blanc ne laisse aucune trace" "pas de marqueur" "marqueur ecrit" \
   || ok "un essai a blanc ne laisse aucune trace"
 
+# --- un need archive se reprend depuis _archive/ -----------------------------
+# Un need fini part sous <projet>/_archive/<need>/. Verifier seulement qu'aucun
+# dossier neuf n'apparait passerait meme si scoped ignorait l'archive : on
+# verifie la PRESENCE -- la session archivee est reprise, et c'est dit.
+mkdir -p "$LVAULT/perim-defaut/_archive/fini"
+printf '%s' "sid-archive-0001" > "$LVAULT/perim-defaut/_archive/fini/.session"
+has "un need archive reprend la session trouvee sous _archive/" \
+   "--resume sid-archive-0001" \
+   "$(lance "$LCONF" bin/scoped --dry-run perim-defaut fini bonjour)"
+has "... et le signale comme archive, avec son chemin" \
+   "'fini' is archived — resuming from $LVAULT/perim-defaut/_archive/fini" \
+   "$(lanceerr "$LCONF" bin/scoped --dry-run perim-defaut fini bonjour)"
+# Un vrai lancement, claude remplace par un faux : c'est le chemin qui fait
+# mkdir -p et ecrit le marqueur, celui que --dry-run ne traverse pas.
+FAKEBIN="$TMP/faux-claude"; mkdir -p "$FAKEBIN"
+printf '#!/usr/bin/env bash\necho "claude $*"\n' > "$FAKEBIN/claude"; chmod +x "$FAKEBIN/claude"
+reel="$(PATH="$FAKEBIN:$PATH" AIKIT_VAULTS="$LCONF" bash bin/scoped perim-defaut fini bonjour 2>/dev/null)"
+has "un vrai lancement reprend la session archivee" "--resume sid-archive-0001" "$reel"
+[ -e "$LVAULT/perim-defaut/fini" ] \
+  && ko "... sans creer de dossier neuf a cote" "pas de perim-defaut/fini" "dossier cree" \
+  || ok "... sans creer de dossier neuf a cote"
+is "... et sans toucher au marqueur archive" "sid-archive-0001" \
+   "$(cat "$LVAULT/perim-defaut/_archive/fini/.session")"
+# Le dossier vivant passe avant l'archive : meme ordre que understanding-need.
+mkdir -p "$LVAULT/perim-defaut/double" "$LVAULT/perim-defaut/_archive/double"
+printf '%s' "sid-vivant-0002"  > "$LVAULT/perim-defaut/double/.session"
+printf '%s' "sid-archive-0003" > "$LVAULT/perim-defaut/_archive/double/.session"
+has "un need vivant passe avant son homonyme archive" \
+   "--resume sid-vivant-0002" \
+   "$(lance "$LCONF" bin/scoped --dry-run perim-defaut double bonjour)"
+# Le prefixe _ nomme les dossiers du vault lui-meme : un slug qui le porte
+# ecrirait un .session dans _archive/ ou _notes/.
+has "un slug qui commence par _ est refuse" \
+   "starts with '_'" \
+   "$(lanceerr "$LCONF" bin/scoped --dry-run perim-defaut _archive bonjour)"
+
 # --- Important 3 : la recherche va jusqu'au bout avant de refuser -------------
 # Le meme projet declare dans DEUX vaults, absent du premier et clone dans le
 # second. Refuser des le premier `absent` refusait du travail qui existe -- et

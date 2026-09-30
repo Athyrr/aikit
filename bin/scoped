@@ -48,7 +48,13 @@ done
 [ $# -ge 3 ] || { echo "usage: scoped [--dry-run] <project> <feature> <instruction...>" >&2; exit 2; }
 project=$1; feature=$2; shift 2
 
-found=""; fiche=""; vault_dir=""; registered=""
+# The `_` prefix names the vault's own directories (_archive, _notes, _global):
+# a slug carrying it would write its .session inside one of them.
+case "$feature" in
+  _*) echo "scoped: '${feature}' starts with '_', a prefix reserved for the vault's own directories" >&2; exit 2 ;;
+esac
+
+found=""; fiche=""; vault_dir=""; archive_dir=""; registered=""
 declared=0; resolved=0; stranded=""
 while IFS=$'\t' read -r vname vpath; do
   declared=$((declared + 1))
@@ -64,7 +70,7 @@ while IFS=$'\t' read -r vname vpath; do
       registered="${registered:-$vname}"
       continue
     fi
-    found="$path"; fiche="${vpath}/projects/${project}.md"; vault_dir="${vpath}/${project}/${feature}"
+    found="$path"; fiche="${vpath}/projects/${project}.md"; vault_dir="${vpath}/${project}/${feature}"; archive_dir="${vpath}/${project}/_archive/${feature}"
     break
   done < <(resolve_projects "$vname")
   # A vault whose `projects/` does not resolve — wrong path, drive not mounted —
@@ -115,6 +121,14 @@ if [ "${instruction:0:1}" = "@" ]; then
   f="${instruction:1}"
   [ -f "$f" ] || { echo "scoped: no such prompt file: ${f}" >&2; exit 2; }
   instruction=$(cat "$f")
+fi
+
+# A finished need lives under <project>/_archive/<need>/. Resuming it must find
+# it there: a fresh <project>/<need>/ beside it would lose its .session. A live
+# directory wins -- the same order as aikit:understanding-need.
+if [ ! -d "$vault_dir" ] && [ -d "$archive_dir" ]; then
+  vault_dir="$archive_dir"
+  echo "scoped: '${feature}' is archived — resuming from ${vault_dir}" >&2
 fi
 
 marker="${vault_dir}/.session"
