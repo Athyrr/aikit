@@ -61,8 +61,13 @@ is the one a registry would have given you, and phase 6 cannot run without it.
 | Something is broken / behaves wrong | `aikit:diagnosing` — you are diagnosing, not building |
 | … and the diagnosis needs the live systems | `aikit:delegating-to-a-perimeter` — run it in its own process. Its tools are already in your session; what you are keeping out is its forty tool calls. Never guess at production state from the code. |
 | Build, add, change, remove behaviour | Estimate size — see 2a below |
-| "How does X work / where is Y" | Answer it. No feature directory, no spec. |
+| "How does X work / where is Y" | Answer it. No feature directory, no spec — unless the answer must survive the session or takes several: then it is an `etude`, next row. |
+| A question whose answer must outlive the session | `type: etude` — open the directory (step 3); the artifact is `etude.md` (question, constats, recommandation), no `plan.md` |
+| Reshape existing structure, behaviour held constant | `type: refonte` — Heavy-Path always; the spec names the invariant, what must not change |
 | Too unclear to classify | Ask one question. Do not open a directory on a guess. |
+
+Every need records its type in its phase 1 stub: `feature`, `diagnostic`,
+`etude` or `refonte` (`VOCABULARY.md`).
 
 A debugging request that turns out to need a code change becomes a feature
 request **after** the root cause is known — not before. A fix designed from a
@@ -106,16 +111,23 @@ Fast-Path work skips this: no feature directory, no artifacts, just the diff.
 ```
 
 in the vault that owns the project. `<feature>` is a short kebab-case slug of
-what is being built, stable for the whole life of the work.
+what is being built, stable for the whole life of the work. It never starts with `_` — that prefix names the vault's own directories (`_archive/`, `_notes/`, `_global/`).
 
-**Look before you create.** If the directory already exists, this is a
-resumption:
+**Look before you create — in two places, in this order:**
+`<vault>/<project>/<feature>/`, then `<vault>/<project>/_archive/<feature>/`.
+Found in the first, this is a resumption:
 
 1. Read `vault/<project>/<feature>/plan.md` first — it says where the last
    loop stopped and why.
 2. Read `spec.md` in the vault feature directory if it exists.
 3. Re-enter at the phase `vault/<project>/<feature>/plan.md`'s `## Re-enter at` heading names.
    Do not restart from phase 1 because restarting is easier than reading.
+
+**Found under `_archive/`, the need is finished or abandoned.** Say so to the
+human partner before anything else — `<feature>` is archived, with the
+`status:` its `spec.md` carries — and resume only on their word, from where it
+lies. Never create a fresh `<project>/<feature>/` beside it: `bin/scoped` would
+resolve the new one first and the archived `.session` would be lost.
 
 **A new cycle gets its `vault/<project>/<feature>/plan.md` before anything else is written.**
 Not a placeholder — what a resumption needs and cannot re-derive. It starts
@@ -126,6 +138,7 @@ in the same file:
 ---
 project: <project>
 feature: <slug>
+type: <feature|diagnostic|etude|refonte>
 phase: understand
 status: draft
 cycle: 1
