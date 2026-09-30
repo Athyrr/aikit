@@ -32,8 +32,9 @@ travelling with the branch. It has to say what it describes:
 ---
 project: example-service
 feature: carrier-filter
+type: feature
 phase: spec
-status: draft | agreed | done | superseded
+status: draft | agreed | done | abandonne | superseded
 branch: feature/carrier-filter
 base_sha: 0171b92
 created: 2026-08-20
@@ -42,7 +43,7 @@ updated: 2026-08-20
 
 # [Feature] — Spec
 
-Plan: [[plan]] · Status: [[status]]
+Plan: [[plan]]
 
 > **Asked for:** "<the human's request, quoted verbatim>"
 ```
@@ -54,9 +55,13 @@ level. Carry it into each task brief too.
 
 `status` moves in one direction: `draft` until the human agrees, `agreed`
 while the work runs, `done` once phase 6 has produced a passing verdict,
+`abandonne` when the human partner drops the need — archived all the same,
 `superseded` when a later spec replaces this one. Nothing else marks a feature
 as finished — `vault/` is an Obsidian vault and `aikit.base` reads exactly this
 field, so a spec left at `agreed` reads as still in flight forever.
+
+`type:` is the need's type from its phase 1 stub — `feature` or `refonte` for a
+spec (`VOCABULARY.md`).
 
 `base_sha` is the commit the spec was written against. Months later it is the
 only way to tell whether the spec describes the code you are looking at. On a
