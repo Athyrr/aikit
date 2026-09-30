@@ -195,10 +195,12 @@ the method itself.
 ~/.config/aikit/vaults         which vaults this machine knows, and where
 <vault>/                      a clone of a vault (an Obsidian vault)
   projects/                   the registry: one file per project
-  <project>/candidates.md     real problems nothing is waiting on — survives any one need
-  <project>/heuristics.md     empirical rules and traps for this project — orchestrator-written, at /finish only
-  <project>/<feature>/        spec.md, plan.md, diagnosis.md, probe findings — spec carries its own Impact section
   _global/heuristics.md       cross-project environment, OS and shell rules
+  _notes/                     notes whose idea would be another project
+  <project>/heuristics.md     empirical rules and traps for this project — orchestrator-written, at /finish only
+  <project>/_notes/           one note per file — real problems nothing is waiting on, ideas to study later
+  <project>/_archive/<need>/  finished or abandoned needs: spec.md, traces/
+  <project>/<need>/           the need in flight: spec.md, plan.md, diagnosis.md, etude.md — spec carries its own Impact section
 <anywhere>/                   the project repositories, found by scanning
 
 ~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS

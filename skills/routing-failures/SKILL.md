@@ -105,7 +105,7 @@ bolted onto the one that found it.
 **The lineage is written down, in both directions.** The parent's
 `vault/<project>/<feature>/plan.md` gets a `derived: <child-slug>` line; the child's `spec.md`
 and `vault/<project>/<feature>/plan.md` get `derived_from: <parent-slug>`. Without both, the
-derived need reads months later as an orphan nobody can explain.
+derived need reads months later as an orphan nobody can explain. Both lines carry the **slug**, never a path: at close the directory moves to `_archive/`, and a slug survives the move.
 
 **Depth is capped at one.** A derived need may never itself derive. Anything
 discovered inside one that **blocks its own progress** goes **up**, to the
@@ -120,9 +120,9 @@ half-specified children, each blocked on the next.
 
 - **Yes** → derive now. The current cycle stops at the tasks that do not depend
   on the missing decision, exactly as an upward failure does.
-- **No** → it is a **candidate**, not a derived need. Write it to
-  `vault/<project>/candidates.md` and keep going — see `aikit:verifying-completion`
-  for the required format (four fields, Cost mandatory). A candidate costs one
+- **No** → it is a **candidate**, not a derived need. Write it as a note,
+  `vault/<project>/_notes/<slug>.md`, and keep going — see `aikit:verifying-completion`
+  for the required format (`type: note`, Observed / Where / Cost, Cost mandatory). A candidate costs one
   line now; a derived need costs a full cycle, and deriving one the current
   work did not need is how a plan quietly doubles in size.
 

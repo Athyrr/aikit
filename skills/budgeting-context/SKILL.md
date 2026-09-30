@@ -87,8 +87,8 @@ If the section you need is not in the routing table, read the table of contents
 first, then the section. Never the file.
 
 The registry's **Load before working** table routes to the project's docs *and*
-to the vault's own artifacts — a finished chantier's `spec.md`, still in the
-vault after `vault/<project>/<feature>/plan.md` is gone, is often the cheapest answer to "how
+to the vault's own artifacts — a finished chantier's `spec.md`, kept under
+`vault/<project>/_archive/<feature>/` once its `plan.md` is gone, is often the cheapest answer to "how
 does this work and why is it like that". Its history lives in `git log`
 once the feature has merged.
 

@@ -68,7 +68,7 @@ a default to reach for. Full protocol: `aikit:executing-plans`.
 | Execution error (red test, broken build) | **down** — two attempts, bounded by the attempt budget. |
 | Unplanned dependency, task too large | **up** — finish the independents, then re-plan. |
 | Ambiguous or contradictory spec | **up** — stop now, back to phase 2 with the human. |
-| A behaviour decision is missing, current work not wrong | **out** — a derived need (own directory, spec, cycle) if this cycle needs the answer to continue; otherwise a candidate in `candidates.md`. |
+| A behaviour decision is missing, current work not wrong | **out** — a derived need (own directory, spec, cycle) if this cycle needs the answer to continue; otherwise a candidate, written as a note in `<project>/_notes/`. |
 
 Going down is cheap, going up is expensive — but retrying a wrong plan is the
 most expensive thing of all. Never spend an attempt budget on a failure that
