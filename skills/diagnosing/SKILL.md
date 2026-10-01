@@ -305,6 +305,14 @@ If you catch yourself thinking:
 | **3. Hypothesis** | Form theory, test minimally | Confirmed or new hypothesis |
 | **4. Implementation** | Create test, fix, verify | Bug resolved, tests pass |
 
+## Close: keep the trap
+
+Once the fix is verified (Phase 4 done). A fix made outside a feature cycle never reaches phase 6 of `aikit:verifying-completion`, so this is its only chance to leave a trace.
+
+Was the root cause a trap nothing already written down would have told you, and did it cost real time to find? If yes, append ONE bullet `- <Condition> -> <Action or thing to avoid>` to `vault/<project>/heuristics.md`. If the cause does not depend on the project (machine, OS, shell, or a pattern like one connection per request overloading a shared target), use `vault/_global/heuristics.md` instead. If no, write nothing.
+
+Same rules as `aikit:verifying-completion` "Writing to `heuristics.md`": 50-line cap (replace the oldest rule rather than exceed), append below the header, never recreate the file.
+
 ## When Process Reveals "No Root Cause"
 
 If systematic investigation reveals issue is truly environmental, timing-dependent, or external:
