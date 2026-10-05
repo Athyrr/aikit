@@ -178,6 +178,15 @@ route, and whether this is new or a resumption. Get agreement, then continue.
 **Fast-Path:** state back, in one line: the project and the file(s) you expect
 to touch. Get agreement, then continue.
 
+**Once agreed, record the need.** If `AIKIT_EVENTS_FILE` is set and non-empty,
+append one JSON line to it (create the file if absent, never a partial line):
+`{"event":"need","type":"<feature|diagnostic|etude|refonte|fast>","project":"<registry name>","feature":"<slug>","session":"<CLAUDE_CODE_SESSION_ID>","ts":"<ISO 8601>"}`.
+Once per need, and again when a need is resumed in a new session (`/clear`
+included: the id changes). On Fast-Path `type` is `fast` and `feature` is
+`null`. `CLAUDE_CODE_SESSION_ID` unset or empty, or `AIKIT_EVENTS_FILE` unset
+or empty → write nothing, no probing: whoever reads the log cannot use a line
+without a session.
+
 ## Red flags
 
 | Thought | Reality |
