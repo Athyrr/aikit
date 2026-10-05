@@ -3,6 +3,12 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## Unreleased
+- **Signature aiKit dans toutes les sessions.** Le stub de demarrage porte la
+  regle (trailer `Co-Authored-By: aiKit <noreply@aikit.dev>`, pied de PR
+  `Generated with aiKit`) : elle n'existait que dans le `CLAUDE.md` de ce depot,
+  donc une session sur un autre projet signait du nom du modele.
+
 ## 0.17.0
 - **Forme fixe du vault.** Chaque projet porte `heuristics.md`, `_notes/` et
   `_archive/` des son inscription (`aikit:registering-a-project`, bloc
