@@ -4,6 +4,12 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **Evenement `need` dans le journal optionnel.** Apres confirmation de la
+  route (`aikit:understanding-need` §4), l'orchestrateur ajoute une ligne
+  `{"event":"need",...}` a `AIKIT_EVENTS_FILE` (type, projet, feature, session,
+  ts), meme garde que le reste du journal ; re-emise a la reprise d'un need dans
+  une nouvelle session. `aikit:executing-plans` precise que la ligne de rapport
+  porte `"event":"report"`.
 - **Signature aiKit dans toutes les sessions.** Le stub de demarrage porte la
   regle (trailer `Co-Authored-By: aiKit <noreply@aikit.dev>`, pied de PR
   `Generated with aiKit`) : elle n'existait que dans le `CLAUDE.md` de ce depot,

@@ -231,7 +231,7 @@ the log.
 
 Dispatch: `{"event":"dispatch","role":"<archetype or agent name>","project":"<name>","feature":"<slug>","task":<N>,"attempt":<K>,"model":"<model>","ts":"<ISO 8601>"}`.
 `task` is `0` for a role that belongs to no task (final reviewer, planner,
-explorer). Report: the same fields plus `"status":"success"` or
+explorer). Report: the same fields, with `"event":"report"`, plus `"status":"success"` or
 `"status":"failure"`, read off the implementer's `STATUS:` line, or `success`
 for a reviewer that returned a verdict (APPROVE or REJECT alike).
 
