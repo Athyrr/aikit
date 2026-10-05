@@ -62,7 +62,8 @@ Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
 failure, `aikit:handling-secrets` before writing config or committing anything
 that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
 a project's own MCP servers, `aikit:receiving-code-review` when incorporating
-feedback from outside the method's own review loop.
+feedback from outside the method's own review loop. `aikit:writing-notes` only when the human partner explicitly asks to
+set an idea aside.
 
 **Heuristics** — two more vault files, both capped at 50 lines, read in
 cascade (`_global/` then `<project>/`) while writing the plan, written only
