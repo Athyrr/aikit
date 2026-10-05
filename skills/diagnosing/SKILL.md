@@ -147,7 +147,14 @@ You MUST complete each phase before proceeding to the next.
 
    **This reveals:** Which layer fails (secrets → workflow ✓, workflow → build ✗)
 
-5. **Trace Data Flow**
+5. **Look at the Live Page**
+
+   **WHEN the symptom shows in a browser, or the need runs a local UI:** read the live page with the harness's browser tooling — rendered state, console, network requests — before theorizing from the code. Check the project's registry file for its URL and how to start it.
+   - State rendered in the UI → read the page.
+   - State inside the process (port, crash, logs) → `curl` and the process logs; no browser needed.
+   - Never read cookies, sessions or saved passwords from a browser profile (`aikit:handling-secrets`).
+
+6. **Trace Data Flow**
 
    **WHEN error is deep in call stack:**
 
