@@ -224,11 +224,16 @@ silently defeats the table above.
 If the environment variable `AIKIT_EVENTS_FILE` names a writable file, append
 one JSON line to it (create the file if absent) each time you dispatch a
 subagent and again when its report arrives — never otherwise, and never a
-partial line.
+partial line. **Every** subagent counts, not only implementers: task
+reviewers, scoped re-reviewers, the final reviewer, and any planner or
+explorer you dispatch. An agent with no line is invisible to whoever reads
+the log.
 
 Dispatch: `{"event":"dispatch","role":"<archetype or agent name>","project":"<name>","feature":"<slug>","task":<N>,"attempt":<K>,"model":"<model>","ts":"<ISO 8601>"}`.
-Report: the same fields plus `"status":"success"` or `"status":"failure"`,
-read off the implementer's `STATUS:` line.
+`task` is `0` for a role that belongs to no task (final reviewer, planner,
+explorer). Report: the same fields plus `"status":"success"` or
+`"status":"failure"`, read off the implementer's `STATUS:` line, or `success`
+for a reviewer that returned a verdict (APPROVE or REJECT alike).
 
 `AIKIT_EVENTS_FILE` unset → skip this entirely: no file, no probing for one.
 
@@ -444,6 +449,9 @@ complete: you hold the plan and cross-task context the reviewer
 lacks. If you confirm an item is a real gap, treat it as a failed spec
 review — it enters the fix loop with the other findings.
 
+Log the reviewer's dispatch and report lines like the implementer's (see
+Optional event log).
+
 Template: [task-reviewer-prompt.md](task-reviewer-prompt.md)
 
 ### 4. Fix, then stop at two attempts
@@ -486,7 +494,8 @@ where FIX_BASE is the head the previous review saw — and dispatch
 section, and that diff. The re-reviewer verdicts each finding ADDRESSED or
 NOT ADDRESSED and flags new breakage in the fix diff only. Any new breakage
 that would itself be a `REJECT` (functional bug, spec violation, security
-regression) joins the open findings list. Out-of-scope observations go to
+regression) joins the open findings list. Log the re-reviewer's dispatch and
+report lines too (see Optional event log). Out-of-scope observations go to
 `vault/<project>/<feature>/plan.md` as deferred non-blocking suggestions — they never extend
 the loop.
 
@@ -528,7 +537,8 @@ The final whole-branch review gets a diff too: get it directly
 (`git diff MERGE_BASE..HEAD -U10`, MERGE_BASE = the commit the branch started
 from, e.g. `git merge-base main HEAD`) to a scratch file and include that
 path in the final review dispatch, so the final reviewer reads one file
-instead of re-deriving the branch diff with git commands. Dispatch on the
+instead of re-deriving the branch diff with git commands. Log its dispatch
+and report lines (`task` 0, see Optional event log). Dispatch on the
 most capable available model (see Model Selection), using
 aikit:requesting-code-review's
 [code-reviewer.md](../requesting-code-review/code-reviewer.md). Point it at
