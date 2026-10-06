@@ -15,6 +15,8 @@ Subagent (aikit:implementer):
     Read `vault/<project>/<feature>/plan.md` first — Task N's section is your requirements,
     with the exact values to use verbatim. Read the codebase yourself with
     your own tools; nothing has been pre-read or excerpted for you.
+    If the task carries a `Skill:` line and that skill is available, invoke it
+    before implementing.
 
     ## Target files
     [Create/Modify/Test paths, copied from Task N's Files block — nothing

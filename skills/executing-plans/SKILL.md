@@ -325,7 +325,8 @@ session's dispatch once hit 42k chars, 99% of it pasted history.
   first (see Handle the report, below).
 - **Which agent:** if the task carries an `Agent:` line, dispatch that domain
   expert from the project's registry — it knows conventions the generic
-  archetype does not. Otherwise dispatch `aikit:implementer`.
+  archetype does not. Otherwise dispatch `aikit:implementer`. A `Skill:` line
+  is not copied into the dispatch; the implementer reads it in `plan.md`.
 - Never dispatch multiple implementation subagents in parallel (conflicts).
   **One exception, and it must hold completely:** the tasks declare
   `Depends on: none`, their Files blocks are disjoint, and each runs in its own
