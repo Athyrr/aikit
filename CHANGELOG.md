@@ -4,6 +4,10 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **Ligne `Skill:` optionnelle dans l'en-tete de tache.** `aikit:writing-plans`
+  nomme le skill a invoquer pour une tache d'UI (ex. `frontend-design`) ;
+  l'implementeur le lit dans `plan.md` et l'invoque s'il est disponible,
+  sinon l'ignore.
 - **Evenement `need` dans le journal optionnel.** Apres confirmation de la
   route (`aikit:understanding-need` §4), l'orchestrateur ajoute une ligne
   `{"event":"need",...}` a `AIKIT_EVENTS_FILE` (type, projet, feature, session,

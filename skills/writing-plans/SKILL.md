@@ -135,6 +135,9 @@ integration tests. This is a proposal, not a decision: `aikit:executing-plans`
 confirms it with the human partner per task before dispatching on opus, and
 it never carries over to the next task.]
 
+**Skill:** [optional — for a task that builds or restyles UI, the skill to
+invoke, e.g. `frontend-design`. Omit otherwise; ignored if unavailable.]
+
 **Files:**
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
