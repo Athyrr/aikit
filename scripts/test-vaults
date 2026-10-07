@@ -249,6 +249,39 @@ g-faute	⚠ kind « ecosystem » inconnu" \
    "$(AIKIT_VAULTS="$ECONF" resolve_projects eco | project_warnings)"
 is "stdin vide : rien" "" "$(printf '' | project_warnings)"
 
+echo "render_project_rows"
+eco_rows="$(AIKIT_VAULTS="$ECONF" resolve_projects eco)"
+eco_warns="$(printf '%s\n' "$eco_rows" | project_warnings)"
+eco_out="$(printf '%s\n' "$eco_rows" | render_project_rows "$eco_warns")"
+is "regroupement, ordre de resolution, membres tries par nom, avertissements, suffixes" \
+"| solo | oui | solo |
+| b-suite *(écosystème)* | — | suite avec membres |
+| ↳ membre-a | **absent d'ici** | membre a |
+| ↳ membre-b | oui | membre b |
+| c-vide *(écosystème)* | — | suite sans membre |
+| d-idee *(conception)* | — | idee sans dossier |
+| e-orphelin ⚠ part_of « inexistant » : aucune fiche | **absent d'ici** | membre orphelin |
+| f-pas-eco ⚠ part_of « solo » : n'est pas un écosystème | **absent d'ici** | cible qui n'est pas un ecosysteme |
+| g-faute ⚠ kind « ecosystem » inconnu | **absent d'ici** | kind mal ecrit |
+| h-pipe | **absent d'ici** | a / b |" "$eco_out"
+is "absent d'ici ne s'applique ni a une conception ni a un ecosysteme" "" \
+   "$(printf '%s\n' "$eco_out" | grep -F "absent d'ici" | grep -F -e '(conception)' -e '(écosystème)' || true)"
+is "stdin vide : aucune ligne" "" "$(printf '' | render_project_rows "")"
+is "un | dans le summary devient / (la table reste a trois cellules)" \
+   "| x | oui | a / b |" \
+   "$(printf '%s\n' "x${T}depot${T}present${T}/p${T}a | b${T}-" | render_project_rows "")"
+is "un \\ dans un avertissement traverse ENVIRON intact" \
+   '| x ⚠ part_of « a\nb » : aucune fiche | oui | s |' \
+   "$(w=$(printf '%s\n' "x${T}depot${T}present${T}/p${T}s${T}"'a\nb' | project_warnings)
+      printf '%s\n' "x${T}depot${T}present${T}/p${T}s${T}"'a\nb' | render_project_rows "$w")"
+is "un ecosysteme qui est membre d'un autre ne fait perdre aucune ligne" \
+   "| top *(écosystème)* | — | s |
+| ↳ mid *(écosystème)* | — | s |
+| leaf | oui | s |" \
+   "$(printf '%s\n' "top${T}ecosysteme${T}absent${T}-${T}s${T}-" \
+                    "mid${T}ecosysteme${T}absent${T}-${T}s${T}top" \
+                    "leaf${T}depot${T}present${T}/p${T}s${T}mid" | render_project_rows "")"
+
 echo "vault_behind_commits"
 # Un vrai depot "remote" local (pas de reseau : un chemin de fichier suffit
 # comme remote git) et trois clones qui en divergent chacun a sa maniere.
@@ -294,10 +327,11 @@ printf '%s' "$out" | json_valid \
   && ok "le hook emet du JSON valide" \
   || ko "le hook emet du JSON valide" "JSON" "invalide"
 ctx=$(printf '%s' "$out" | json_ctx)
-# Le preambule est skills/using-aikit/SKILL.md ; on ne garde que le bloc que le
-# hook ajoute. Necessaire pour le mot `workspace` (SKILL.md le porte ailleurs),
-# et sain pour tout le reste : aucune assertion ne doit pouvoir etre satisfaite
-# par du texte de methode.
+# Le hook n'emet plus le texte de skills/using-aikit/SKILL.md : son stub est en
+# dur dans hooks/session-start. `pre` ne figure donc plus dans `ctx` et
+# `${ctx#*"$pre"}` rend `ctx` entier ; on garde l'idiome (il redeviendrait utile
+# si le hook reinjectait le skill). Les assertions ci-dessous portent sur des
+# lignes de table entieres, jamais sur un mot que le stub pourrait aussi porter.
 pre=$(cat skills/using-aikit/SKILL.md)
 reg="${ctx#*"$pre"}"
 case "$reg" in
@@ -432,6 +466,44 @@ case "$reg_mixte" in
   *) ko "un vault qui resout et un qui ne resout pas : les deux sortent, avec le remede" \
         "la table de espace + orphelin + la phrase de remede" "${reg_mixte:-vide}" ;;
 esac
+
+echo "hook : ecosystemes"
+# Le tableau injecte est groupe, la consigne dit quoi faire d'un membre et ce que
+# vaut `absent d'ici`, et le contexte reste sous le plafond de additionalContext
+# (10 000 caracteres) : au-dela le tableau est perdu, il ne reste qu'un apercu.
+reg_eco=$(hookreg "$ECONF")
+is "le hook groupe l'ecosysteme et ses membres, dans l'ordre" \
+"| b-suite *(écosystème)* | — | suite avec membres |
+| ↳ membre-a | **absent d'ici** | membre a |
+| ↳ membre-b | oui | membre b |" \
+   "$(printf '%s\n' "$reg_eco" | grep -F -A2 '| b-suite *(écosystème)* |')"
+is "un part_of sans cible porte son avertissement dans le tableau injecte" \
+   "| e-orphelin ⚠ part_of « inexistant » : aucune fiche | **absent d'ici** | membre orphelin |" \
+   "$(printf '%s\n' "$reg_eco" | grep -F '| e-orphelin ')"
+is "une conception sans dossier affiche — et non absent d'ici" \
+   "| d-idee *(conception)* | — | idee sans dossier |" \
+   "$(printf '%s\n' "$reg_eco" | grep -F '| d-idee ')"
+case "$reg_eco" in
+  *'is a `depot` registered but not cloned'*) ok "la consigne : absent d'ici ne vaut que pour un depot" ;;
+  *) ko "la consigne : absent d'ici ne vaut que pour un depot" \
+        'is a `depot` registered but not cloned' "${reg_eco:-vide}" ;;
+esac
+case "$reg_eco" in
+  *"read the registry file of its ecosystem too"*) ok "la consigne : un membre mene a la fiche de son ecosysteme" ;;
+  *) ko "la consigne : un membre mene a la fiche de son ecosysteme" \
+        "read the registry file of its ecosystem too" "${reg_eco:-vide}" ;;
+esac
+out_eco=$(AIKIT_VAULTS="$ECONF" bash hooks/session-start)
+printf '%s' "$out_eco" | json_valid \
+  && ok "le hook emet du JSON valide avec ⚠ ↳ — é dans le tableau" \
+  || ko "le hook emet du JSON valide avec ⚠ ↳ — é dans le tableau" "JSON" "invalide"
+ctx_eco=$(printf '%s' "$out_eco" | json_ctx)
+[ "${#ctx_eco}" -lt 10000 ] \
+  && ok "le contexte injecte (${#ctx_eco} car.) reste sous le plafond de 10 000" \
+  || ko "le contexte injecte reste sous le plafond de 10 000" "< 10000" "${#ctx_eco}"
+[ "${#ctx}" -lt 10000 ] \
+  && ok "idem sur le vault historique (${#ctx} car.)" \
+  || ko "idem sur le vault historique" "< 10000" "${#ctx}"
 
 echo "hook : donnee de registre hostile"
 # Un `summary:` est ecrit a la MAIN dans une fiche. Qu'il porte un caractere de

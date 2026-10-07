@@ -242,3 +242,54 @@ project_warnings() {
     }'
   return 0
 }
+
+# render_project_rows <avertissements> : lit sur stdin la sortie de
+# resolve_projects d'UN vault ; $1 est la sortie de project_warnings du meme
+# vault (deux flux, un seul stdin : les lignes arrivent par stdin, les
+# avertissements par l'argument, relus par awk via ENVIRON -- jamais `-v`, qui
+# interpreterait les \). Emet les lignes `| nom | ici | summary |` du tableau de
+# session. Sans tableau associatif bash (bash 3) : deux passes awk, un tri entre
+# les deux.
+#   1. sans part_of, ou part_of fautif       -> a sa place, ordre de resolution
+#   2. ecosysteme                            -> a sa place, ses membres derriere,
+#                                               prefixes `↳ `, tries (LC_ALL=C)
+#   3. « ici » : depot -> oui | **absent d'ici** ; conception, ecosysteme -> —
+#   4. nom : *(conception)*, *(écosystème)*, puis les avertissements
+# Un membre est une fiche dont part_of designe un ecosysteme de plus haut
+# niveau (lui-meme sans part_of) ; sinon elle sort a plat, sans perdre de ligne.
+render_project_rows() {
+  local tab=$'\t'
+  WARNS="${1:-}" awk -F'\t' '
+    function clean(v) { gsub(/\|/, "/", v); return v }
+    BEGIN {
+      nw = split(ENVIRON["WARNS"], wl, "\n")
+      for (i = 1; i <= nw; i++) {
+        p = index(wl[i], "\t"); if (p == 0) continue
+        wn = substr(wl[i], 1, p - 1); wm = substr(wl[i], p + 1)
+        warn[wn] = (wn in warn) ? warn[wn] " " wm : wm
+      }
+    }
+    NF == 0 { next }
+    { cnt++; name[cnt] = $1; kind[cnt] = $2; state[cnt] = $3; summ[cnt] = $5; part[cnt] = $6
+      seq[$1] = cnt; kindof[$1] = $2; partof[$1] = $6 }
+    END {
+      for (i = 1; i <= cnt; i++) {
+        n = name[i]; p = part[i]
+        member = (p != "" && p != "-" && (p in kindof) && kindof[p] == "ecosysteme" \
+                  && (partof[p] == "-" || partof[p] == "")) ? 1 : 0
+        gseq = member ? seq[p] : i
+        printf "%06d\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n", gseq, member, n, \
+               clean(n), kind[i], state[i], clean(summ[i]), clean(warn[n])
+      }
+    }' | LC_ALL=C sort -t "$tab" -k1,1 -k2,2n -k3,3 | awk -F'\t' '
+    {
+      here = "oui"; if ($6 != "present") here = "**absent d\047ici**"
+      label = $4
+      if ($5 == "conception")      { here = "—"; label = label " *(conception)*" }
+      else if ($5 == "ecosysteme") { here = "—"; label = label " *(écosystème)*" }
+      if ($8 != "") label = label " " $8
+      if ($2 == 1) label = "↳ " label
+      printf "| %s | %s | %s |\n", label, here, $7
+    }'
+  return 0
+}

@@ -60,13 +60,12 @@ while IFS=$'\t' read -r vname vpath; do
     if [ -n "$behind" ]; then
         stale+="- \`${vname}\` — ${behind} commit(s) en retard sur son remote, pense a \`git pull\`"$'\n'
     fi
-    rows=""
-    while IFS=$'\t' read -r n kind state path summary part_of; do
-        [ -n "$n" ] || continue
-        here="oui"; [ "$state" = "present" ] || here="**absent d'ici**"
-        [ "$kind" = "conception" ] && n="${n} *(conception)*"
-        rows+="| ${n} | ${here} | ${summary} |"$'\n'
-    done < <(resolve_projects "$vname")
+    # Une seule capture de resolve_projects : l'appeler deux fois relancerait le
+    # scan git. Les deux flux (lignes, avertissements) sortent de CETTE variable.
+    resolved_rows="$(resolve_projects "$vname")"
+    warns="$(printf '%s\n' "$resolved_rows" | project_warnings)"
+    rows="$(printf '%s\n' "$resolved_rows" | render_project_rows "$warns")"
+    [ -z "$rows" ] || rows+=$'\n'
     if [ -z "$rows" ]; then
         # Un vault declare qui ne rend rien doit etre NOMME, avec ce qui manque
         # et l'endroit regarde. Se taire ici rendrait un registre vide sans
@@ -101,7 +100,7 @@ elif [ "$resolved" = 0 ]; then
     registry+=$'\nFix the path, or create the missing `projects/` directory in the vault.\n'
     registry+=$'\nThe method still applies in full; the routing step has nothing to route to. Establish the project\'s base branch, conventions and completion criterion from its own documentation before phase 4, and say plainly that you are doing so.'
 else
-    registry+=$'\nBefore working on a project, read `<vault>/projects/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. A project marked **absent d\'ici** is registered but not cloned on this machine. **Never work on a project whose registry file you have not read.**'
+    registry+=$'\nBefore working on a project, read `<vault>/projects/<name>.md`: it holds the base branch, the domain agents, the completion criterion, and the convention files to load. A project marked **absent d\'ici** is a `depot` registered but not cloned on this machine; `—` means there is no clone to look for (a `conception` project or an ecosystem). A project listed as `↳` is a member of the ecosystem above it: read the registry file of its ecosystem too, a change in one member may oblige you to look at the others. A `⚠` after a name is a registry file to correct. **Never work on a project whose registry file you have not read.**'
     # Apres la regle, pas avant : un titre `##` place juste au-dessus avalerait
     # la consigne de lecture, qui porte sur les tables et non sur ces vaults-la.
     # Meme remede que l'etat 2 : cette section FERME le contexte injecte, et
