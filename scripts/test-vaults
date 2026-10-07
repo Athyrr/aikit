@@ -171,11 +171,83 @@ is "kind: conception"          "conception|absent|-"                 "$(r idee)"
 is "la fiche du vault lui-meme resout present a vpath, hors scan/probe" \
    "depot|present|$VAULT"                                             "$(r vault-lui-meme)"
 
-# La 5e colonne est lue par les consommateurs (tache 4 : read -r n kind state
-# path summary). Sans cette assertion, la retirer du printf ne casse rien.
-row() { resolve_projects espace | awk -F'\t' -v n="$1" '$1==n {print NF"|"$5}'; }
-is "cinq colonnes, summary comprise" "5|par remote ssh" "$(row avec-remote)"
-is "summary par defaut si la fiche n'en a pas" "5|-" "$(row sans-summary)"
+# Les colonnes 5 et 6 sont lues par les consommateurs (read -r n kind state path
+# summary part_of). Sans ces assertions, les retirer du printf ne casse rien.
+# part_of est la DERNIERE colonne : `-` quand il est absent, sinon un champ vide
+# serait absorbe par `IFS=$'\t' read` et decalerait tout ce qui suit.
+row() { resolve_projects espace | awk -F'\t' -v n="$1" '$1==n {print NF"|"$5"|"$6}'; }
+is "six colonnes, summary et part_of comprises" "6|par remote ssh|-" "$(row avec-remote)"
+is "une fiche sans summary NI part_of : deux fois -" "6|-|-" "$(row sans-summary)"
+
+# --- ecosystemes : part_of, project_warnings, render_project_rows ---------------
+# Un vault A LUI (EVAULT) : ajouter des fiches a $VAULT changerait ce que voient
+# les tests du hook plus bas. Les noms de fichier different parfois du name: de la
+# fiche, expres : l'ordre de resolution (fichiers) n'est pas l'ordre alphabetique
+# des membres (noms), et le rendu doit trier les seconds.
+EVAULT="$TMP/eco/vault"; EROOT="$TMP/eco/code"
+mkdir -p "$EVAULT/projects" "$EROOT/solo" "$EROOT/membre-b"
+efiche() {  # efiche <fichier sans .md> <name> <lignes de frontmatter...>
+  local f="$1" n="$2"; shift 2
+  { echo "---"; echo "name: $n"; printf '%s\n' "$@"; echo "---"; } > "$EVAULT/projects/$f.md"
+}
+efiche a-membre-b  membre-b   "part_of: b-suite" "summary: membre b"
+efiche a-solo      solo       "summary: solo"
+efiche b-suite     b-suite    "kind: ecosysteme" "summary: suite avec membres"
+efiche c-vide      c-vide     "kind: ecosysteme" "summary: suite sans membre"
+efiche d-idee      d-idee     "kind: conception" "summary: idee sans dossier"
+efiche e-orphelin  e-orphelin "part_of: inexistant" "summary: membre orphelin"
+efiche f-pas-eco   f-pas-eco  "part_of: solo" "summary: cible qui n'est pas un ecosysteme"
+efiche g-faute     g-faute    "kind: ecosystem" "summary: kind mal ecrit"
+efiche h-pipe      h-pipe     "summary: a | b"
+efiche z-membre-a  membre-a   "part_of: b-suite" "summary: membre a"
+ECONF="$TMP/vaults-eco"
+{ echo "vault eco $EVAULT"; echo "root  eco $EROOT"; } > "$ECONF"
+
+# Un vault dont la fiche porte des espaces et un CR de fin (disque Windows).
+SALE="$TMP/sale"; mkdir -p "$SALE/projects"
+printf '%s\n' "---" "name: sale" $'kind: depot \r' $'part_of: b-suite  \r' $'summary: resume \r' "---" \
+  > "$SALE/projects/sale.md"
+printf 'vault sale %s\n' "$SALE" > "$TMP/vaults-sale"
+
+echo "resolve_projects : part_of"
+er() { AIKIT_VAULTS="$ECONF" resolve_projects eco | awk -F'\t' -v n="$1" '$1==n {print $2"|"$3"|"$6}'; }
+is "part_of present : derniere colonne"          "depot|present|b-suite"   "$(er membre-b)"
+is "part_of absent : -"                          "depot|present|-"         "$(er solo)"
+is "un ecosysteme : kind lu, part_of -"          "ecosysteme|absent|-"     "$(er b-suite)"
+is "une valeur de kind fausse est rendue telle quelle" "ecosystem|absent|-" "$(er g-faute)"
+is "colonnes 1 a 5 inchangees pour un membre" \
+   "membre-b	depot	present	$EROOT/membre-b	membre b" \
+   "$(AIKIT_VAULTS="$ECONF" resolve_projects eco | awk -F'\t' '$1=="membre-b" {print $1"\t"$2"\t"$3"\t"$4"\t"$5}')"
+is "espaces et CR de fin retires de kind, part_of, summary" \
+   "depot|resume|b-suite" \
+   "$(AIKIT_VAULTS="$TMP/vaults-sale" resolve_projects sale | awk -F'\t' '{print $2"|"$5"|"$6}')"
+
+echo "project_warnings"
+T=$'\t'
+is "un depot implicite, un part_of valide, un ecosysteme sans membre : aucune anomalie" "" \
+   "$(printf '%s\n' "d${T}depot${T}present${T}/p${T}s${T}-" \
+                    "e${T}ecosysteme${T}absent${T}-${T}s${T}-" \
+                    "m${T}depot${T}present${T}/p${T}s${T}e" \
+                    "v${T}ecosysteme${T}absent${T}-${T}s${T}-" | project_warnings)"
+is "kind inconnu" "x	⚠ kind « ecosystem » inconnu" \
+   "$(printf '%s\n' "x${T}ecosystem${T}absent${T}-${T}s${T}-" | project_warnings)"
+is "part_of sans fiche" "x	⚠ part_of « inexistant » : aucune fiche" \
+   "$(printf '%s\n' "x${T}depot${T}absent${T}-${T}s${T}inexistant" | project_warnings)"
+is "part_of vers une fiche qui n'est pas un ecosysteme" "x	⚠ part_of « d » : n'est pas un écosystème" \
+   "$(printf '%s\n' "d${T}depot${T}present${T}/p${T}s${T}-" "x${T}depot${T}absent${T}-${T}s${T}d" | project_warnings)"
+is "deux anomalies sur une fiche : deux lignes, dans l'ordre" \
+   "x	⚠ kind « k » inconnu
+x	⚠ part_of « z » : aucune fiche" \
+   "$(printf '%s\n' "x${T}k${T}absent${T}-${T}s${T}z" | project_warnings)"
+is "valeur assainie : | / et * _ \` ne cassent ni le tableau ni l'emphase" \
+   "x	⚠ part_of « a/b'c'd'e » : aucune fiche" \
+   "$(printf '%s\n' "x${T}depot${T}absent${T}-${T}s${T}"'a|b*c_d`e' | project_warnings)"
+is "vault de fixtures : exactement les trois anomalies attendues, dans l'ordre de resolution" \
+   "e-orphelin	⚠ part_of « inexistant » : aucune fiche
+f-pas-eco	⚠ part_of « solo » : n'est pas un écosystème
+g-faute	⚠ kind « ecosystem » inconnu" \
+   "$(AIKIT_VAULTS="$ECONF" resolve_projects eco | project_warnings)"
+is "stdin vide : rien" "" "$(printf '' | project_warnings)"
 
 echo "vault_behind_commits"
 # Un vrai depot "remote" local (pas de reseau : un chemin de fichier suffit

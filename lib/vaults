@@ -97,6 +97,11 @@ vaults_scan() {
   done
 }
 
+# Valeurs de `kind` que la methode connait : UNE seule definition, lue par
+# project_warnings. Toute autre valeur est une faute de frappe a signaler.
+VAULTS_KNOWN_KINDS="depot conception ecosysteme"
+
+
 fiche_field() {  # fiche_field <fichier> <clef>
   awk -v key="$2" '
     /^---[[:space:]]*$/ { fm++; next }
@@ -107,8 +112,21 @@ fiche_field() {  # fiche_field <fichier> <clef>
   ' "$1"
 }
 
+# _fiche_value <fichier> <clef> -> la valeur, sans espaces ni \r de fin.
+# fiche_field ne les retire pas ; le vault vit sur un disque Windows (CRLF), et
+# avec la validation de kind, `kind: depot ` donnerait un faux « kind inconnu ».
+_fiche_value() {
+  local v
+  v="$(fiche_field "$1" "$2")"
+  v="${v%"${v##*[![:space:]]}"}"
+  printf '%s' "$v"
+  return 0
+}
+
 # resolve_projects <nom-du-vault>
-#   -> <nom>\t<kind>\t<present|absent>\t<chemin ou ->\t<summary>
+#   -> <nom>\t<kind>\t<present|absent>\t<chemin ou ->\t<summary>\t<part_of>
+# part_of est la DERNIERE colonne ; `-` quand il est absent ou vide, comme summary
+# (un champ vide serait absorbe par `IFS=$'\t' read`).
 #
 # repo: et dir: sont ORTHOGONAUX : repo: localise le depot, dir: dit ou est le
 # repertoire de travail. Un depot dont le projet vit dans un sous-repertoire se
@@ -119,7 +137,7 @@ fiche_field() {  # fiche_field <fichier> <clef>
 #   - repo: apparie, dir: ne s'y trouve pas -> absent (fiche cassee, ca se voit)
 #   - repo: absent ou n'apparie pas       -> <racine>/<dir>, a defaut <racine>/<nom>
 resolve_projects() {
-  local vname="${1:-}" vpath roots=() scanned f name kind repo dir summary hit state r vault_repo
+  local vname="${1:-}" vpath roots=() scanned f name kind repo dir summary part_of hit state r vault_repo
   vpath="$(vault_path "$vname")"
   [ -n "$vpath" ] && [ -d "$vpath/projects" ] || return 0
   while IFS= read -r r; do roots+=("$r"); done < <(vault_roots "$vname")
@@ -134,11 +152,12 @@ resolve_projects() {
 
   for f in "$vpath"/projects/*.md; do
     [ -e "$f" ] || continue
-    name="$(fiche_field "$f" name)";  [ -n "$name" ] || name="$(basename "$f" .md)"
-    kind="$(fiche_field "$f" kind)";  [ -n "$kind" ] || kind="depot"
-    repo="$(fiche_field "$f" repo)"
-    dir="$(fiche_field "$f" dir)"
-    summary="$(fiche_field "$f" summary)"; [ -n "$summary" ] || summary="-"
+    name="$(_fiche_value "$f" name)";  [ -n "$name" ] || name="$(basename "$f" .md)"
+    kind="$(_fiche_value "$f" kind)";  [ -n "$kind" ] || kind="depot"
+    repo="$(_fiche_value "$f" repo)"
+    dir="$(_fiche_value "$f" dir)"
+    summary="$(_fiche_value "$f" summary)"; [ -n "$summary" ] || summary="-"
+    part_of="$(_fiche_value "$f" part_of)"; [ -n "$part_of" ] || part_of="-"
     hit=""
 
     if [ -n "$repo" ] && [ -n "$vault_repo" ] && [ "$repo" = "$vault_repo" ]; then
@@ -163,8 +182,9 @@ resolve_projects() {
     fi
 
     [ -n "$hit" ] && state="present" || { state="absent"; hit="-"; }
-    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$state" "$hit" "$summary"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$state" "$hit" "$summary" "$part_of"
   done
+  return 0
 }
 
 # vault_behind_commits <chemin-du-clone>
@@ -190,4 +210,35 @@ vault_behind_commits() {  # vault_behind_commits <chemin>
   case "$behind" in ''|*[!0-9]*) return 0 ;; esac
   [ "$behind" -gt 0 ] || return 0
   printf '%s' "$behind"
+}
+
+# project_warnings : lit sur stdin la sortie de resolve_projects d'UN vault,
+# emet `<nom>\t<message>` par anomalie, dans l'ordre d'entree. Pure : aucun
+# acces disque. Une anomalie n'empeche jamais la resolution du projet.
+#   kind hors de VAULTS_KNOWN_KINDS     -> ⚠ kind « <valeur> » inconnu
+#   part_of sans fiche dans le vault    -> ⚠ part_of « <valeur> » : aucune fiche
+#   part_of vers une fiche non ecosysteme -> ⚠ part_of « <valeur> » : n'est pas un écosystème
+# Les valeurs affichees sont assainies (| -> /, * _ ` -> ') : une valeur de
+# fiche repetee dans une cellule de tableau ne doit ni la casser ni ouvrir une
+# emphase. La recherche, elle, se fait sur la valeur brute. \047 est l'apostrophe :
+# le programme awk est entre apostrophes shell.
+project_warnings() {
+  KINDS="$VAULTS_KNOWN_KINDS" awk -F'\t' '
+    function show(v) { gsub(/\|/, "/", v); gsub(/[*_`]/, "\047", v); return v }
+    BEGIN { nk = split(ENVIRON["KINDS"], kl, " "); for (i = 1; i <= nk; i++) known[kl[i]] = 1 }
+    NF == 0 { next }
+    { cnt++; name[cnt] = $1; kind[cnt] = $2; part[cnt] = $6; kindof[$1] = $2 }
+    END {
+      for (i = 1; i <= cnt; i++) {
+        if (!(kind[i] in known))
+          printf "%s\t⚠ kind « %s » inconnu\n", name[i], show(kind[i])
+        if (part[i] != "" && part[i] != "-") {
+          if (!(part[i] in kindof))
+            printf "%s\t⚠ part_of « %s » : aucune fiche\n", name[i], show(part[i])
+          else if (kindof[part[i]] != "ecosysteme")
+            printf "%s\t⚠ part_of « %s » : n\047est pas un écosystème\n", name[i], show(part[i])
+        }
+      }
+    }'
+  return 0
 }

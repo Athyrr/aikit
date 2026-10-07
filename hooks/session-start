@@ -61,7 +61,7 @@ while IFS=$'\t' read -r vname vpath; do
         stale+="- \`${vname}\` — ${behind} commit(s) en retard sur son remote, pense a \`git pull\`"$'\n'
     fi
     rows=""
-    while IFS=$'\t' read -r n kind state path summary; do
+    while IFS=$'\t' read -r n kind state path summary part_of; do
         [ -n "$n" ] || continue
         here="oui"; [ "$state" = "present" ] || here="**absent d'ici**"
         [ "$kind" = "conception" ] && n="${n} *(conception)*"
