@@ -44,9 +44,14 @@ expert for, dispatch it: for work on skills, agents, hooks and plugin
 manifests, that expert is `claude-code-guide`. Say which expert you used, and
 say so explicitly when you found none.
 
-A project the session table marks **absent d'ici** is registered but not cloned
+A project the session table marks **absent d'ici** is a `depot` registered but not cloned
 on this machine. Read its registry file as usual — then say so before planning
-anything that needs its code.
+anything that needs its code. A `—` in that column is not an absence: a
+`conception` project or an ecosystem has no clone to look for.
+
+A project listed `↳` under an ecosystem (its file carries `part_of:`) is a member of it:
+read the ecosystem's registry file too, after the project's own — it routes to the documents
+the members share.
 
 **Outside a vault that carries a registry**, the session context says so.
 The method still applies in full — only the routing step has nothing to route

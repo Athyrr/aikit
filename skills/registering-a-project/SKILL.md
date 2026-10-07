@@ -1,6 +1,6 @@
 ---
 name: registering-a-project
-description: Use when adding a project to the workspace registry or editing an existing entry - the frontmatter contract the tooling parses, and the six sections a registry file must carry
+description: Use when adding a project to the workspace registry or editing an existing entry - the frontmatter contract the tooling parses, and the six sections a registry file must carry (four for an ecosystem)
 ---
 
 # Registering a Project
@@ -32,7 +32,8 @@ skip the project.
 | `name` | yes | hook | identifier; must equal the filename. The primary key: a repo can be renamed or transferred without the file moving |
 | `repo` | no | hook, `bin/ezy`, `bin/scoped` | normalized `host/org/repo`, ssh and https alike. Absent means the project has no repository |
 | `dir` | no | hook, launchers | where the working directory is. Relative to the **located repo root** when `repo` is set, to the search root otherwise; defaults to `name`. `repo` and `dir` are orthogonal — a project can need both (a repo whose working tree is a subdirectory) |
-| `kind` | no | hook | `depot` (implicit default) or `conception` |
+| `kind` | no | hook | `depot` (implicit default), `conception` or `ecosysteme` — exactly these, lowercase, no accent. Any other value is flagged `⚠ kind « … » inconnu` in the session table |
+| `part_of` | no | hook | the `name` of **one** ecosystem of the same vault (a file with `kind: ecosysteme`). Absent or empty means none. Flagged `⚠` when no file bears that name, or when that file is not an ecosystem |
 | `summary` | yes | hook | one line; **the only always-on part** |
 | `perimeter` | no | `bin/scoped` | directory the scoped process runs in, **relative to the located project**; defaults to `.` |
 | `allow` | no | `bin/scoped` | space-separated tools pre-approved for an unattended process |
@@ -100,6 +101,12 @@ an approximation:
 
 Nothing is written to stderr: the hook runs at every session start.
 
+## Belonging to an ecosystem — `part_of`
+
+`part_of: <ecosystem>` says one thing: **a contract or a document is shared** — a change in one project obliges you to look at the others. It does not mean "same company", nor "consumes the data of". When unsure, leave it out: a missing `part_of` costs a grouping, a wrong one sends a session to the wrong documents.
+
+An **ecosystem** is a registry file with `kind: ecosysteme` and no `repo:`. It carries four sections — **Identity**, **What it is**, **Load before working**, **Traps** — and neither *Domain agents* nor *Completion criterion*: it has no code to finish. *Load before working* routes to the documents its members share; each pointer carries `sources:` (the path in the repository that owns it) and the date it was read. **The vault keeps accounts and pointers; the source of truth stays in the repository that owns it.** An ecosystem cannot bear a member's name: a registry file shares its name with its file and its directory.
+
 ## Costs are measured
 
 Every token figure in a registry file was measured, not estimated. A wrong
@@ -129,17 +136,27 @@ touch "$v/$p/_notes/.gitkeep" "$v/$p/_archive/.gitkeep"
 [ -e "$v/$p/heuristics.md" ] || printf '# %s — heuristics\n' "$p" > "$v/$p/heuristics.md"
 ```
 
+An ecosystem owns the same directory, from the same skeleton (`p=<ecosystem name>`). The documents its members share sit at its root, one file each:
+
+```
+<vault>/<ecosystem>/
+├─ heuristics.md     rules common to the members, written at phase 6
+├─ _notes/  _archive/
+└─ <document>.md     one account or pointer per file, with `sources:` and a read date
+```
+
 ## Adding one
 
 1. Create `<vault>/projects/<name>.md`, frontmatter first, then its skeleton (above).
-2. Measure the project's docs; write the routing table.
-3. Establish the completion criterion by **running it**, not by reading a README.
-4. Check the hook picks it up:
+2. Part of an ecosystem? List the existing ones — `grep -l '^kind: ecosysteme' <vault>/projects/*.md` — and apply the sharing criterion. Write `part_of: <ecosystem>`, or leave it out. Creating an ecosystem is a registry file with `kind: ecosysteme` plus its directory.
+3. Measure the project's docs; write the routing table.
+4. Establish the completion criterion by **running it**, not by reading a README.
+5. Check the hook picks it up:
    ```bash
    AIKIT_VAULTS=~/.config/aikit/vaults CLAUDE_PLUGIN_ROOT=<aikit clone> \
      bash <aikit clone>/hooks/session-start | python3 -m json.tool | grep <name>
    ```
-5. No deploy. The registry is read from source.
+6. No deploy. The registry is read from source.
 
 ## Red flags
 
@@ -150,3 +167,4 @@ touch "$v/$p/_notes/.gitkeep" "$v/$p/_archive/.gitkeep"
 | "The completion criterion is in the README" | READMEs describe intent. Run the command. |
 | "No traps come to mind" | Then the section says `None known.` — do not omit it. |
 | "It's a YAML list, that reads better" | The parser takes one line. It will silently drop it. |
+| "I'll copy the shared contract into the ecosystem's directory" | The vault keeps accounts and pointers. The source of truth stays in the repository that owns it. |

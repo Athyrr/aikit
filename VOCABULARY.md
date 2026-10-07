@@ -39,9 +39,13 @@ exists to prevent.
 | **candidate** | a real problem that nothing is waiting on | parked, backlog, TODO | it is written as a `note` in `<project>/_notes/` and survives the need |
 | **parked** | a review finding the human partner ruled acceptable to leave, after the attempt budget was spent | a candidate | it lives in `vault/<project>/<feature>/plan.md`, is not harvested, and stays only in the archived `traces/plan.md` |
 | **heuristic** | one empirical rule or trap, written as Condition -> Action | a convention, a trap (registry §6) | it lives in `<project>/heuristics.md`, or `_global/heuristics.md` for the machine; one bullet, orchestrator-written, only at phase 6 |
+| **ecosystem** | a registry file with `kind: ecosysteme`: projects that share a contract or a document, with a directory for what they share | a company, a data dependency, a project with code | members declare `part_of: <ecosystem>`; the session table lists them under it, prefixed `↳` |
+| **kind** | the frontmatter field of a registry file saying what sort of project it is: `depot`, `conception` or `ecosysteme` | `type` (what a *need* produces) | `kind` lives in `<vault>/projects/<name>.md`; `type` lives in a need's `plan.md` |
 
 The word **budget**, unqualified, is retired. Write `attempt budget`. Never
 `loop` as a technical term; write `cycle` or `attempt` and say which.
+
+**A document in another repository is cited `repo#ADR-0001`** — the repository name, `#`, the identifier of the ADR, spec or ticket (`some-repo#ADR-0001`, `some-org/some-repo#105`). One form for all three.
 
 ## Three rules that follow from the terms
 

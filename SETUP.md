@@ -65,7 +65,7 @@ mounted foreign filesystem does not finish in 4 seconds.
 No deploy: the registry is read from disk.
 
 `aikit:registering-a-project` carries the frontmatter contract the tooling
-parses and the six sections a registry file must hold.
+parses and the six sections a registry file must hold (an ecosystem carries four).
 
 ## 4. Developing aiKit
 

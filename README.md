@@ -233,7 +233,7 @@ repository to use the method.**
 To make a vault routable, give it a registry — `<vault>/projects/<name>.md`
 per project, and declare the vault in `~/.config/aikit/vaults`.
 `aikit:registering-a-project` carries the frontmatter contract the
-tooling parses and the six sections a registry file must hold.
+tooling parses and the six sections a registry file must hold (an ecosystem carries four).
 
 **[`SETUP.md`](SETUP.md) is the full procedure** — prerequisites (Git for
 Windows is a hard one), why SSH rather than HTTPS, registering a vault,

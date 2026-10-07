@@ -4,6 +4,16 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **Ecosystemes et `part_of`.** `kind` connait trois valeurs (`depot`,
+  `conception`, `ecosysteme`) et une valeur inconnue se voit au demarrage (`⚠`).
+  Une fiche peut declarer `part_of: <ecosysteme>` ; le tableau de session
+  regroupe l'ecosysteme et ses membres (`↳`), affiche `—` dans « ici » pour une
+  `conception` ou un ecosysteme (plus de faux `absent d'ici`) et signale un
+  `part_of` sans cible valide. `lib/vaults` : `resolve_projects` gagne une 6e
+  colonne, `project_warnings` et `render_project_rows` sont nouvelles.
+  `aikit:registering-a-project` : critere de partage et fiche d'ecosysteme (quatre
+  sections) ; `aikit:understanding-need` : un membre mene a la fiche de son
+  ecosysteme. Convention de citation `repo#ADR-0001` (`VOCABULARY.md`).
 - **Ligne `Skill:` optionnelle dans l'en-tete de tache.** `aikit:writing-plans`
   nomme le skill a invoquer pour une tache d'UI (ex. `frontend-design`) ;
   l'implementeur le lit dans `plan.md` et l'invoque s'il est disponible,
