@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Status line renderer. Reads the session JSON on stdin, writes ONE line on
+# stdout, always exits 0.
+#
+#   aikit · <model> · <project> (<branch>) · ctx <N> %
+#
+# Installed into ~/.claude/settings.json by hooks/statusline-install. Runs on
+# every refresh of the bar: the project lookup (lib/vaults) is expensive, so it
+# is cached per session; the branch is cached for a few seconds.
+# No `set -e`: a renderer that dies prints an empty bar.
+set -uo pipefail
+export LC_ALL=C
+
+esc=$'\033'
+dim="${esc}[2m"; cyan="${esc}[36m"; green="${esc}[32m"
+yellow="${esc}[33m"; red="${esc}[31m"; off="${esc}[0m"
+sep=" ${dim}·${off} "
+
+# Without jq the session JSON cannot be read: fall back on the shell's own cwd.
+if ! command -v jq > /dev/null 2>&1; then
+  line="aikit · ${PWD##*/}"
+  br="$(git -C "$PWD" branch --show-current 2> /dev/null)"
+  [ -z "$br" ] || line+=" (${br})"
+  printf '%s\n' "$line"
+  exit 0
+fi
+
+case "${BASH_SOURCE[0]}" in */*) self="${BASH_SOURCE[0]%/*}" ;; *) self="." ;; esac
+
+input="$(cat)"
+# Unit separator, not tab: `read` collapses runs of whitespace IFS characters,
+# which would swallow an empty field and shift the ones after it.
+fields="$(printf '%s' "$input" | jq -r '
+  [ (.model.display_name // "?"),
+    (.workspace.current_dir // .cwd // ""),
+    (.session_id // ""),
+    ((.context_window.used_percentage // "") | tostring)
+  ] | map(tostring) | join("\u001f")' 2> /dev/null)" || fields=""
+IFS=$'\037' read -r model dir sid pct <<< "$fields"
+model="${model:-?}"
+dir="${dir:-$PWD}"
+dir="${dir%/}"
+key="${sid//[^A-Za-z0-9_-]/_}"; key="${key:-nosession}"
+cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/aikit"
+printf -v now '%(%s)T' -1
+
+cache_put() {  # cache_put <file> <content> -- atomic, never fatal
+  local f="$1" t="$1.$$"
+  mkdir -p "${f%/*}" 2> /dev/null || return 0
+  { printf '%s\n' "$2" > "$t" && mv -f "$t" "$f"; } 2> /dev/null || rm -f "$t" 2> /dev/null
+  return 0
+}
+
+# --- project: cached per session (and per directory) --------------------------
+project=""
+pf="$cache_dir/project-$key"
+if [ -f "$pf" ]; then
+  IFS=$'\t' read -r cdir cname < "$pf" || true
+  [ "${cdir:-}" = "$dir" ] && project="${cname:-}"
+fi
+if [ -z "$project" ]; then
+  if [ -f "$self/../lib/vaults" ]; then
+    . "$self/../lib/vaults" 2> /dev/null
+    project="$(project_of_path "$dir" 2> /dev/null)"
+  fi
+  [ -n "$project" ] || project="${dir##*/}"
+  [ -z "$project" ] || cache_put "$pf" "$dir"$'\t'"$project"
+fi
+
+# --- branch: cached for 5 seconds ----------------------------------------------
+branch=""; fresh=0
+bf="$cache_dir/branch-$key"
+if [ -f "$bf" ]; then
+  IFS=$'\t' read -r bts bdir bbr < "$bf" || true
+  case "${bts:-}" in
+    ''|*[!0-9]*) ;;
+    *) if [ "${bdir:-}" = "$dir" ] && [ $((now - bts)) -lt 5 ]; then branch="${bbr:-}"; fresh=1; fi ;;
+  esac
+fi
+if [ "$fresh" = 0 ]; then
+  branch="$(git -C "$dir" branch --show-current 2> /dev/null)"
+  cache_put "$bf" "$now"$'\t'"$dir"$'\t'"$branch"
+fi
+
+# --- context: green < 60, yellow <= 85, red above; en dash when unknown --------
+ctx_txt="ctx –"; ctx_col="$dim"
+if [ -n "$pct" ] && r="$(printf '%.0f' "$pct" 2> /dev/null)"; then
+  case "$r" in
+    ''|*[!0-9]*) ;;
+    *)
+      ctx_txt="ctx $r %"
+      if   [ "$r" -lt 60 ]; then ctx_col="$green"
+      elif [ "$r" -le 85 ]; then ctx_col="$yellow"
+      else                       ctx_col="$red"; fi ;;
+  esac
+fi
+
+loc="$project"
+[ -z "$branch" ] || loc+=" (${branch})"
+printf '%s\n' "${dim}aikit${off}${sep}${cyan}${model}${off}${sep}${loc}${sep}${ctx_col}${ctx_txt}${off}"
+exit 0

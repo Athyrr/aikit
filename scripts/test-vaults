@@ -753,6 +753,219 @@ printf -- '- garde -> moi\n' >> "$SV/neuf/heuristics.md"
 p=neuf v="$SV" bash "$SK"
 has "rejouer le squelette ne reecrit pas heuristics.md" "- garde -> moi" "$(cat "$SV/neuf/heuristics.md")"
 
+echo "project_of_path"
+# Fixtures a part : un vault et une racine a eux, pour ne pas changer le nombre
+# de lignes des tables de session testees plus haut.
+PPV="$TMP/pp vault"; PPR="$TMP/pp-root"; PPCONF="$TMP/vaults-pp"
+mkdir -p "$PPV/projects" "$PPR/a/zzz" "$PPR/a/b/c" "$PPR/ab" "$PPR/a-voisin" "$TMP/hors-registre"
+ppfiche() {  # ppfiche <nom> [ligne de frontmatter...]
+  local n="$1"; shift
+  { echo "---"; echo "name: $n"; [ "$#" -eq 0 ] || printf '%s\n' "$@"; echo "---"; } > "$PPV/projects/$n.md"
+}
+ppfiche a
+ppfiche b    "dir: a/b"
+ppfiche ab
+ppfiche plan-c "kind: conception" "dir: a/b/c"
+ppfiche fantome-pp
+{ echo "vault pp $PPV"; echo "root  pp $PPR"; } > "$PPCONF"
+ln -s "$PPR/a" "$TMP/lien-a"
+pp() { AIKIT_VAULTS="$PPCONF" project_of_path "$1"; }
+is "la racine du projet"                   "a"  "$(pp "$PPR/a")"
+is "un sous-dossier sans projet propre"    "a"  "$(pp "$PPR/a/zzz")"
+is "projets imbriques : le plus long gagne" "b" "$(pp "$PPR/a/b")"
+is "... et ses sous-dossiers aussi"        "b"  "$(pp "$PPR/a/b/c")"
+is "frontiere de dossier : a-voisin n'est pas dans a" "" "$(pp "$PPR/a-voisin")"
+is "frontiere de dossier : ab est son propre projet"  "ab" "$(pp "$PPR/ab")"
+is "les liens symboliques sont resolus"    "b"  "$(pp "$TMP/lien-a/b")"
+is "le vault lui-meme n'est pas sous une racine : hors registre ici" "" "$(pp "$PPV")"
+is "hors registre"                         ""   "$(pp "$TMP/hors-registre")"
+is "chemin inexistant"                     ""   "$(pp "$TMP/nexiste-pas")"
+is "argument vide"                         ""   "$(pp "")"
+is "aucun vault declare"                   ""   "$(AIKIT_VAULTS=/nonexistent-vaults-file project_of_path "$PPR/a")"
+is "chemin avec espace (vault de la suite principale)" "vault-lui-meme" "$(project_of_path "$VAULT")"
+
+echo "bin/aikit-statusline"
+REPO="$PWD"
+SLCACHE="$TMP/sl-cache"; SLHOME="$TMP/sl-home"; mkdir -p "$SLHOME"
+git -C "$ROOT/avec-remote" symbolic-ref HEAD refs/heads/trunk
+mkdir -p "$ROOT/sans-git/dedans" "$TMP/hors-registre"
+ESC="$(printf '\033')"
+plain() { sed "s/${ESC}\[[0-9;]*m//g"; }
+# sl <json> [vaults-file] : le rendu brut, sur un HOME et un cache jetables.
+sl() { printf '%s' "$1" | HOME="$SLHOME" XDG_CACHE_HOME="$SLCACHE" AIKIT_VAULTS="${2:-$CONF}" bash "$REPO/bin/aikit-statusline"; }
+slin() {  # slin <dir> <session> <pct-json|null>
+  jq -nc --arg d "$1" --arg s "$2" --argjson p "$3" \
+    '{model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:$p}}'
+}
+if command -v jq > /dev/null 2>&1; then
+  out="$(sl "$(slin "$ROOT/avec-remote" s30 30)")"; rc=$?
+  is "30 % : la ligne complete" "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(printf '%s' "$out" | plain)"
+  is "30 % : code de sortie 0"  "0" "$rc"
+  is "30 % : une seule ligne"   "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+  has "30 % : vert"   "${ESC}[32mctx 30 %" "$out"
+  has "70 % : jaune"  "${ESC}[33mctx 70 %" "$(sl "$(slin "$ROOT/avec-remote" s70 70)")"
+  has "85 % : jaune (borne haute)" "${ESC}[33mctx 85 %" "$(sl "$(slin "$ROOT/avec-remote" s85 85)")"
+  has "86 % : rouge"  "${ESC}[31mctx 86 %" "$(sl "$(slin "$ROOT/avec-remote" s86 86)")"
+  has "90 % : rouge"  "${ESC}[31mctx 90 %" "$(sl "$(slin "$ROOT/avec-remote" s90 90)")"
+  has "59,6 % : arrondi a 60, jaune" "${ESC}[33mctx 60 %" "$(sl "$(slin "$ROOT/avec-remote" s596 59.6)")"
+  out="$(sl "$(slin "$ROOT/avec-remote" snull null)")"; rc=$?
+  is "contexte null : tiret" "aikit · Opus · avec-remote (trunk) · ctx –" "$(printf '%s' "$out" | plain)"
+  is "contexte null : code de sortie 0" "0" "$rc"
+  is "dossier hors git : pas de parentheses" \
+     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git" shg 30)" | plain)"
+  is "sous-dossier d'un projet : le projet" \
+     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)" | plain)"
+  is "projet hors registre : le nom du dossier" \
+     "aikit · Opus · hors-registre · ctx 30 %" "$(sl "$(slin "$TMP/hors-registre" shr 30)" | plain)"
+  is "aucun vault declare : le nom du dossier" \
+     "aikit · Opus · avec-remote (trunk) · ctx 30 %" \
+     "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file | plain)"
+  out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
+  is "entree invalide : code de sortie 0" "0" "$rc"
+  is "entree invalide : une seule ligne"  "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+  out="$(sl '')"; rc=$?
+  is "entree vide : code de sortie 0" "0" "$rc"
+  # Le cache par session : une entree posee a la main est relue telle quelle.
+  mkdir -p "$SLCACHE/aikit"
+  printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$SLCACHE/aikit/project-scache"
+  is "le projet vient du cache de la session" \
+     "aikit · Opus · nom-en-cache (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" scache 30)" | plain)"
+  printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$SLCACHE/aikit/project-sperime"
+  is "un cache d'un autre dossier est ignore" \
+     "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" sperime 30)" | plain)"
+  [ -f "$SLCACHE/aikit/project-s30" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/aikit" \
+    || ko "le cache est ecrit sous XDG_CACHE_HOME/aikit" "project-s30 present" "absent"
+else
+  echo "  (jq absent : cas de rendu avec jq ignores)"
+fi
+# Sans jq : un PATH qui ne contient que git.
+NOJQ="$TMP/path-sans-jq"; mkdir -p "$NOJQ"; ln -sf "$(command -v git)" "$NOJQ/git"
+out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"; rc=$?
+is "sans jq : ligne de repli" "aikit · avec-remote (trunk)" "$out"
+is "sans jq : code de sortie 0" "0" "$rc"
+out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"
+is "sans jq, hors git : pas de parentheses" "aikit · hors-registre" "$out"
+
+echo "hooks/statusline-install"
+if command -v jq > /dev/null 2>&1; then
+  PLUG="$TMP/Plugin Root/aikit/1.2.3"      # une espace, deliberement
+  WANT="AIKIT_STATUSLINE=1 bash \"$PLUG/bin/aikit-statusline\""
+  # inst <home> : stdout du hook sur stdout, code de sortie en derniere ligne.
+  inst() { HOME="$1" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/statusline-install" 2> /dev/null; }
+  newhome() { local h; h="$(mktemp -d "$TMP/home.XXXXXX")"; mkdir -p "$h/.claude"; printf '%s' "$h"; }
+  getcmd() { jq -r '.statusLine.command' "$1/.claude/settings.json"; }
+
+  H="$(newhome)"; rmdir "$H/.claude"
+  out="$(inst "$H")"; rc=$?
+  is "settings.json absent : cree avec statusLine" "$WANT" "$(getcmd "$H")"
+  is "... type command" "command" "$(jq -r '.statusLine.type' "$H/.claude/settings.json")"
+  is "... seule cle ecrite" "statusLine" "$(jq -r 'keys | join(",")' "$H/.claude/settings.json")"
+  is "... rien sur stdout" "" "$out"
+  is "... code de sortie 0" "0" "$rc"
+
+  H="$(newhome)"; echo '{"theme":"dark","env":{"A":"1"}}' > "$H/.claude/settings.json"
+  out="$(inst "$H")"
+  is "autres cles : statusLine ajoutee" "$WANT" "$(getcmd "$H")"
+  is "autres cles : conservees" '{"theme":"dark","env":{"A":"1"}}' \
+     "$(jq -c 'del(.statusLine)' "$H/.claude/settings.json")"
+  is "autres cles : rien sur stdout" "" "$out"
+
+  H="$(newhome)"
+  echo '{"statusLine":{"type":"command","command":"AIKIT_STATUSLINE=1 bash \"/ancien/1.0.0/bin/aikit-statusline\""},"theme":"dark"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "marqueur present : chemin reecrit" "$WANT" "$(getcmd "$H")"
+  is "marqueur present : theme conserve" "dark" "$(jq -r '.theme' "$H/.claude/settings.json")"
+
+  H="$(newhome)"
+  echo '{"statusLine":{"type":"command","command":"~/mon-script.sh","padding":2}}' > "$H/.claude/settings.json"
+  cp "$H/.claude/settings.json" "$TMP/avant-perso.json"
+  inst "$H" > /dev/null
+  is "statusLine personnalisee : octets identiques" "$(cat "$TMP/avant-perso.json")" "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; echo '{"statusLine":"une chaine"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "statusLine qui n'est pas un objet : intacte" '{"statusLine":"une chaine"}' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"
+  out="$(inst "$H")"; rc=$?
+  [ ! -e "$H/.claude/settings.json" ] && ok "opt-out : settings.json absent n'est pas cree" \
+    || ko "opt-out : settings.json absent n'est pas cree" "absent" "present"
+  is "opt-out : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  echo '{"theme":"dark"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "opt-out : settings.json existant intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; printf '{"theme": "dark",\n' > "$H/.claude/settings.json"
+  cp "$H/.claude/settings.json" "$TMP/avant-invalide.json"
+  out="$(inst "$H")"; rc=$?
+  is "JSON invalide : intact" "$(cat "$TMP/avant-invalide.json")" "$(cat "$H/.claude/settings.json")"
+  is "JSON invalide : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  H="$(newhome)"; : > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "fichier vide : intact" "0" "$(wc -c < "$H/.claude/settings.json" | tr -d ' ')"
+  H="$(newhome)"; echo '[1,2]' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "JSON qui n'est pas un objet : intact" '[1,2]' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; inst "$H" > /dev/null
+  touch -d @0 "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "valeur deja identique : fichier non reecrit (mtime)" "0" "$(stat -c %Y "$H/.claude/settings.json")"
+
+  H="$(newhome)"; mkdir -p "$TMP/reel"
+  echo '{"theme":"dark"}' > "$TMP/reel/settings.json"; chmod 640 "$TMP/reel/settings.json"
+  ln -s "$TMP/reel/settings.json" "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  [ -L "$H/.claude/settings.json" ] && ok "lien symbolique : le lien reste un lien" \
+    || ko "lien symbolique : le lien reste un lien" "lien" "fichier"
+  is "lien symbolique : la cible resolue est ecrite" "$WANT" "$(jq -r '.statusLine.command' "$TMP/reel/settings.json")"
+  is "lien symbolique : permissions conservees" "640" "$(stat -c %a "$TMP/reel/settings.json")"
+  is "lien symbolique : aucun temporaire laisse" "settings.json" "$(ls "$TMP/reel")"
+
+  H="$(newhome)"; echo '{"theme":"dark"}' > "$H/.claude/settings.json"
+  mkdir -p "$TMP/path-vide"
+  out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" PATH="$TMP/path-vide" "$BASH" "$REPO/hooks/statusline-install" 2> /dev/null)"; rc=$?
+  is "sans jq : settings.json intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+  is "sans jq : rien sur stdout, sortie 0" "|0" "$out|$rc"
+
+  H="$(newhome)"
+  out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/run-hook.cmd" statusline-install 2> /dev/null)"; rc=$?
+  is "via run-hook.cmd : statusLine posee" "$WANT" "$(getcmd "$H")"
+  is "via run-hook.cmd : rien sur stdout, sortie 0" "|0" "$out|$rc"
+
+  # Test non vide : un faux jq ecrit sur stdout puis delegue au vrai ; le hook
+  # doit quand meme ne rien emettre (garantie de `exec > /dev/null`).
+  REALJQ="$(command -v jq)"
+  FAKEBIN="$TMP/faux-jq"; mkdir -p "$FAKEBIN"
+  printf '#!/usr/bin/env bash\necho FUITE-STDOUT\nexec "%s" "$@"\n' "$REALJQ" > "$FAKEBIN/jq"; chmod +x "$FAKEBIN/jq"
+  fuite="$(PATH="$FAKEBIN:$PATH" bash -c 'jq -n 1' 2> /dev/null)"
+  is "faux jq : ecrit bien sur stdout (temoin)" "FUITE-STDOUT" "$(printf '%s' "$fuite" | head -1)"
+  H="$(newhome)"
+  out="$(PATH="$FAKEBIN:$PATH" HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/statusline-install" 2> /dev/null)"; rc=$?
+  is "faux jq bavard : rien sur stdout, sortie 0" "|0" "$out|$rc"
+else
+  echo "  (jq absent : cas de l'installateur ignores)"
+fi
+
+echo "hooks/hooks.json"
+if command -v jq > /dev/null 2>&1; then
+  HJ=hooks/hooks.json
+  is "SessionStart porte deux groupes" "2" "$(jq '.hooks.SessionStart | length' "$HJ")"
+  is "premier groupe inchange : matcher" "startup|clear|compact" "$(jq -r '.hooks.SessionStart[0].matcher' "$HJ")"
+  is "premier groupe inchange : commande" \
+     '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" session-start' "$(jq -r '.hooks.SessionStart[0].hooks[0].command' "$HJ")"
+  is "second groupe : matcher startup seul" "startup" "$(jq -r '.hooks.SessionStart[1].matcher' "$HJ")"
+  is "second groupe : commande" \
+     '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" statusline-install' "$(jq -r '.hooks.SessionStart[1].hooks[0].command' "$HJ")"
+  is "second groupe : synchrone" "false" "$(jq '.hooks.SessionStart[1].hooks[0].async' "$HJ")"
+  is "second groupe : timeout 10" "10" "$(jq '.hooks.SessionStart[1].hooks[0].timeout' "$HJ")"
+  # Le script que la commande nomme existe, executable.
+  [ -x hooks/statusline-install ] && ok "hooks/statusline-install est executable" \
+    || ko "hooks/statusline-install est executable" "x" "non"
+else
+  echo "  (jq absent : cas de hooks.json ignores)"
+fi
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut

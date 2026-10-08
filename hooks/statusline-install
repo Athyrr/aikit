@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# SessionStart hook (matcher: startup). Points the `statusLine` key of
+# ~/.claude/settings.json at this plugin's renderer, bin/aikit-statusline.
+#
+# A plugin cannot declare `statusLine` itself, and ${CLAUDE_PLUGIN_ROOT} is not
+# substituted inside it: so the hook writes a path that is already resolved,
+# and rewrites it at every startup (the plugin directory changes with each
+# version).
+#
+# Rules: opt-out file wins; a `statusLine` without the marker is the user's and
+# is never touched; nothing is written when the value is already right; the
+# write is atomic. ALWAYS exits 0 and writes NOTHING on stdout -- on
+# SessionStart, stdout is injected into the model's context. Diagnostics go to
+# stderr only.
+set -uo pipefail
+exec > /dev/null
+
+note() { printf 'aikit statusline: %s\n' "$*" >&2; }
+tmp=""
+trap '[ -z "$tmp" ] || rm -f "$tmp" 2> /dev/null' EXIT
+
+home="${HOME:-}"
+[ -n "$home" ] || exit 0
+[ -e "$home/.config/aikit/no-statusline" ] && exit 0
+
+command -v jq > /dev/null 2>&1 || { note "jq not found, settings.json left untouched"; exit 0; }
+root="${CLAUDE_PLUGIN_ROOT:-}"
+[ -n "$root" ] || { note "CLAUDE_PLUGIN_ROOT is empty, nothing written"; exit 0; }
+
+command_value="AIKIT_STATUSLINE=1 bash \"${root}/bin/aikit-statusline\""
+filter='.statusLine = {type: "command", command: $c}'
+
+target="$home/.claude/settings.json"
+if [ -L "$target" ]; then
+  target="$(readlink -f "$target" 2> /dev/null)" || target=""
+  [ -n "$target" ] || exit 0
+fi
+
+if [ -e "$target" ]; then
+  { [ -f "$target" ] && [ -r "$target" ]; } || { note "$target is not a readable file, left untouched"; exit 0; }
+  jq -e 'type == "object"' "$target" > /dev/null 2>&1 \
+    || { note "$target is not a JSON object, left untouched"; exit 0; }
+  # `set` when there is no statusLine or it carries our marker; `keep` otherwise.
+  verdict="$(jq -r '
+    if .statusLine == null then "set"
+    elif (.statusLine | type) == "object"
+         and ((.statusLine.command // "") | tostring | contains("AIKIT_STATUSLINE=1"))
+    then "set" else "keep" end' "$target" 2> /dev/null)"
+  [ "$verdict" = "set" ] || exit 0
+  # Already identical: do not wake the settings watcher.
+  jq -e --arg c "$command_value" '.statusLine == {type: "command", command: $c}' "$target" \
+    > /dev/null 2>&1 && exit 0
+else
+  mkdir -p "${target%/*}" 2> /dev/null || exit 0
+fi
+
+# Temporary file NEXT TO the resolved target, so the rename stays on one volume.
+# cp -p first: the redirection below truncates and so keeps the permissions.
+tmp="$target.aikit-tmp.$$"
+if [ -e "$target" ]; then
+  cp -p "$target" "$tmp" 2> /dev/null || exit 0
+  jq --arg c "$command_value" "$filter" "$target" > "$tmp" 2> /dev/null || { note "jq failed, left untouched"; exit 0; }
+else
+  jq -n --arg c "$command_value" "{} | $filter" > "$tmp" 2> /dev/null || { note "jq failed, nothing written"; exit 0; }
+fi
+jq -e . "$tmp" > /dev/null 2>&1 || { note "refused to write an invalid result"; exit 0; }
+mv -f "$tmp" "$target" 2> /dev/null || { note "could not replace $target"; exit 0; }
+tmp=""
+exit 0
