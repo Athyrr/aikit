@@ -116,7 +116,7 @@ Fast-Path work skips this: no feature directory, no artifacts, just the diff.
 ```
 
 in the vault that owns the project. `<feature>` is a short kebab-case slug of
-what is being built, stable for the whole life of the work. It never starts with `_` — that prefix names the vault's own directories (`_archive/`, `_notes/`, `_global/`).
+what is being built, stable for the whole life of the work. It never starts with `_` — that prefix names the vault's own directories (`_archive/`, `_notes/`, `_reference/`, `_global/`).
 
 **Look before you create — in two places, in this order:**
 `<vault>/<project>/<feature>/`, then `<vault>/<project>/_archive/<feature>/`.

@@ -18,12 +18,13 @@ exists to prevent.
 | Term | Means | Never means | Discriminant |
 |---|---|---|---|
 | **need** | one distinct thing the human partner wants, with its own directory | a message, a task, a phase | it has a slug, a directory, and a `type:` in its frontmatter |
-| **type** | the frontmatter field saying what a need produces: `feature`, `diagnostic`, `etude` or `refonte` — or `note` on a note | a phase, a status | written once, in the phase 1 stub |
+| **type** | the frontmatter field saying what a need produces: `feature`, `diagnostic`, `etude` or `refonte` — `note` on a note, or `reference` on a reference | a phase, a status | written once, in the phase 1 stub |
 | **feature** | a `need` whose type is "build or change behaviour" | a diagnostic, a refonte | `type: feature`; produces `spec.md` and `plan.md`, Fast-Path or Heavy-Path |
 | **diagnostic** | a `need` whose type is "find out why something is wrong" | a feature that has not been specified yet | `type: diagnostic`; produces `diagnosis.md`, no `plan.md`; becomes a `feature` once the cause is known |
 | **etude** | a `need` whose type is "answer a question the session cannot hold" | a probe, a "how does X work" answered in chat | `type: etude`; produces `etude.md` (question, constats, recommandation), no `plan.md` |
 | **refonte** | a `need` whose type is "reshape without changing what must not change" | a feature, a cleanup | `type: refonte`; always Heavy-Path; its spec names the invariant |
 | **note** | one idea or finding to study later, one file | a need, a task, a TODO line | `type: note`, in `<project>/_notes/<slug>.md` — or `_notes/<slug>.md` at the vault root when it would be another project |
+| **reference** | a background document kept in the vault, in one place per level, found through an `INDEX.md` | a note (an idea to study), a heuristic (a trap, a Condition -> Action bullet written at phase 6), the documentation of a system | `type: reference` in `<project\|ecosystem\|_global>/_reference/`; test "if the system changes, does this document become false?" (yes = system documentation, `owner: depot` or `externe`, the vault keeps only a pointer; no = `owner: vault`); a heuristic may point to a reference, never the reverse |
 | **archive** | where a finished or abandoned need goes: `<project>/_archive/<need>/` | a deletion, a `done` flag alone | reached only at phase 6, after human verification; `plan.md` moves to its `traces/` |
 | **derived need** | a need opened *from* another because a behaviour decision was missing | a task, a candidate | it carries `derived_from:` and its parent carries `derived:` |
 | **cycle** | one complete pass through the phases for one need | a loop, an iteration, a retry | it starts at phase 1 and ends at a verdict |
@@ -61,6 +62,6 @@ model sees the **directory** name — but the old frontmatter `name:` keeps
 resolving as a typed command. A directory-only rename leaves a working ghost
 alias that passes every grep. Gate 10 of `scripts/doctor` is what catches it.
 
-**The `_` prefix is reserved.** `_archive/`, `_notes/` and `_global/` are the
+**The `_` prefix is reserved.** `_archive/`, `_notes/`, `_reference/` and `_global/` are the
 vault's own directories. No need slug may start with `_`; `bin/scoped` refuses
 one.
