@@ -947,6 +947,25 @@ else
   echo "  (jq absent : cas de l'installateur ignores)"
 fi
 
+echo "hooks/hooks.json"
+if command -v jq > /dev/null 2>&1; then
+  HJ=hooks/hooks.json
+  is "SessionStart porte deux groupes" "2" "$(jq '.hooks.SessionStart | length' "$HJ")"
+  is "premier groupe inchange : matcher" "startup|clear|compact" "$(jq -r '.hooks.SessionStart[0].matcher' "$HJ")"
+  is "premier groupe inchange : commande" \
+     '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" session-start' "$(jq -r '.hooks.SessionStart[0].hooks[0].command' "$HJ")"
+  is "second groupe : matcher startup seul" "startup" "$(jq -r '.hooks.SessionStart[1].matcher' "$HJ")"
+  is "second groupe : commande" \
+     '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" statusline-install' "$(jq -r '.hooks.SessionStart[1].hooks[0].command' "$HJ")"
+  is "second groupe : synchrone" "false" "$(jq '.hooks.SessionStart[1].hooks[0].async' "$HJ")"
+  is "second groupe : timeout 10" "10" "$(jq '.hooks.SessionStart[1].hooks[0].timeout' "$HJ")"
+  # Le script que la commande nomme existe, executable.
+  [ -x hooks/statusline-install ] && ok "hooks/statusline-install est executable" \
+    || ko "hooks/statusline-install est executable" "x" "non"
+else
+  echo "  (jq absent : cas de hooks.json ignores)"
+fi
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
