@@ -14,7 +14,7 @@ Execute plan by dispatching a fresh implementer subagent per task, a task review
 **Narration:** between tool calls, narrate at most one short line — `vault/<project>/<feature>/plan.md`
 and the tool results carry the record.
 
-**Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are the five named below, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
+**Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are the six named below, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
 **Rulings, not stalls.** A running plan does not wait on a human for every
 decision. Conflicts, ambiguities, plan defects — decide them yourself. The
@@ -24,11 +24,12 @@ settles what neither answers. Record every decision in `vault/<project>/<feature
 going. A wrong ruling costs rework your human partner can see and undo; a
 session parked on a question costs their whole day and buys nothing.
 
-Five things stop you, and only these: an irreversible or destructive
+Six things stop you, and only these: an irreversible or destructive
 operation; a security-sensitive action; a side effect outside this worktree
 that norms say you ask about first (a merge, a push to a shared branch, a
-publish); a task whose second fix attempt still fails review; and a plan so
-broken that every path forward is a guess. For those, stop and ask.
+publish); a task whose second fix attempt still fails review; a plan so
+broken that every path forward is a guess; and a `[humain]` task with nothing
+independent left to run (see Human tasks). For those, stop and ask.
 
 ## When to Use
 
@@ -126,7 +127,7 @@ sequences — the single most expensive failure observed. Track progress in
   review-package directory.
 - Check for an existing `vault/<project>/<feature>/plan.md` before writing
   one. If it names your plan and its Goal, a `- [x]` task is DONE — do not
-  re-dispatch it; resume at the first `- [ ]` task. A task whose last
+  re-dispatch it; resume at the first `- [ ]` task (an open `[humain]` task waits on the human: never re-dispatch it). A task whose last
   checklist line is an open `attempt` note is mid-loop: resume there. A
   `plan.md` naming a different feature belongs to a different feature
   directory and is never yours to read or write.
@@ -284,6 +285,14 @@ current task's heading in `vault/<project>/<feature>/plan.md`.
 **No propagation.** A task's `Model:` field — confirmed opus, sonnet, or
 absent — governs that task alone. Task N+1 is read fresh from its own
 `Model:` field, or defaults to `sonnet`; it never inherits Task N's model.
+
+### Human tasks
+
+A task whose title starts with `[humain]` or `[human]` is done by your human partner. Dispatch nothing for it: no implementer, no reviewer, no `plan-drift`, no BASE, and no pre-flight finding for its missing Files block.
+
+Keep executing the tasks that do not `Depends on` it. When none is left, hand its checklist to your human partner and wait: that is the sixth stop.
+
+The verdict reaches `vault/<project>/<feature>/plan.md` in either of two equivalent ways: you tick the boxes and add a dated line ("validated by the human, on their word" or "on screenshots"), or the human ticks them by hand. A defect they report goes through `aikit:routing-failures` and reopens the task or adds a corrective one; a box is never unticked in silence.
 
 ### 1. Dispatch the implementer — minimalist protocol
 
@@ -554,8 +563,8 @@ Then run exactly one scoped re-review of the fix wave (get the diff
 directly over the fix range, [re-review-prompt.md](re-review-prompt.md)).
 Adjudicate any residual findings the same way a task's spent attempt budget
 is handled: stop and ask your human partner to rule on the load-bearing
-ones, and record what they decided in `vault/<project>/<feature>/plan.md`. Only the five
-classes above stop you here. There is no second fix wave — residual
+ones, and record what they decided in `vault/<project>/<feature>/plan.md`. Only the stops
+listed at the top stop you here. There is no second fix wave — residual
 load-bearing findings surface to your human partner when
 finishing-a-development-branch presents the options.
 

@@ -30,6 +30,7 @@ exists to prevent.
 | **cycle** | one complete pass through the phases for one need | a loop, an iteration, a retry | it starts at phase 1 and ends at a verdict |
 | **phase** | a numbered step of a cycle that ends in a written artifact | a step, a task | if it writes no file, it is not a phase |
 | **task** | the smallest unit with its own test cycle and its own reviewer gate | a step, a phase | one brief, one file set, one commit |
+| **human task** | a task the human partner performs, titled `[humain]` (or `[human]`) in the plan | an approval stop, a review | at least one checkbox and no Files, Agent or Model; the session dispatches nothing for it, and the monitor badges it while it is the first open task |
 | **step** | one action inside a task, 2 to 5 minutes | a pass, a round, a phase | it fits in a checkbox |
 | **pass** | one traversal of the question tree in `aikit:grilling` | a round, a step | it belongs to phase 2 and nothing else |
 | **attempt budget** | 2 — the cap on attempts at one task before stopping for human arbitration | "the budget" | counted per task, in `vault/<project>/<feature>/plan.md` |

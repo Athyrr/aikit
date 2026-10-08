@@ -32,7 +32,8 @@ whole spends your context budget on text that has nothing to do with the spec.
 - **Every task declares its files** — Create / Modify / Test, exact paths. This
   single declaration does three jobs: it bounds the implementer's scope, it
   makes `aikit:checking-plan-drift` possible, and disjoint file sets are what
-  make parallel dispatch safe. A task without a Files block is not a task.
+  make parallel dispatch safe. A task without a Files block is not a task,
+  except a `[humain]` one.
 - **Tasks that can run in parallel must have disjoint file sets.** If two tasks
   share a file, say so explicitly and sequence them.
 - **Dependencies are stated**, task to task, in the task itself.
@@ -40,6 +41,10 @@ whole spends your context budget on text that has nothing to do with the spec.
   name it in the task (`Agent: api-expert`). The orchestrator dispatches it
   instead of the generic implementer.
 - **No placeholders.** Exact values, copied verbatim from the spec.
+- **A step the spec reserves for the human is a task**, titled
+  `### Task N: [humain] <title>`, placed where the check can happen, with
+  checkboxes and no Files block. The rule and the refusal guard are in
+  `aikit:writing-plans`, "Human Tasks".
 
 ## The task size rule
 
