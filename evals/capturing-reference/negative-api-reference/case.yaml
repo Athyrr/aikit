@@ -1,0 +1,14 @@
+schema_version: "1.0"
+name: negative-api-reference
+execution:
+  prompt: |
+    Quelle référence d'API utiliser pour envoyer un e-mail depuis un script Python ?
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?capturing-reference"'
+    min: 0
+    max: 0

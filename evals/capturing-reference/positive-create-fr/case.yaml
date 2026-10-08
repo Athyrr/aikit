@@ -1,0 +1,13 @@
+schema_version: "1.0"
+name: positive-create-fr
+execution:
+  prompt: |
+    Garde ce document en référence : "Notes de test : le joueur gagne un point par ennemi touché, le combo s'arrête après 3 secondes."
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?capturing-reference"'
+    min: 1

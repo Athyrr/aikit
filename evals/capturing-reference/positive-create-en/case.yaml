@@ -1,0 +1,13 @@
+schema_version: "1.0"
+name: positive-create-en
+execution:
+  prompt: |
+    Keep this as a reference: "Test notes: the player scores one point per enemy hit, the combo resets after 3 seconds."
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?capturing-reference"'
+    min: 1

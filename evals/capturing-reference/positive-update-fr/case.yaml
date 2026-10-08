@@ -1,0 +1,13 @@
+schema_version: "1.0"
+name: positive-update-fr
+execution:
+  prompt: |
+    Mets à jour la référence sur le système de combo, la règle a changé : le combo s'arrête maintenant après 5 secondes.
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?capturing-reference"'
+    min: 1

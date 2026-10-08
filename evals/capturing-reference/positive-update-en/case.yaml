@@ -1,0 +1,13 @@
+schema_version: "1.0"
+name: positive-update-en
+execution:
+  prompt: |
+    Refresh that reference on the combo system, the rule changed: the combo now resets after 5 seconds.
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?capturing-reference"'
+    min: 1

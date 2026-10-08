@@ -1,0 +1,14 @@
+schema_version: "1.0"
+name: negative-note
+execution:
+  prompt: |
+    Note ça pour plus tard : essayer un système de combo à décroissance progressive.
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Skill]
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?capturing-reference"'
+    min: 0
+    max: 0
