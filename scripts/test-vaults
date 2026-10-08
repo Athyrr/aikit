@@ -846,6 +846,107 @@ is "sans jq : code de sortie 0" "0" "$rc"
 out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"
 is "sans jq, hors git : pas de parentheses" "aikit · hors-registre" "$out"
 
+echo "hooks/statusline-install"
+if command -v jq > /dev/null 2>&1; then
+  PLUG="$TMP/Plugin Root/aikit/1.2.3"      # une espace, deliberement
+  WANT="AIKIT_STATUSLINE=1 bash \"$PLUG/bin/aikit-statusline\""
+  # inst <home> : stdout du hook sur stdout, code de sortie en derniere ligne.
+  inst() { HOME="$1" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/statusline-install" 2> /dev/null; }
+  newhome() { local h; h="$(mktemp -d "$TMP/home.XXXXXX")"; mkdir -p "$h/.claude"; printf '%s' "$h"; }
+  getcmd() { jq -r '.statusLine.command' "$1/.claude/settings.json"; }
+
+  H="$(newhome)"; rmdir "$H/.claude"
+  out="$(inst "$H")"; rc=$?
+  is "settings.json absent : cree avec statusLine" "$WANT" "$(getcmd "$H")"
+  is "... type command" "command" "$(jq -r '.statusLine.type' "$H/.claude/settings.json")"
+  is "... seule cle ecrite" "statusLine" "$(jq -r 'keys | join(",")' "$H/.claude/settings.json")"
+  is "... rien sur stdout" "" "$out"
+  is "... code de sortie 0" "0" "$rc"
+
+  H="$(newhome)"; echo '{"theme":"dark","env":{"A":"1"}}' > "$H/.claude/settings.json"
+  out="$(inst "$H")"
+  is "autres cles : statusLine ajoutee" "$WANT" "$(getcmd "$H")"
+  is "autres cles : conservees" '{"theme":"dark","env":{"A":"1"}}' \
+     "$(jq -c 'del(.statusLine)' "$H/.claude/settings.json")"
+  is "autres cles : rien sur stdout" "" "$out"
+
+  H="$(newhome)"
+  echo '{"statusLine":{"type":"command","command":"AIKIT_STATUSLINE=1 bash \"/ancien/1.0.0/bin/aikit-statusline\""},"theme":"dark"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "marqueur present : chemin reecrit" "$WANT" "$(getcmd "$H")"
+  is "marqueur present : theme conserve" "dark" "$(jq -r '.theme' "$H/.claude/settings.json")"
+
+  H="$(newhome)"
+  echo '{"statusLine":{"type":"command","command":"~/mon-script.sh","padding":2}}' > "$H/.claude/settings.json"
+  cp "$H/.claude/settings.json" "$TMP/avant-perso.json"
+  inst "$H" > /dev/null
+  is "statusLine personnalisee : octets identiques" "$(cat "$TMP/avant-perso.json")" "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; echo '{"statusLine":"une chaine"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "statusLine qui n'est pas un objet : intacte" '{"statusLine":"une chaine"}' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"
+  out="$(inst "$H")"; rc=$?
+  [ ! -e "$H/.claude/settings.json" ] && ok "opt-out : settings.json absent n'est pas cree" \
+    || ko "opt-out : settings.json absent n'est pas cree" "absent" "present"
+  is "opt-out : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  echo '{"theme":"dark"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "opt-out : settings.json existant intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; printf '{"theme": "dark",\n' > "$H/.claude/settings.json"
+  cp "$H/.claude/settings.json" "$TMP/avant-invalide.json"
+  out="$(inst "$H")"; rc=$?
+  is "JSON invalide : intact" "$(cat "$TMP/avant-invalide.json")" "$(cat "$H/.claude/settings.json")"
+  is "JSON invalide : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  H="$(newhome)"; : > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "fichier vide : intact" "0" "$(wc -c < "$H/.claude/settings.json" | tr -d ' ')"
+  H="$(newhome)"; echo '[1,2]' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "JSON qui n'est pas un objet : intact" '[1,2]' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; inst "$H" > /dev/null
+  touch -d @0 "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "valeur deja identique : fichier non reecrit (mtime)" "0" "$(stat -c %Y "$H/.claude/settings.json")"
+
+  H="$(newhome)"; mkdir -p "$TMP/reel"
+  echo '{"theme":"dark"}' > "$TMP/reel/settings.json"; chmod 640 "$TMP/reel/settings.json"
+  ln -s "$TMP/reel/settings.json" "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  [ -L "$H/.claude/settings.json" ] && ok "lien symbolique : le lien reste un lien" \
+    || ko "lien symbolique : le lien reste un lien" "lien" "fichier"
+  is "lien symbolique : la cible resolue est ecrite" "$WANT" "$(jq -r '.statusLine.command' "$TMP/reel/settings.json")"
+  is "lien symbolique : permissions conservees" "640" "$(stat -c %a "$TMP/reel/settings.json")"
+  is "lien symbolique : aucun temporaire laisse" "settings.json" "$(ls "$TMP/reel")"
+
+  H="$(newhome)"; echo '{"theme":"dark"}' > "$H/.claude/settings.json"
+  mkdir -p "$TMP/path-vide"
+  out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" PATH="$TMP/path-vide" "$BASH" "$REPO/hooks/statusline-install" 2> /dev/null)"; rc=$?
+  is "sans jq : settings.json intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+  is "sans jq : rien sur stdout, sortie 0" "|0" "$out|$rc"
+
+  H="$(newhome)"
+  out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/run-hook.cmd" statusline-install 2> /dev/null)"; rc=$?
+  is "via run-hook.cmd : statusLine posee" "$WANT" "$(getcmd "$H")"
+  is "via run-hook.cmd : rien sur stdout, sortie 0" "|0" "$out|$rc"
+
+  # Test non vide : un faux jq ecrit sur stdout puis delegue au vrai ; le hook
+  # doit quand meme ne rien emettre (garantie de `exec > /dev/null`).
+  REALJQ="$(command -v jq)"
+  FAKEBIN="$TMP/faux-jq"; mkdir -p "$FAKEBIN"
+  printf '#!/usr/bin/env bash\necho FUITE-STDOUT\nexec "%s" "$@"\n' "$REALJQ" > "$FAKEBIN/jq"; chmod +x "$FAKEBIN/jq"
+  fuite="$(PATH="$FAKEBIN:$PATH" bash -c 'jq -n 1' 2> /dev/null)"
+  is "faux jq : ecrit bien sur stdout (temoin)" "FUITE-STDOUT" "$(printf '%s' "$fuite" | head -1)"
+  H="$(newhome)"
+  out="$(PATH="$FAKEBIN:$PATH" HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/statusline-install" 2> /dev/null)"; rc=$?
+  is "faux jq bavard : rien sur stdout, sortie 0" "|0" "$out|$rc"
+else
+  echo "  (jq absent : cas de l'installateur ignores)"
+fi
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
