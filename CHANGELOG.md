@@ -4,6 +4,12 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **References.** Nouveau dossier `_reference/` par projet, ecosysteme et
+  `_global` (documents de fond, un `INDEX.md` par dossier) ; nouvelle skill
+  `aikit:capturing-reference` (creer ou mettre a jour, sur demande seulement) ;
+  `reference` ajoute a `VOCABULARY.md` et `_reference/` aux prefixes reserves ;
+  `aikit:registering-a-project` : la fiche ne pointe que vers l'INDEX, le
+  squelette est inchange.
 - **Ecosystemes et `part_of`.** `kind` connait trois valeurs (`depot`,
   `conception`, `ecosysteme`) et une valeur inconnue se voit au demarrage (`⚠`).
   Une fiche peut declarer `part_of: <ecosysteme>` ; le tableau de session
