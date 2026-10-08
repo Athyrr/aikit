@@ -121,7 +121,7 @@ awk 'NR>=A && NR<=B' FILE | wc -c                                  # a section
 
 ## The project's directory in the vault
 
-Every registered project owns `<vault>/<name>/`, with the same fixed shape,
+Every registered project owns `<vault>/<name>/`, with the same fixed shape (plus `_reference/` on request),
 present even when empty:
 
 - `heuristics.md` — header only at first; written at phase 6, never here.
@@ -139,7 +139,7 @@ touch "$v/$p/_notes/.gitkeep" "$v/$p/_archive/.gitkeep"
 [ -e "$v/$p/heuristics.md" ] || printf '# %s — heuristics\n' "$p" > "$v/$p/heuristics.md"
 ```
 
-An ecosystem owns the same directory, from the same skeleton (`p=<ecosystem name>`). The documents its members share sit at its root, one file each:
+An ecosystem owns the same directory, from the same skeleton (`p=<ecosystem name>`). The documents its members share sit in `_reference/`, one file each:
 
 ```
 <vault>/<ecosystem>/
