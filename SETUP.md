@@ -12,7 +12,8 @@ other sessions until `scripts/deploy` has published it.
   `python3`; either one alone is enough.
 - `jq` — **required for the status line**: the installer edits `~/.claude/settings.json`
   with it and leaves the file untouched when `jq` is missing; the renderer falls
-  back to a bare `aikit · <folder> (<branch>)` line. Everything else works without it.
+  back to a bare `aikit · <folder> (<branch>)` line, where `<folder>` is the shell's
+  folder (the process's current directory), not the session's working folder. Everything else works without it.
 - an SSH key loaded in `ssh-agent`, with `github.com` in `known_hosts`
 - Claude Code ≥ 2.1.193
 - **optional:** an `obsidian` plugin providing the `obsidian:obsidian-markdown`
@@ -116,7 +117,7 @@ a git-hook name.
 
 ## 7. The status line
 
-Every machine with the plugin installed shows one line, with no manual setting:
+By default, every machine with the plugin installed shows one line, with no manual setting:
 
 ```
 aikit · <model> · <project> (<branch>) · ctx <N> %
@@ -134,6 +135,8 @@ It writes nothing when the value is already right, and it never touches a
 status line stays yours.
 
 **Opt out:** create the flag file, the hook then neither reads nor writes anything.
+The flag only stops future writes: to remove a bar already installed, also delete
+the `statusLine` key from `~/.claude/settings.json`.
 
 ```bash
 mkdir -p ~/.config/aikit && touch ~/.config/aikit/no-statusline
