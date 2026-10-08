@@ -2,12 +2,13 @@
 """Compare what a plan task DECLARED it would touch against what git says it did.
 
 Usage:  plan-drift PLAN_FILE TASK_N BASE [HEAD]
+        plan-drift PLAN_FILE TASK_N        (a [humain] task only: exempt)
 
 Run it from the project repository root. BASE is the commit recorded before
 dispatching the implementer (never HEAD~1 — that silently drops all but the
 last commit of a multi-commit task).
 
-Exit status: 0 = clean, 1 = drift, 2 = usage or parse error.
+Exit status: 0 = clean or exempt, 1 = drift, 2 = usage or parse error.
 """
 import re
 import subprocess
@@ -21,6 +22,15 @@ def task_block(plan_text, n):
                          re.MULTILINE | re.DOTALL)
     m = pattern.search(plan_text)
     return m.group(1) if m else None
+
+
+def is_human_task(plan_text, n):
+    """True when '### Task N:' carries the [humain] / [human] marker (case-insensitive).
+
+    Same marker, same position as the monitor's parser: first in the title.
+    """
+    pattern = rf"^###\s+Task\s+{re.escape(str(n))}\b\s*[:.–—-]\s*\[(?:humain|human)\]\s"
+    return re.search(pattern, plan_text, re.MULTILINE | re.IGNORECASE) is not None
 
 
 def declared_paths(block):
@@ -54,16 +64,23 @@ def declared_paths(block):
 
 
 def main():
-    if len(sys.argv) not in (4, 5):
+    if len(sys.argv) not in (3, 4, 5):
         print(__doc__, file=sys.stderr)
         return 2
-    plan_file, task_n, base = sys.argv[1], sys.argv[2], sys.argv[3]
+    plan_file, task_n = sys.argv[1], sys.argv[2]
+    base = sys.argv[3] if len(sys.argv) >= 4 else None
     head = sys.argv[4] if len(sys.argv) == 5 else "HEAD"
 
     text = Path(plan_file).read_text()
     block = task_block(text, task_n)
     if block is None:
         print(f"plan-drift: no 'Task {task_n}' in {plan_file}", file=sys.stderr)
+        return 2
+    if is_human_task(text, task_n):
+        print(f"VERDICT: EXEMPT — Task {task_n} is a [humain] task: no BASE, no diff, nothing to compare.")
+        return 0
+    if base is None:
+        print(__doc__, file=sys.stderr)
         return 2
 
     try:

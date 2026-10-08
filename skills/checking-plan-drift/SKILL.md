@@ -29,6 +29,8 @@ and a partial diff reports CLEAN on drifted work.
 
 Exit status: `0` clean, `1` drift, `2` the plan cannot be checked.
 
+A `[humain]` task is **exempt**: no BASE, no diff, `plan-drift PLAN_FILE TASK_N` prints `EXEMPT` and exits 0. Nothing is skipped by mistake — such a task declares no Files block on purpose.
+
 ## The three verdicts
 
 **CLEAN** — the diff matches the declaration. Proceed to review.
@@ -50,7 +52,7 @@ the test was never written.
 ## Exit 2 — the plan cannot be checked
 
 The task has no `**Files:**` block. This is not a tooling problem to work
-around; it is a plan defect. Every task declares the files it touches, because
+around; it is a plan defect. Every task except a `[humain]` one declares the files it touches, because
 that one declaration does three jobs: it enables this check, it bounds the
 implementer's scope, and disjoint file sets are what make parallel dispatch
 safe. Fix the plan.
@@ -81,4 +83,4 @@ up as false drift.
 | "The extra file is obviously needed" | Then the plan was wrong. Say so and go up. |
 | "I'll use HEAD~1, it's easier" | Multi-commit tasks report CLEAN while drifted. |
 | "I'll note the drift and keep going" | Drift compounds. The next task builds on it. |
-| "The task has no Files block, skip the check" | Then add the Files block. That is the fix. |
+| "The task has no Files block, skip the check" | Not `[humain]`? Then add the Files block. That is the fix. |
