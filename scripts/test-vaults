@@ -784,6 +784,68 @@ is "argument vide"                         ""   "$(pp "")"
 is "aucun vault declare"                   ""   "$(AIKIT_VAULTS=/nonexistent-vaults-file project_of_path "$PPR/a")"
 is "chemin avec espace (vault de la suite principale)" "vault-lui-meme" "$(project_of_path "$VAULT")"
 
+echo "bin/aikit-statusline"
+REPO="$PWD"
+SLCACHE="$TMP/sl-cache"; SLHOME="$TMP/sl-home"; mkdir -p "$SLHOME"
+git -C "$ROOT/avec-remote" symbolic-ref HEAD refs/heads/trunk
+mkdir -p "$ROOT/sans-git/dedans" "$TMP/hors-registre"
+ESC="$(printf '\033')"
+plain() { sed "s/${ESC}\[[0-9;]*m//g"; }
+# sl <json> [vaults-file] : le rendu brut, sur un HOME et un cache jetables.
+sl() { printf '%s' "$1" | HOME="$SLHOME" XDG_CACHE_HOME="$SLCACHE" AIKIT_VAULTS="${2:-$CONF}" bash "$REPO/bin/aikit-statusline"; }
+slin() {  # slin <dir> <session> <pct-json|null>
+  jq -nc --arg d "$1" --arg s "$2" --argjson p "$3" \
+    '{model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:$p}}'
+}
+if command -v jq > /dev/null 2>&1; then
+  out="$(sl "$(slin "$ROOT/avec-remote" s30 30)")"; rc=$?
+  is "30 % : la ligne complete" "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(printf '%s' "$out" | plain)"
+  is "30 % : code de sortie 0"  "0" "$rc"
+  is "30 % : une seule ligne"   "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+  has "30 % : vert"   "${ESC}[32mctx 30 %" "$out"
+  has "70 % : jaune"  "${ESC}[33mctx 70 %" "$(sl "$(slin "$ROOT/avec-remote" s70 70)")"
+  has "85 % : jaune (borne haute)" "${ESC}[33mctx 85 %" "$(sl "$(slin "$ROOT/avec-remote" s85 85)")"
+  has "86 % : rouge"  "${ESC}[31mctx 86 %" "$(sl "$(slin "$ROOT/avec-remote" s86 86)")"
+  has "90 % : rouge"  "${ESC}[31mctx 90 %" "$(sl "$(slin "$ROOT/avec-remote" s90 90)")"
+  has "59,6 % : arrondi a 60, jaune" "${ESC}[33mctx 60 %" "$(sl "$(slin "$ROOT/avec-remote" s596 59.6)")"
+  out="$(sl "$(slin "$ROOT/avec-remote" snull null)")"; rc=$?
+  is "contexte null : tiret" "aikit · Opus · avec-remote (trunk) · ctx –" "$(printf '%s' "$out" | plain)"
+  is "contexte null : code de sortie 0" "0" "$rc"
+  is "dossier hors git : pas de parentheses" \
+     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git" shg 30)" | plain)"
+  is "sous-dossier d'un projet : le projet" \
+     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)" | plain)"
+  is "projet hors registre : le nom du dossier" \
+     "aikit · Opus · hors-registre · ctx 30 %" "$(sl "$(slin "$TMP/hors-registre" shr 30)" | plain)"
+  is "aucun vault declare : le nom du dossier" \
+     "aikit · Opus · avec-remote (trunk) · ctx 30 %" \
+     "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file | plain)"
+  out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
+  is "entree invalide : code de sortie 0" "0" "$rc"
+  is "entree invalide : une seule ligne"  "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+  out="$(sl '')"; rc=$?
+  is "entree vide : code de sortie 0" "0" "$rc"
+  # Le cache par session : une entree posee a la main est relue telle quelle.
+  mkdir -p "$SLCACHE/aikit"
+  printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$SLCACHE/aikit/project-scache"
+  is "le projet vient du cache de la session" \
+     "aikit · Opus · nom-en-cache (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" scache 30)" | plain)"
+  printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$SLCACHE/aikit/project-sperime"
+  is "un cache d'un autre dossier est ignore" \
+     "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" sperime 30)" | plain)"
+  [ -f "$SLCACHE/aikit/project-s30" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/aikit" \
+    || ko "le cache est ecrit sous XDG_CACHE_HOME/aikit" "project-s30 present" "absent"
+else
+  echo "  (jq absent : cas de rendu avec jq ignores)"
+fi
+# Sans jq : un PATH qui ne contient que git.
+NOJQ="$TMP/path-sans-jq"; mkdir -p "$NOJQ"; ln -sf "$(command -v git)" "$NOJQ/git"
+out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"; rc=$?
+is "sans jq : ligne de repli" "aikit · avec-remote (trunk)" "$out"
+is "sans jq : code de sortie 0" "0" "$rc"
+out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"
+is "sans jq, hors git : pas de parentheses" "aikit · hors-registre" "$out"
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
