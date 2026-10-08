@@ -53,7 +53,7 @@ This structure informs the task decomposition. Each task should produce self-con
 
 ## The Files Block Is Not Optional
 
-Every task declares the exact files it touches. That single declaration does
+Every task but a `[humain]` one (see Human Tasks) declares the exact files it touches. That single declaration does
 three jobs, and dropping it silently disables all three:
 
 1. `aikit:checking-plan-drift` compares it against `git diff --name-only` after
@@ -189,6 +189,12 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+## Human Tasks
+
+A check only a human can make (a visual render, real-time behaviour, a judgement call) is a task like any other. Each step the spec's Verification section reserves for the human becomes a checkbox of such a task, placed right after the last task that makes the object verifiable — sometimes between two code tasks, not always last.
+
+Title it `### Task N: [humain] <title>`. `[human]` is also accepted, case-insensitive, first in the title and followed by a space. It carries at least one checkbox (a task without any is never checked and would wait forever) and no Files, Agent, Model or Skill. The monitor raises a badge while the first open task of the plan is a human one.
+
 ## No Placeholders
 
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
@@ -208,6 +214,8 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+
+**4. Human tasks:** If the project's completion criterion says "human verification required" and the plan has no `[humain]` task, the plan is refused until it states in writing why it needs none.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
