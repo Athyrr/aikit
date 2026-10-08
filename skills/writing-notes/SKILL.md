@@ -10,7 +10,7 @@ TODO line (`VOCABULARY.md`, rows *note* and *candidate*). Writing one opens no
 feature directory, no spec, no plan, and does not change the work in progress.
 
 Triggered by an explicit request only. If you merely think something is worth
-keeping, say so in one line and let the human partner decide.
+keeping, say so in one line and let the human partner decide. A document to keep (a decision, a design account, a source digest), not an idea to study, is a reference: use `aikit:capturing-reference`.
 
 ## Steps
 

@@ -200,6 +200,8 @@ the method itself.
   <project>/heuristics.md     empirical rules and traps for this project — orchestrator-written, at /finish only
   <project>/_notes/           one note per file — real problems nothing is waiting on, ideas to study later
   <project>/_archive/<need>/  finished or abandoned needs: spec.md, traces/
+  <project>/_reference/       reference documents kept on request (aikit:capturing-reference), routed by an INDEX.md
+  _global/_reference/         references common to several projects, no ecosystem
   <project>/<need>/           the need in flight: spec.md, plan.md, diagnosis.md, etude.md — spec carries its own Impact section
 <anywhere>/                   the project repositories, found by scanning
 

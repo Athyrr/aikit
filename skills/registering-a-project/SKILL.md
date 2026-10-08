@@ -65,6 +65,8 @@ routing was right.
 Measure the costs, do not guess them. For a large document, give section names
 and line ranges, and state the total so the reader sees what they are avoiding.
 
+A project that keeps a `_reference/` gets one table row for it, never one per file: "the reference for a background document" -> `<project>/_reference/INDEX.md`. The INDEX carries the "read when…" and the cost of each document.
+
 **4. Domain agents** — a coverage table: what each owns, what it explicitly does
 not, its model. Or `None.` — which is also information.
 
@@ -105,7 +107,7 @@ Nothing is written to stderr: the hook runs at every session start.
 
 `part_of: <ecosystem>` says one thing: **a contract or a document is shared** — a change in one project obliges you to look at the others. It does not mean "same company", nor "consumes the data of". When unsure, leave it out: a missing `part_of` costs a grouping, a wrong one sends a session to the wrong documents.
 
-An **ecosystem** is a registry file with `kind: ecosysteme` and no `repo:`. It carries four sections — **Identity**, **What it is**, **Load before working**, **Traps** — and neither *Domain agents* nor *Completion criterion*: it has no code to finish. *Load before working* routes to the documents its members share; each pointer carries `sources:` (the path in the repository that owns it) and the date it was read. **The vault keeps accounts and pointers; the source of truth stays in the repository that owns it.** An ecosystem cannot bear a member's name: a registry file shares its name with its file and its directory.
+An **ecosystem** is a registry file with `kind: ecosysteme` and no `repo:`. It carries four sections — **Identity**, **What it is**, **Load before working**, **Traps** — and neither *Domain agents* nor *Completion criterion*: it has no code to finish. *Load before working* routes to `<ecosystem>/_reference/INDEX.md`; a pointer reference carries `sources:`, `read:` (when to read it) and `checked:` (the date it was last verified against its source). **The vault keeps accounts and pointers; the source of truth stays in the repository that owns it.** An ecosystem cannot bear a member's name: a registry file shares its name with its file and its directory.
 
 ## Costs are measured
 
@@ -125,6 +127,7 @@ present even when empty:
 - `heuristics.md` — header only at first; written at phase 6, never here.
 - `_notes/` — one note per file (`type: note`).
 - `_archive/` — finished or abandoned needs, `<need>/` each.
+- `_reference/` — background documents and an `INDEX.md`; created on request by `aikit:capturing-reference`, **not part of the skeleton**.
 
 The `_` prefix is reserved: no need slug may start with it. git does not track
 empty directories, hence a `.gitkeep` in each. Set `p` and `v`, then run:
@@ -142,7 +145,7 @@ An ecosystem owns the same directory, from the same skeleton (`p=<ecosystem name
 <vault>/<ecosystem>/
 ├─ heuristics.md     rules common to the members, written at phase 6
 ├─ _notes/  _archive/
-└─ <document>.md     one account or pointer per file, with `sources:` and a read date
+└─ _reference/       INDEX.md and the documents its members share, one per file
 ```
 
 ## Adding one

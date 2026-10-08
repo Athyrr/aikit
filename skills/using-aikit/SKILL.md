@@ -63,7 +63,7 @@ failure, `aikit:handling-secrets` before writing config or committing anything
 that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
 a project's own MCP servers, `aikit:receiving-code-review` when incorporating
 feedback from outside the method's own review loop. `aikit:writing-notes` only when the human partner explicitly asks to
-set an idea aside.
+set an idea aside, `aikit:capturing-reference` only when they explicitly ask to keep a document as a reference.
 
 **Heuristics** — two more vault files, both capped at 50 lines, read in
 cascade (`_global/` then `<project>/`) while writing the plan, written only
