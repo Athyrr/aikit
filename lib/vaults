@@ -293,3 +293,32 @@ render_project_rows() {
     }'
   return 0
 }
+
+# project_of_path <chemin> -> le nom du projet enregistre dont le dossier de
+# travail contient <chemin>, ou VIDE. Cherche dans TOUS les vaults declares.
+#   - seules comptent les fiches `depot` resolues `present` (colonne 4) : une
+#     fiche `conception` ou `ecosysteme` n'a pas de dossier ;
+#   - les chemins sont compares apres resolution des liens (pwd -P) ;
+#   - le plus long prefixe gagne (projets imbriques) ; a egalite, le premier ;
+#   - le prefixe s'arrete a une frontiere de dossier : `/a/b` ne contient pas
+#     `/a/bc`.
+# Ne leve jamais : fichier SOURCE, voir l'en-tete.
+_realdir() { ( cd -P "$1" 2>/dev/null && pwd -P ); }
+project_of_path() {  # project_of_path <chemin>
+  local want vname name kind state p rp best="" bestlen=0
+  [ -n "${1:-}" ] || return 0
+  want="$(_realdir "$1")" || return 0
+  [ -n "$want" ] || return 0
+  while IFS=$'\t' read -r vname _; do
+    [ -n "$vname" ] || continue
+    while IFS=$'\t' read -r name kind state p _; do
+      [ "$kind" = "depot" ] && [ "$state" = "present" ] && [ "$p" != "-" ] || continue
+      rp="$(_realdir "$p")" || continue
+      [ -n "$rp" ] || continue
+      case "$want/" in "$rp"/*) ;; *) continue ;; esac
+      if [ "${#rp}" -gt "$bestlen" ]; then best="$name"; bestlen="${#rp}"; fi
+    done < <(resolve_projects "$vname")
+  done < <(vaults_list)
+  [ -z "$best" ] || printf '%s' "$best"
+  return 0
+}

@@ -753,6 +753,37 @@ printf -- '- garde -> moi\n' >> "$SV/neuf/heuristics.md"
 p=neuf v="$SV" bash "$SK"
 has "rejouer le squelette ne reecrit pas heuristics.md" "- garde -> moi" "$(cat "$SV/neuf/heuristics.md")"
 
+echo "project_of_path"
+# Fixtures a part : un vault et une racine a eux, pour ne pas changer le nombre
+# de lignes des tables de session testees plus haut.
+PPV="$TMP/pp vault"; PPR="$TMP/pp-root"; PPCONF="$TMP/vaults-pp"
+mkdir -p "$PPV/projects" "$PPR/a/zzz" "$PPR/a/b/c" "$PPR/ab" "$PPR/a-voisin" "$TMP/hors-registre"
+ppfiche() {  # ppfiche <nom> [ligne de frontmatter...]
+  local n="$1"; shift
+  { echo "---"; echo "name: $n"; [ "$#" -eq 0 ] || printf '%s\n' "$@"; echo "---"; } > "$PPV/projects/$n.md"
+}
+ppfiche a
+ppfiche b    "dir: a/b"
+ppfiche ab
+ppfiche plan-c "kind: conception" "dir: a/b/c"
+ppfiche fantome-pp
+{ echo "vault pp $PPV"; echo "root  pp $PPR"; } > "$PPCONF"
+ln -s "$PPR/a" "$TMP/lien-a"
+pp() { AIKIT_VAULTS="$PPCONF" project_of_path "$1"; }
+is "la racine du projet"                   "a"  "$(pp "$PPR/a")"
+is "un sous-dossier sans projet propre"    "a"  "$(pp "$PPR/a/zzz")"
+is "projets imbriques : le plus long gagne" "b" "$(pp "$PPR/a/b")"
+is "... et ses sous-dossiers aussi"        "b"  "$(pp "$PPR/a/b/c")"
+is "frontiere de dossier : a-voisin n'est pas dans a" "" "$(pp "$PPR/a-voisin")"
+is "frontiere de dossier : ab est son propre projet"  "ab" "$(pp "$PPR/ab")"
+is "les liens symboliques sont resolus"    "b"  "$(pp "$TMP/lien-a/b")"
+is "le vault lui-meme n'est pas sous une racine : hors registre ici" "" "$(pp "$PPV")"
+is "hors registre"                         ""   "$(pp "$TMP/hors-registre")"
+is "chemin inexistant"                     ""   "$(pp "$TMP/nexiste-pas")"
+is "argument vide"                         ""   "$(pp "")"
+is "aucun vault declare"                   ""   "$(AIKIT_VAULTS=/nonexistent-vaults-file project_of_path "$PPR/a")"
+is "chemin avec espace (vault de la suite principale)" "vault-lui-meme" "$(project_of_path "$VAULT")"
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
