@@ -222,6 +222,25 @@ is "espaces et CR de fin retires de kind, part_of, summary" \
    "depot|resume|b-suite" \
    "$(AIKIT_VAULTS="$TMP/vaults-sale" resolve_projects sale | awk -F'\t' '{print $2"|"$5"|"$6}')"
 
+# Une tabulation LITTERALE dans un summary (copier-colle depuis un tableur,
+# par exemple) : non filtree par _fiche_value, elle s'ajoute aux \t qui
+# separent les colonnes de resolve_projects et decale tout ce qui suit --
+# part_of lirait un morceau du summary au lieu de la vraie valeur, et
+# project_warnings signalerait alors un part_of inexistant qui n'en est pas un.
+TABVAULT="$TMP/tab"; mkdir -p "$TABVAULT/projects"
+printf '%s\n' "---" "name: suite-tab" "kind: ecosysteme" "summary: suite" "---" \
+  > "$TABVAULT/projects/suite-tab.md"
+printf '%s\n' "---" "name: membre-tab" "part_of: suite-tab" \
+  "summary: un texte"$'\t'"avec tabulation" "---" \
+  > "$TABVAULT/projects/membre-tab.md"
+printf 'vault tab %s\n' "$TABVAULT" > "$TMP/vaults-tab"
+
+is "une tabulation interne au summary ne decale pas les colonnes" \
+   "6|un texte avec tabulation|suite-tab" \
+   "$(AIKIT_VAULTS="$TMP/vaults-tab" resolve_projects tab | awk -F'\t' -v n="membre-tab" '$1==n {print NF"|"$5"|"$6}')"
+is "et ne declenche donc aucun faux avertissement part_of" "" \
+   "$(AIKIT_VAULTS="$TMP/vaults-tab" resolve_projects tab | project_warnings)"
+
 echo "project_warnings"
 T=$'\t'
 is "un depot implicite, un part_of valide, un ecosysteme sans membre : aucune anomalie" "" \

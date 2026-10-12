@@ -119,6 +119,9 @@ _fiche_value() {
   local v
   v="$(fiche_field "$1" "$2")"
   v="${v%"${v##*[![:space:]]}"}"
+  # Une tabulation interne a la valeur casserait le decoupage TSV de
+  # resolve_projects (qui joint ses champs avec \t) : on la neutralise.
+  v="${v//$'\t'/ }"
   printf '%s' "$v"
   return 0
 }
