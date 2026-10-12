@@ -839,6 +839,28 @@ if command -v jq > /dev/null 2>&1; then
   is "aucun vault declare : le nom du dossier" \
      "aikit · Opus · avec-remote (trunk) · ctx 30 %" \
      "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file | plain)"
+  # Limites de debit : delai avant reinitialisation, absent quand le JSON n'en porte pas.
+  slrl() {  # slrl <session> <secondes-5h|""> <pct5|""> <secondes-7j|""> <pct7|"">
+    local t; printf -v t '%(%s)T' -1
+    jq -nc --arg d "$ROOT/avec-remote" --arg s "$1" --arg a "$2" --arg b "$3" --arg c "$4" --arg e "$5" --argjson t "$t" '
+      {model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:30},
+       rate_limits:({}
+         + (if $a == "" then {} else {five_hour:({resets_at:($t + ($a|tonumber))} + (if $b == "" then {} else {used_percentage:($b|tonumber)} end))} end)
+         + (if $c == "" then {} else {seven_day:({resets_at:($t + ($c|tonumber))} + (if $e == "" then {} else {used_percentage:($e|tonumber)} end))} end))}'
+  }
+  is "limites : 5h et hebdo, en clair" \
+     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : reste 2h13 · hebdo : reste 3j 3h" \
+     "$(sl "$(slrl rl1 8030 63 270030 90)" | plain)"
+  has "limites : 5h a 63 % jaune"  "${ESC}[33m5h : reste" "$(sl "$(slrl rl2 8030 63 270030 90)")"
+  has "limites : hebdo a 90 % rouge" "${ESC}[31mhebdo : reste" "$(sl "$(slrl rl3 8030 63 270030 90)")"
+  has "limites : 5h a 10 % vert" "${ESC}[32m5h : reste" "$(sl "$(slrl rl4 8030 10 270030 90)")"
+  is "limites : moins d'une heure en minutes" \
+     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : reste 25 min" \
+     "$(sl "$(slrl rl5 1530 "" "" "")" | plain)"
+  is "limites : 5h seule, pas de segment hebdo" \
+     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : reste 2h13" \
+     "$(sl "$(slrl rl6 8030 20 "" "")" | plain)"
+  has "limites : delai passe, borne a 0" "5h : reste moins d'1 min" "$(sl "$(slrl rl7 -50 20 "" "")" | plain)"
   out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
   is "entree invalide : code de sortie 0" "0" "$rc"
   is "entree invalide : une seule ligne"  "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"

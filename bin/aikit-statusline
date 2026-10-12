@@ -2,7 +2,10 @@
 # Status line renderer. Reads the session JSON on stdin, writes ONE line on
 # stdout, always exits 0.
 #
-#   aikit · <model> · <project> (<branch>) · ctx <N> %
+#   aikit · <model> · <project> (<branch>) · ctx <N> % · 5h : reste 2h13 · hebdo : reste 3j 4h
+#
+# The two last segments (time left before the 5-hour and the weekly rate limit
+# reset) only appear when the session JSON carries `rate_limits`.
 #
 # Installed into ~/.claude/settings.json by hooks/statusline-install. Runs on
 # every refresh of the bar: the project lookup (lib/vaults) is expensive, so it
@@ -34,9 +37,13 @@ fields="$(printf '%s' "$input" | jq -r '
   [ (.model.display_name // "?"),
     (.workspace.current_dir // .cwd // ""),
     (.session_id // ""),
-    ((.context_window.used_percentage // "") | tostring)
+    ((.context_window.used_percentage // "") | tostring),
+    ((.rate_limits.five_hour.resets_at // "") | tostring),
+    ((.rate_limits.five_hour.used_percentage // "") | tostring),
+    ((.rate_limits.seven_day.resets_at // "") | tostring),
+    ((.rate_limits.seven_day.used_percentage // "") | tostring)
   ] | map(tostring) | join("\u001f")' 2> /dev/null)" || fields=""
-IFS=$'\037' read -r model dir sid pct <<< "$fields"
+IFS=$'\037' read -r model dir sid pct r5 p5 r7 p7 <<< "$fields"
 model="${model:-?}"
 dir="${dir:-$PWD}"
 dir="${dir%/}"
@@ -95,7 +102,37 @@ if [ -n "$pct" ] && r="$(printf '%.0f' "$pct" 2> /dev/null)"; then
   esac
 fi
 
+# --- rate limits: time left before reset, coloured by the share already used ---
+fmt_left() {  # fmt_left <seconds> -> "42 min" | "2h13" | "3j 4h"
+  local s="$1"
+  if   [ "$s" -lt 60 ];    then printf "moins d'1 min"
+  elif [ "$s" -lt 3600 ];  then printf '%d min' $((s / 60))
+  elif [ "$s" -lt 86400 ]; then printf '%dh%02d' $((s / 3600)) $((s % 3600 / 60))
+  else                          printf '%dj %dh' $((s / 86400)) $((s % 86400 / 3600)); fi
+}
+limit_seg() {  # limit_seg <label> <resets_at> <used_pct> -> segment or nothing
+  local label="$1" at="$2" used="$3" left col="" r
+  case "$at" in ''|*[!0-9]*) return 0 ;; esac
+  # Epoch milliseconds, should a future version switch units.
+  [ "${#at}" -gt 11 ] && at=$((at / 1000))
+  left=$((at - now)); [ "$left" -ge 0 ] || left=0
+  if [ -n "$used" ] && r="$(printf '%.0f' "$used" 2> /dev/null)"; then
+    case "$r" in
+      ''|*[!0-9]*) ;;
+      *) if   [ "$r" -lt 60 ];  then col="$green"
+         elif [ "$r" -le 85 ];  then col="$yellow"
+         else                        col="$red"; fi ;;
+    esac
+  fi
+  printf '%s%s : reste %s%s' "$col" "$label" "$(fmt_left "$left")" "$off"
+}
+lim5="$(limit_seg 5h "$r5" "$p5")"
+lim7="$(limit_seg hebdo "$r7" "$p7")"
+
 loc="$project"
 [ -z "$branch" ] || loc+=" (${branch})"
-printf '%s\n' "${dim}aikit${off}${sep}${cyan}${model}${off}${sep}${loc}${sep}${ctx_col}${ctx_txt}${off}"
+line="${dim}aikit${off}${sep}${cyan}${model}${off}${sep}${loc}${sep}${ctx_col}${ctx_txt}${off}"
+[ -z "$lim5" ] || line+="${sep}${lim5}"
+[ -z "$lim7" ] || line+="${sep}${lim7}"
+printf '%s\n' "$line"
 exit 0
