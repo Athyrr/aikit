@@ -130,6 +130,11 @@ is private workspace tooling.
 infrastructure belong in the registry — `<vault>/projects/*.md`, which
 is data and lives in a vault, never in this repository.
 
+One deliberate exception: `.claude-plugin/plugin.json` names the plugins aiKit
+depends on (`dependencies`), because that is the only place the harness reads
+prerequisites from. The method itself — skills, agents, `README.md` — still
+names no product.
+
 Gate 7 of `scripts/doctor` catches part of this, and only part: it greps the
 tree for **five hard-coded brand strings**, nothing else. A private
 infrastructure fact that avoids those five words passes green. It is a tripwire
