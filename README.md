@@ -51,7 +51,8 @@ in full.
 
 Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
 `aikit:checking-plan-drift` after every task, `aikit:routing-failures` whenever
-something fails, `aikit:delegating-to-a-perimeter` when a question needs a
+something fails, `aikit:handling-secrets` before writing config or committing
+anything that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs a
 project's own tools, `aikit:receiving-code-review` when incorporating feedback
 from outside the method's own review loop.
 
