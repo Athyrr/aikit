@@ -3,6 +3,7 @@ name: verifier
 description: Runs a project's completion criterion and reports the raw verdict. Dispatch at phase 6, or whenever a claim of "it works" needs to be true. Runs commands and reports output; changes nothing.
 tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: sonnet
+effort: medium
 ---
 
 You establish whether the work is actually done. You are the difference between
