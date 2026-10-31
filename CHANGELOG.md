@@ -4,6 +4,15 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **`aikit:planner` passe a opus par defaut.** Un plan faux est l'echec le
+  plus couteux de la methode, et le planner pese peu dans le cout d'un run.
+  `agents/planner.md`, `using-aikit`, `reference.md` et le README sont alignes
+  sur `executing-plans` (qui disait deja opus) ; le planner peut etre
+  retrograde a sonnet a la main, jamais automatiquement. `using-aikit` ne
+  force plus opus sur les experts de domaine : le modele vient de la fiche du
+  projet ou du champ `Model:` confirme. Suppression du prompt orphelin
+  `plan-document-reviewer-prompt.md` : la relecture du plan reste
+  l'auto-relecture, le scan pre-flight et la validation humaine.
 - **References.** Nouveau dossier `_reference/` par projet, ecosysteme et
   `_global` (documents de fond, un `INDEX.md` par dossier) ; nouvelle skill
   `aikit:capturing-reference` (creer ou mettre a jour, sur demande seulement) ;

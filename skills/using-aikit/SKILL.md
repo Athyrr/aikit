@@ -100,7 +100,7 @@ invoke `obsidian:obsidian-markdown` before writing its syntax,
 
 | Role | Model |
 |---|---|
-| `aikit:planner` | **sonnet** by default — a human partner escalates it to opus manually, for a complex distributed-architecture redesign, at their explicit request |
+| `aikit:planner` | **opus** by default — a human partner may downgrade it to sonnet manually, for a trivial plan, at their explicit request |
 | `aikit:reviewer` | **sonnet** by default — a human partner dispatches it manually on opus for a security-sensitive audit, or after 2 consecutive fix attempts still fail review |
 | `aikit:probe`, `aikit:implementer` | **sonnet**, fixed — no automatic escalation; two failed attempts stop the loop and ask a human for arbitration (`aikit:routing-failures`) |
 | `aikit:explorer`, `aikit:verifier` | sonnet |
@@ -117,8 +117,8 @@ only the per-task gate, never the branch-level one. See
 `aikit:executing-plans`.
 
 When a task names a domain expert (`Agent: api-expert`), dispatch it instead
-of the generic implementer, **overriding its model to opus** for implementation
-work: experts carry their own tier and it is often lower.
+of the generic implementer. Its model is the registry's or the confirmed
+`Model:` field's choice (`aikit:executing-plans`), never an automatic opus.
 
 ## When something fails, the nature of the failure decides the direction
 

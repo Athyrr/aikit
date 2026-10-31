@@ -34,10 +34,10 @@ one artifact phase 2 and 3 share.
 
 ## Why each archetype gets the model it gets
 
-`aikit:planner` runs at sonnet by default — a human partner escalates it to
-opus by hand, for a complex distributed-architecture redesign, at their
-explicit request; it is not a standing default the way it once was.
-`aikit:reviewer` also runs at sonnet by default — a human partner escalates
+`aikit:planner` runs at opus by default: a wrong plan is the most expensive
+failure of the method, and the planner is a small share of a run's cost. A
+human partner may downgrade it to sonnet by hand, for a trivial plan.
+`aikit:reviewer` runs at sonnet by default — a human partner escalates
 it to opus by hand, for a security-sensitive audit or after two consecutive
 fix attempts still fail review. `aikit:probe` and `aikit:implementer` are
 fixed at sonnet with no automatic escalation at all: two failed attempts
