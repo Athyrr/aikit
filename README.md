@@ -58,13 +58,13 @@ from outside the method's own review loop.
 
 ## Model selection
 
-Every role runs on sonnet by default, and none escalates automatically.
-`aikit:implementer`, `aikit:probe`, `aikit:explorer` and `aikit:verifier` are
-fixed there with no escalation at all. `aikit:planner` and `aikit:reviewer`
-also default to sonnet, each with its own manual-only escalation to opus: the
-planner for a complex distributed-architecture redesign at the human
-partner's explicit request, the reviewer for a security-sensitive audit or
-two consecutive fix attempts that still fail review. When a task's second
+`aikit:planner` runs on opus by default, and a human partner may downgrade it
+to sonnet by hand for a trivial plan. Every other role runs on sonnet, and
+none escalates automatically. `aikit:implementer`, `aikit:probe`,
+`aikit:explorer` and `aikit:verifier` are fixed there with no escalation at
+all. `aikit:reviewer` has a manual-only escalation to opus, for a
+security-sensitive audit or two consecutive fix attempts that still fail
+review. When a task's second
 attempt also fails, `aikit:routing-failures` stops the loop and asks the
 human partner for arbitration instead of trying a third time or reaching for
 a bigger model.
@@ -168,11 +168,11 @@ must be reported explicitly, not corrected silently.
 
 `aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`,
 `aikit:verifier`, `aikit:probe` — roles in the process, each on **sonnet** by
-default and no automatic escalation between models. `aikit:planner` and
-`aikit:reviewer` are the two a human partner can escalate to opus by hand:
-the planner for a complex distributed-architecture redesign at their
-explicit request, the reviewer for a security-sensitive audit or after two
-consecutive fix attempts still fail review. Two failed attempts at a task
+default except `aikit:planner`, which runs on **opus**; no automatic
+escalation between models. A human partner can downgrade the planner to
+sonnet by hand for a trivial plan, and escalate `aikit:reviewer` to opus by
+hand for a security-sensitive audit or after two consecutive fix attempts
+still fail review. Two failed attempts at a task
 stop the loop and hand the decision to the human partner instead of buying a
 bigger model; see `aikit:routing-failures`. A project's domain agents are the
 other axis: when a plan task names one, it is dispatched instead of the
