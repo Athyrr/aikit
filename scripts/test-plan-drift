@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# Tests de skills/checking-plan-drift/scripts/plan-drift. Aucune dependance
+# reseau, aucune fixture versionnee. PLAN_DRIFT=<fichier> vise une autre version
+# du script (lancee par python3, un fichier extrait de git n'a pas de bit exec).
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+
+# Jamais PYTHONUTF8 ici : le bug d'encodage ne se voit que sous l'encodage par
+# defaut de la machine, et le forcer le masquerait.
+python3 -c '' || { echo "python3 absent ou inutilisable : test impossible" >&2; exit 1; }
+
+PD=${PLAN_DRIFT:-skills/checking-plan-drift/scripts/plan-drift}
+case "$PD" in /*|?:*) ;; *) PD="$PWD/$PD" ;; esac
+[ -f "$PD" ] || { echo "introuvable : $PD" >&2; exit 1; }
+if [ -n "${PLAN_DRIFT:-}" ]; then PDRUN=(python3 "$PD"); else PDRUN=("$PD"); fi
+
+pass=0; fail=0
+ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
+ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
+is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
+has() { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
+
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+# Une espace dans le chemin, DELIBEREMENT : c'est le cas reel.
+W="$TMP/Mon Espace"; mkdir -p "$W"
+PLAN="$W/plan.md"
+ERRF="$W/stderr"
+DASH=$'\xe2\x80\x94'
+
+G() { git -c user.name=t -c user.email=t@t -c core.autocrlf=false -C "$REPO" "$@"; }
+newrepo() {  # newrepo <nom> -> depot jetable, BASE = commit initial vide
+  REPO="$W/$1"; mkdir -p "$REPO"
+  git -C "$REPO" init -q
+  G commit -q --allow-empty -m base
+  BASE=$(G rev-parse HEAD)
+}
+commit() {  # commit <message> <fichier>... : cree les fichiers et les commite
+  local m="$1" f; shift
+  for f in "$@"; do mkdir -p "$REPO/$(dirname "$f")"; echo "$m" >> "$REPO/$f"; done
+  G add -A && G commit -q -m "$m"
+}
+pd() {  # pd <args de plan-drift> -> OUT, ERR, RC ; jamais lance depuis la racine d'aikit
+  OUT=$(cd "$REPO" && "${PDRUN[@]}" "$PLAN" "$@" 2>"$ERRF"); RC=$?
+  ERR=$(cat "$ERRF")
+}
+verdict() { printf '%s\n' "$OUT" | grep -o '^VERDICT: [A-Z]*' | head -1; }
+plan() { printf '%s\n' "$@" > "$PLAN"; }  # plan <lignes...>
+
+echo "bloc Files : forme"
+newrepo c1; commit one a.py b.py
+plan "### Task 1: x" "" "**Files:**" "- Create: a.py" "" "- Modify: b.py" "" "- [ ] **Step 1: x**"
+pd 1 "$BASE" HEAD
+is "(1) une ligne vide dans le bloc garde les entrees suivantes" "0|VERDICT: CLEAN" "$RC|$(verdict)"
+
+newrepo c2; commit one a.py
+plan "### Task 1: x" "" "**Files:**" "- Modify: a.py" "  explication indentee sur deux lignes" "  et une troisieme"
+pd 1 "$BASE"
+is "(2) une continuation indentee est ignoree" "0|VERDICT: CLEAN" "$RC|$(verdict)"
+
+newrepo c3; commit one a.py b.py
+plan "### Task 1: x" "" "**Files:** (voir ci-dessous)" "- Create: a.py" "- Create: b.py"
+pd 1 "$BASE"
+is "(3) du texte sur la ligne **Files:** est saute" "0|VERDICT: CLEAN" "$RC|$(verdict)"
+
+newrepo c4; commit one a.py
+plan "### Task 1: x" "" "**Files:**" "- Create: a.py" "" "- [ ] **Step 1: ecrire**" "- Create: faux.py"
+pd 1 "$BASE"
+is "(4) une liste de Steps apres une ligne vide n'est pas lue" "0|VERDICT: CLEAN" "$RC|$(verdict)"
+
+newrepo ca; commit one a.py
+plan "### Task 1: x" "" "**Files:**" "" "- Create: a.py"
+pd 1 "$BASE"
+is "(a) une ligne vide juste apres le marqueur" "0|VERDICT: CLEAN" "$RC|$(verdict)"
+
+newrepo cb; commit one b.py; BASE=$(G rev-parse HEAD)
+commit two a.py c.py d.py; G rm -q b.py; G commit -q -m del
+plan "### Task 1: x" "" "**Files:**" "* Create: a.py" "- Delete: b.py" "- modify: c.py" "- Test: d.py:12-30"
+pd 1 "$BASE"
+is "(b) puces *, Delete:, modify: minuscule et plage x.py:12-30" "0|VERDICT: CLEAN" "$RC|$(verdict)"
+
+echo "bloc Files : refus"
+newrepo c5; commit one a.py
+plan "### Task 1: x" "" "**Files:**" "- Modify: a.py b.py"
+pd 1 "$BASE"
+is "(5) deux chemins sur une ligne : exit 2" "2" "$RC"
+has "(5) ... et stderr dit illisible" "illisible" "$ERR"
+
+newrepo c6; commit one a.py
+plan "### Task 1: x" "" "Du texte, aucun bloc."
+pd 1 "$BASE"
+is "(6) pas de bloc Files : exit 2" "2" "$RC"
+has "(6) ... et stderr le dit" "declares no Files" "$ERR"
+
+newrepo cc; commit one a.py
+plan "### Task 1: x" "" "**Files:**" "- Modify: a.py (parser)"
+pd 1 "$BASE"
+is "(c) de la prose apres un chemin : exit 2" "2" "$RC"
+
+newrepo cd; commit one a.py
+plan "### Task 1: sans Files" "" "Rien ici." "" "### Task 12: avec Files" "" "**Files:**" "- Create: a.py"
+pd 1 "$BASE"
+is "(d) Task 1 sans Files ne lit pas ceux de Task 12 : exit 2" "2" "$RC"
+
+echo "taches humaines"
+newrepo c7
+plan "### Task 3: [humain] valider a la main" "" "Rien a diffuser."
+pd 3
+is "(7) tache [humain] : exit 0 sans BASE" "0|VERDICT: EXEMPT" "$RC|$(verdict)"
+
+plan "### Task 3 $DASH [humain] valider a la main" "" "Rien a diffuser."
+pd 3
+is "(7b) titre a tiret cadratin : exit 0 sans BASE" "0|VERDICT: EXEMPT" "$RC|$(verdict)"
+
+echo "verdict sur le diff"
+newrepo c8; commit one a.py z.py
+plan "### Task 1: x" "" "**Files:**" "- Create: a.py"
+pd 1 "$BASE"
+is "(8) un fichier en trop : exit 1, DRIFT" "1|VERDICT: DRIFT" "$RC|$(verdict)"
+has "(8) ... EXTRA le liste" "  z.py" "$(printf '%s\n' "$OUT" | sed -n '/^EXTRA/,/^UNTOUCHED/p')"
+
+newrepo cf; commit un a.py; commit deux b.py
+plan "### Task 1: x" "" "**Files:**" "- Create: a.py" "- Create: b.py"
+pd 1 "$BASE"
+is "(f) une tache sur deux commits, comparee a BASE" "0|VERDICT: CLEAN" "$RC|$(verdict)"
+
+echo
+echo "$pass passes, $fail echecs"
+# `exit`, jamais un test en derniere ligne : le statut d'un script sans `set -e`
+# est celui de sa DERNIERE commande (voir scripts/test-vaults).
+exit $(( fail != 0 ))

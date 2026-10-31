@@ -81,13 +81,13 @@ bloc en est la formulation impérative, pas une règle séparée.
 
 ## Completion criterion
 
-No test suite. One command, from the repository root, carrying **ten gates**:
+One command, from the repository root, carrying **eleven gates** — the two behaviour suites (9 and 11) are gates of it, not a test suite beside it:
 
 ```bash
 scripts/doctor
 ```
 
-It prints `GATES_PASS` and exits 0 when all ten pass; it exits 1 otherwise,
+It prints `GATES_PASS` and exits 0 when all eleven pass; it exits 1 otherwise,
 naming each gate that fell.
 
 | # | Gate |
@@ -102,8 +102,9 @@ naming each gate that fell.
 | 8 | `core.hooksPath` is `.githooks` |
 | 9 | `scripts/test-vaults` — the vault-resolution suite. `lib/vaults` runs at every session start, so its tests belong to the completion criterion rather than beside it |
 | 10 | every skill's directory name equals its frontmatter `name:` — the only detector of a directory-only rename, which leaves a working ghost alias |
+| 11 | `scripts/test-plan-drift` — the plan-drift suite. A drift detector that stopped detecting would pass every form gate and stay silent in a real session |
 
-Gates 1-4 and 10 check form. Gates 5-7 check the target rather than the shape: they
+Gates 1-4 and 10 check form. Gates 9 and 11 check behaviour: they run a suite. Gates 5-7 check the target rather than the shape: they
 catch what no manifest validation can see. Gate 8 is **local** git config — it
 does not clone, push or inherit, so a fresh clone must arm it once:
 
@@ -112,7 +113,7 @@ git config core.hooksPath .githooks
 ```
 
 That is the whole point of gate 8, making the arming visible instead of assumed.
-Once armed, `.githooks/pre-commit` runs all ten before every commit, and a red
+Once armed, `.githooks/pre-commit` runs all eleven before every commit, and a red
 gate refuses it.
 
 **What it does not prove, and says so itself** — `A NEW session is still

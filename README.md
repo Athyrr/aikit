@@ -190,7 +190,7 @@ the method itself.
   skills/                     the skills
   agents/                     the six archetypes
   VOCABULARY.md               one word, one meaning — read before naming anything
-  scripts/                    doctor and deploy — NOT on the Bash tool's PATH
+  scripts/                    doctor, deploy and their test suites — NOT on the Bash tool's PATH
   bin/                        ezy and scoped — these ARE on it
 
 ~/.config/aikit/vaults         which vaults this machine knows, and where
@@ -253,7 +253,7 @@ reports "already at the latest version" and the stale copy keeps running.
 scripts/deploy [patch|minor|major] "message"
 ```
 
-from the clone bumps both manifests, runs the ten gates, commits, pushes,
+from the clone bumps both manifests, runs the eleven gates, commits, pushes,
 refreshes the marketplace and updates the install. **Takes effect in a new
 session.** Run `scripts/doctor` any time for the gates without deploying, and
 `claude --plugin-dir .` to load the working tree into one session only.

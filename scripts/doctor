@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The method's completion criterion, ten gates, no deploy, no network state.
+# The method's completion criterion, eleven gates, no deploy, no network state.
 #
 # `claude plugin validate .` checks the marketplace manifest ONLY — it reads no
 # SKILL.md and no agents/*.md. The two --strict invocations are what gate the
@@ -12,12 +12,14 @@
 # launchers, `bin/ezy` and `bin/scoped` — the four distinct causes of failure
 # and the agreement of the two launchers. Resolution runs at every session
 # start, so its tests belong to the completion criterion rather than beside it.
+# Gate 11 does the same for checking-plan-drift's `plan-drift`: a drift detector
+# that stopped detecting would pass every form gate and stay silent in a session.
 #
-# A failing gate prints its own output, capped: `run` at 25 lines, gate 9's
-# already-filtered failure block at 30 — both name how many lines they cut
-# and what to rerun directly for the rest. A session reading this output is
-# not the same as a person scrolling a terminal; an uncapped gate used to be
-# able to spend hundreds of lines on one failure.
+# A failing gate prints its own output, capped: `run` at 25 lines, the two
+# suites (9 and 11) their already-filtered failure block at 30 — all name how
+# many lines they cut and what to rerun directly for the rest. A session reading
+# this output is not the same as a person scrolling a terminal; an uncapped gate
+# used to be able to spend hundreds of lines on one failure.
 #
 # Usage: scripts/doctor
 set -uo pipefail
@@ -90,6 +92,58 @@ gate_empty() {
   fi
 }
 
+# A behaviour suite (gates 9 and 11). Silent when green, and when red ONLY the
+# failures and the count — captured from ONE run, so what gets printed is the
+# run that actually failed. Such a suite prints ~80 lines when it falls, of
+# which ~60 are green ticks: the gates whose red used to demand scrolling.
+# Both suites share one output format (✓/✗ lines, attendu:/obtenu:, a closing
+# "N passes, M echecs"), which is what lets one filter serve them.
+suite() {
+  local label=$1 script=$2
+  echo "→ $label"
+  # Status captured on its own line: inside `if ! cmd`, $? is the status of the
+  # negation, not of the suite — and the suite's own code is the only thing left
+  # to report when it dies without printing.
+  local out rc red red_total
+  out=$("$script" 2>&1); rc=$?
+  if [ "$rc" != 0 ]; then
+    # A ✗ opens a block that runs to the next assertion: its `attendu:` and
+    # `obtenu:` lines ARE the diagnosis, and an `obtenu:` often spans many lines.
+    # Ending the block on the next ✓ rather than on a closing bracket lets a
+    # section header slip in after a failure — one stray line, deliberately
+    # preferred to a cleverer rule that could truncate the diagnosis itself.
+    #
+    # The block also opens BACKWARDS. An assertion's sub-command writes to stderr
+    # BEFORE ko() prints the ✗ — `Invalid control character at: line 4 column
+    # 6101` is such a line, and it is the only one saying what and where. Keeping
+    # just ✗ + attendu/obtenu would report a verdict and withhold the cause. So
+    # every line since the last tick or blank is held, and flushed if a ✗ turns
+    # up: a tick or a blank line clears the hold, which is what bounds it.
+    red=$(printf '%s\n' "$out" | awk '
+      /^  ✗ / { for (i = 1; i <= n; i++) print buf[i]; n = 0; keep = 1; print; next }
+      /^  ✓ / { keep = 0; n = 0; next }
+      / passes, .* echecs$/ { keep = 0; n = 0; print; next }
+      keep { print; next }
+      /^[[:space:]]*$/ { n = 0; next }
+      { buf[++n] = $0 }')
+    # A suite that dies before its verdict — killed, or a syntax error — carries
+    # neither a ✗ nor a count. Fall back to everything it did print, and if that
+    # is nothing at all, say THAT: a red gate with an empty block teaches nobody.
+    [ -n "$red" ] || red="$out"
+    if [ -n "$red" ]; then
+      # A second cap on top of the hold-buffer above: that filter already
+      # keeps only the failing blocks, but one assertion's `obtenu:` can still
+      # run long. 30 lines, then point at the command for the rest — chantier 5.
+      red_total=$(printf '%s\n' "$red" | wc -l)
+      printf '%s\n' "$red" | head -n 30 | sed 's/^/    /'
+      [ "$red_total" -gt 30 ] && echo "    … $((red_total - 30)) more line(s) — run $script directly for the rest"
+    else
+      echo "    the suite printed nothing; it exited $rc before any verdict"
+    fi
+    echo "  ✗ FAILED"; fail=1
+  fi
+}
+
 SCOPE=(skills agents hooks bin lib scripts README.md CLAUDE.md SETUP.md VOCABULARY.md)
 
 run "1 manifest"        claude plugin validate .
@@ -117,51 +171,7 @@ if [ "$(git config --get core.hooksPath || true)" != ".githooks" ]; then
   echo "  ✗ FAILED"; fail=1
 fi
 
-# Silent when green, and when red ONLY the failures and the count — captured
-# from ONE run, so what gets printed is the run that actually failed. The
-# suite prints ~80 lines when it falls, of which ~60 are green ticks: this is
-# the one gate whose red used to demand scrolling.
-echo "→ 9 vault resolution tests"
-# Status captured on its own line: inside `if ! cmd`, $? is the status of the
-# negation, not of the suite — and the suite's own code is the only thing left
-# to report when it dies without printing.
-vaults_out=$(scripts/test-vaults 2>&1); vaults_rc=$?
-if [ "$vaults_rc" != 0 ]; then
-  # A ✗ opens a block that runs to the next assertion: its `attendu:` and
-  # `obtenu:` lines ARE the diagnosis, and an `obtenu:` often spans many lines.
-  # Ending the block on the next ✓ rather than on a closing bracket lets a
-  # section header slip in after a failure — one stray line, deliberately
-  # preferred to a cleverer rule that could truncate the diagnosis itself.
-  #
-  # The block also opens BACKWARDS. An assertion's sub-command writes to stderr
-  # BEFORE ko() prints the ✗ — `Invalid control character at: line 4 column
-  # 6101` is such a line, and it is the only one saying what and where. Keeping
-  # just ✗ + attendu/obtenu would report a verdict and withhold the cause. So
-  # every line since the last tick or blank is held, and flushed if a ✗ turns
-  # up: a tick or a blank line clears the hold, which is what bounds it.
-  vaults_red=$(printf '%s\n' "$vaults_out" | awk '
-    /^  ✗ / { for (i = 1; i <= n; i++) print buf[i]; n = 0; keep = 1; print; next }
-    /^  ✓ / { keep = 0; n = 0; next }
-    / passes, .* echecs$/ { keep = 0; n = 0; print; next }
-    keep { print; next }
-    /^[[:space:]]*$/ { n = 0; next }
-    { buf[++n] = $0 }')
-  # A suite that dies before its verdict — killed, or a syntax error — carries
-  # neither a ✗ nor a count. Fall back to everything it did print, and if that
-  # is nothing at all, say THAT: a red gate with an empty block teaches nobody.
-  [ -n "$vaults_red" ] || vaults_red="$vaults_out"
-  if [ -n "$vaults_red" ]; then
-    # A second cap on top of the hold-buffer above: that filter already
-    # keeps only the failing blocks, but one assertion's `obtenu:` can still
-    # run long. 30 lines, then point at the command for the rest — chantier 5.
-    vaults_red_total=$(printf '%s\n' "$vaults_red" | wc -l)
-    printf '%s\n' "$vaults_red" | head -n 30 | sed 's/^/    /'
-    [ "$vaults_red_total" -gt 30 ] && echo "    … $((vaults_red_total - 30)) more line(s) — run scripts/test-vaults directly for the rest"
-  else
-    echo "    the suite printed nothing; it exited $vaults_rc before any verdict"
-  fi
-  echo "  ✗ FAILED"; fail=1
-fi
+suite "9 vault resolution tests" scripts/test-vaults
 
 # Gate 10 is the only mechanical detector of the ghost-alias trap. Renaming a
 # skill's DIRECTORY alone leaves the old frontmatter `name:` resolving as a
@@ -180,8 +190,13 @@ for d in skills/*/; do
   fi
 done
 
+# Gate 11 is a behaviour test like gate 9: it drives checking-plan-drift's
+# plan-drift against throwaway repositories, so a drift detector that stopped
+# detecting would pass every form gate and still be silent in a real session.
+suite "11 plan-drift tests" scripts/test-plan-drift
+
 if [ "$fail" = 0 ]; then
-  echo "✓ ten gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
+  echo "✓ eleven gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
 else
   echo "✗ one or more gates failed"
 fi

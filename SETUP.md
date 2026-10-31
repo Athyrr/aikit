@@ -82,7 +82,7 @@ git config core.hooksPath .githooks     # arms the pre-commit gate — per clone
 git switch -c <chantier>
 # ... edit skills/ agents/ hooks/ ...
 
-scripts/doctor                          # the ten gates
+scripts/doctor                          # the eleven gates
 claude --plugin-dir .                   # test in a session WITHOUT publishing
                                         # (takes precedence over the installed
                                         # plugin, for that session only)
@@ -103,7 +103,7 @@ execution commands (`ezy`, `scoped`) and the status line renderer
 (`aikit-statusline`, prefixed so it cannot collide with a bare command name).
 
 `scripts/` is **not** on the `PATH` and holds repository maintenance (`deploy`,
-`doctor`).
+`doctor`, and their test scripts).
 
 Never put a git hook in `hooks/`: that is the harness namespace, and
 `core.hooksPath` points at a *directory* from which git runs every file bearing
