@@ -45,12 +45,24 @@ def declared_paths(block):
     routed as an unplanned dependency — an upward failure. Four false DRIFT
     verdicts on one measured cycle. Raise instead.
     """
-    files_section = re.search(r"\*\*Files:\*\*(.*?)(?:\n\s*\n|\Z)", block, re.DOTALL)
-    if not files_section:
+    marker = re.search(r"\*\*Files:\*\*", block)
+    if not marker:
         return []
     out = []
-    for line in files_section.group(1).splitlines():
+    # A blank line does not end the block by itself: stopping at the first one
+    # silently dropped the entries below it. It ends it only when the next
+    # non-blank line is not an entry (Steps, prose, a quote all end it). Lines
+    # attached to an entry without a blank — wrapped explanations — are skipped.
+    # The rest of the marker's own line is skipped too.
+    after_blank = False
+    for line in block[marker.end():].split("\n")[1:]:
+        if not line.strip():
+            after_blank = True
+            continue
         m = re.match(r"\s*[-*]\s*(?:Create|Modify|Test|Delete)\s*:\s*(.+)", line, re.I)
+        if after_blank and not m:
+            break
+        after_blank = False
         if not m:
             continue
         path = m.group(1).strip().strip("`").strip()
