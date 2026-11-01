@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The method's completion criterion, eleven gates, no deploy, no network state.
+# The method's completion criterion, twelve gates, no deploy, no network state.
 #
 # `claude plugin validate .` checks the marketplace manifest ONLY — it reads no
 # SKILL.md and no agents/*.md. The two --strict invocations are what gate the
@@ -14,6 +14,8 @@
 # start, so its tests belong to the completion criterion rather than beside it.
 # Gate 11 does the same for checking-plan-drift's `plan-drift`: a drift detector
 # that stopped detecting would pass every form gate and stay silent in a session.
+# Gate 12 checks each agent's frontmatter model/effort against the mirror table
+# in using-aikit; it prints one short line per divergence, so it needs no cap.
 #
 # A failing gate prints its own output, capped: `run` at 25 lines, the two
 # suites (9 and 11) their already-filtered failure block at 30 — all name how
@@ -195,8 +197,46 @@ done
 # detecting would pass every form gate and still be silent in a real session.
 suite "11 plan-drift tests" scripts/test-plan-drift
 
+# Gate 12 keeps the one readable copy of the archetypes' base values honest.
+# Only the frontmatter of agents/*.md runs; skills/using-aikit/SKILL.md mirrors
+# it in the table under "## The archetypes: model and effort", and a mirror
+# nobody checks drifts — the planner once read opus in one skill and sonnet in
+# three other files. Same `fm>=2` guard as gate 10, and `\r` stripped first:
+# the tree may be checked out with CRLF.
+echo "→ 12 archetype frontmatter == using-aikit mirror"
+g12=0
+mirror=$(awk '
+  { sub(/\r$/, "") }
+  /^## / { insec = ($0 == "## The archetypes: model and effort"); next }
+  insec && /^\| `aikit:[a-z-]+` \|/ {
+    split($0, c, "|")
+    for (i = 2; i <= 4; i++) gsub(/[`[:space:]]/, "", c[i])
+    sub(/^aikit:/, "", c[2])
+    print c[2] "\t" c[3] "\t" c[4]
+  }' skills/using-aikit/SKILL.md)
+for f in agents/*.md; do
+  a=$(basename "$f" .md)
+  for field in model effort; do
+    got=$(awk -v k="$field" '{ sub(/\r$/, "") } /^---[[:space:]]*$/ { fm++; next } fm == 1 && index($0, k ":") == 1 { sub("^" k ":[[:space:]]*", ""); sub(/[[:space:]]+$/, ""); print; exit } fm >= 2 { exit }' "$f")
+    if [ "$field" = model ]; then col=2; else col=3; fi
+    want=$(printf '%s\n' "$mirror" | awk -F'\t' -v a="$a" -v c="$col" '$1 == a { print $c; exit }')
+    if [ -z "$got" ]; then
+      echo "    $a: '$field' absent from the frontmatter of $f"; g12=1
+    elif [ -z "$want" ]; then
+      echo "    $a: no '$field' for aikit:$a in the mirror table of skills/using-aikit/SKILL.md"; g12=1
+    elif [ "$got" != "$want" ]; then
+      echo "    DIVERGENCE: $a $field: frontmatter=$got mirror=$want"; g12=1
+    fi
+  done
+done
+while IFS=$'\t' read -r a _; do
+  [ -n "$a" ] || continue
+  [ -f "agents/$a.md" ] || { echo "    mirror row aikit:$a has no agents/$a.md"; g12=1; }
+done < <(printf '%s\n' "$mirror")
+if [ "$g12" != 0 ]; then echo "  ✗ FAILED"; fail=1; fi
+
 if [ "$fail" = 0 ]; then
-  echo "✓ eleven gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
+  echo "✓ twelve gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
 else
   echo "✗ one or more gates failed"
 fi
