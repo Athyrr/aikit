@@ -109,6 +109,13 @@ else
     [ -z "$stranded" ] || registry+=$'\n\n## Declared, but carrying no project registry\n\n'"${stranded}"$'\nThese route nowhere until fixed: correct the path in `~/.config/aikit/vaults`, or create the vault\'s missing `projects/` directory.'
 fi
 [ -z "$stale" ] || registry+=$'\n\n## Vault(s) en retard sur leur remote\n\n'"${stale}"
+
+# Variables d'environnement qui ecrasent model/effort des archetypes : une ligne
+# chacune, calculee par lib/vaults. Ajoutee a `registry`, donc AVANT
+# escape_for_json -- c'est lui qui rend une valeur hostile sure pour le JSON
+# (porte 4). Concatenee apres, elle casserait la sortie.
+overrides="$(dispatch_override_warnings)"
+[ -z "$overrides" ] || registry+=$'\n\n## Agent settings overridden by this environment\n\n'"${overrides}"$'\n'
 # ---------------------------------------------------------------------------
 
 escape_for_json() {

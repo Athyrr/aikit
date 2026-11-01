@@ -325,3 +325,25 @@ project_of_path() {  # project_of_path <chemin>
   [ -z "$best" ] || printf '%s' "$best"
   return 0
 }
+
+# dispatch_override_warnings
+#   -> zero, une ou deux lignes Markdown `- ...`, une par variable
+#      d'environnement qui ecrase les reglages des archetypes :
+#      CLAUDE_CODE_EFFORT_LEVEL ecrase tout effort, passe au dispatch comme
+#      declare en frontmatter ; CLAUDE_CODE_SUBAGENT_MODEL_FORCE ecrase le
+#      modele de tout frontmatter. Absente ou vide -> rien.
+# Ne leve JAMAIS : fichier SOURCE sous `set -euo pipefail` (hooks/session-start),
+# d'ou les `${VAR:-}`. La valeur affichee est mise sur une ligne (CR/LF ->
+# espace) et privee de backtick (-> apostrophe) ; l'echappement JSON reste le
+# travail d'escape_for_json, en aval, jamais celui de cette fonction.
+dispatch_override_warnings() {  # dispatch_override_warnings -> 0, 1 ou 2 lignes
+  local effort="${CLAUDE_CODE_EFFORT_LEVEL:-}" force="${CLAUDE_CODE_SUBAGENT_MODEL_FORCE:-}"
+  if [ -n "$effort" ]; then
+    effort="$(printf '%s' "$effort" | tr '\r\n`' "  '")" || effort="?"
+    printf -- '- `CLAUDE_CODE_EFFORT_LEVEL` is set to `%s`: it overrides every effort passed at dispatch and every agent frontmatter, so the per-archetype effort of this method does not apply.\n' "$effort"
+  fi
+  if [ -n "$force" ]; then
+    printf -- '- `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is set: the model in every agent frontmatter is ignored, so the per-archetype model of this method does not apply.\n'
+  fi
+  return 0
+}
