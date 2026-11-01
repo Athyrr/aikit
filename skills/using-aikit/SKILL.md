@@ -96,16 +96,25 @@ alongside it — the vault that owns the project is an **Obsidian vault**:
 invoke `obsidian:obsidian-markdown` before writing its syntax,
 `obsidian:obsidian-bases` before editing `aikit.base`.
 
-## The archetypes, and their fixed models
+## The archetypes: model and effort
 
-| Role | Model |
-|---|---|
-| `aikit:planner` | **opus** by default — a human partner may downgrade it to sonnet manually, for a trivial plan, at their explicit request |
-| `aikit:reviewer` | **sonnet** by default — a human partner dispatches it manually on opus for a security-sensitive audit, or after 2 consecutive fix attempts still fail review |
-| `aikit:probe`, `aikit:implementer` | **sonnet**, fixed — no automatic escalation; two failed attempts stop the loop and ask a human for arbitration (`aikit:routing-failures`) |
-| `aikit:explorer`, `aikit:verifier` | sonnet |
+This table is a **mirror** of the `model:` and `effort:` frontmatter of
+`agents/*.md`, and only those files run: `scripts/doctor` (gate 12) fails
+when the two differ. Rationale per role: `reference.md`, next to this skill.
 
-Rationale per role: `reference.md`, next to this skill.
+| Archetype | Model | Effort |
+|---|---|---|
+| `aikit:explorer` | `sonnet` | `medium` |
+| `aikit:implementer` | `sonnet` | `medium` |
+| `aikit:probe` | `sonnet` | `medium` |
+| `aikit:verifier` | `sonnet` | `medium` |
+| `aikit:planner` | `opus` | `high` |
+| `aikit:reviewer` | `opus` | `high` |
+
+**Effort rises automatically on a mechanical signal; the model never changes
+without your human partner.** The signals, and what each passes at dispatch,
+live in one table only: `aikit:executing-plans`, Model and Effort Selection.
+Two failed attempts still stop the loop (`aikit:routing-failures`).
 
 `aikit:reviewer` is always a fresh instance — never the one that wrote the code.
 
@@ -117,8 +126,12 @@ only the per-task gate, never the branch-level one. See
 `aikit:executing-plans`.
 
 When a task names a domain expert (`Agent: api-expert`), dispatch it instead
-of the generic implementer. Its model is the registry's or the confirmed
-`Model:` field's choice (`aikit:executing-plans`), never an automatic opus.
+of the generic implementer. Its frontmatter belongs to its project, not to
+aiKit: how it is dispatched is a row of the same escalation table.
+
+**Your own model.** A Heavy-Path need confirmed in a session that does not
+run on opus gets one line suggesting `/model opus` (`aikit:understanding-need`,
+step 4). The choice stays your human partner's; nothing blocks.
 
 ## When something fails, the nature of the failure decides the direction
 
