@@ -64,9 +64,11 @@ probe — it is an unplanned dependency. **Go up.**
   stops guessing. Re-dispatching the same brief unchanged is not an attempt,
   it is a coin flip charged to your attempt budget.
 - Every archetype — `aikit:implementer`, `aikit:probe`, `aikit:planner`,
-  `aikit:reviewer` — runs at its one fixed model (`aikit:executing-plans`'s
-  Model Selection table). There is no automatic model escalation: a second
-  failure does not buy a bigger model, it buys a stop.
+  `aikit:reviewer` — runs at the model and effort of its frontmatter, raised
+  only by `aikit:executing-plans`' escalation table. Effort rises
+  automatically on its mechanical signals; the model never changes without
+  your human partner. A second failure buys neither a bigger model nor a
+  higher effort: it buys a stop.
 - **When the second attempt also fails, stop dispatching and ask your human
   partner for arbitration.** Do not open a third round, and do not keep
   inflating the dispatch history hoping the next one lands. State what was

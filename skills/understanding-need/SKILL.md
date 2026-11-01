@@ -101,7 +101,7 @@ this estimate.
 
 **Fast-Path dispatch:** the request itself, restated with the exact files
 named, is the brief — there is no plan to extract it from. Dispatch
-`aikit:implementer` at its fixed model, sonnet. When it reports done, run
+`aikit:implementer` at its frontmatter model and effort — pass neither. When it reports done, run
 `git diff --name-only` yourself against the files you named in step 4 — a
 match is the proof: no reviewer, no `vault/<project>/<feature>/plan.md`, no intermediate
 documentation of any kind. A mismatch is drift — route it with
@@ -179,6 +179,12 @@ A resumed feature whose `vault/<project>/<feature>/plan.md` names an unresolved 
 
 **Heavy-Path:** state back, in three lines: the project, the feature slug, the
 route, and whether this is new or a resumption. Get agreement, then continue.
+
+If your own model — as your environment states it — is not opus, add one
+line to that Heavy-Path confirmation: this need is Heavy-Path, this session
+runs on `<model>`, consider `/model opus`. Nothing on Fast-Path, nothing when
+the session already runs on opus, and never a block: if your human partner
+changes nothing, continue on the current model.
 
 **Fast-Path:** state back, in one line: the project and the file(s) you expect
 to touch. Get agreement, then continue.
