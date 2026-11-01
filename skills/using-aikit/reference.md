@@ -2,7 +2,7 @@
 
 Loaded on demand, never resident. This file holds what `aikit:using-aikit`
 points to instead of carrying: the two routing tables in full, what phase 3
-asks the expert, the rationale behind each archetype's fixed model, and the
+asks the expert, the rationale behind each archetype's model and effort, and the
 failure matrix row by row. Nothing here is new — it is the same text, moved out
 of a file that is read in full every time the method loads.
 
@@ -32,19 +32,22 @@ spec touch, what are the traps, how would you cut it?* It writes no code, and
 it writes no separate file — its answer lands as a section of `spec.md`, the
 one artifact phase 2 and 3 share.
 
-## Why each archetype gets the model it gets
+## Why each archetype gets the model and effort it gets
 
-`aikit:planner` runs at opus by default: a wrong plan is the most expensive
-failure of the method, and the planner is a small share of a run's cost. A
-human partner may downgrade it to sonnet by hand, for a trivial plan.
-`aikit:reviewer` runs at sonnet by default — a human partner escalates
-it to opus by hand, for a security-sensitive audit or after two consecutive
-fix attempts still fail review. `aikit:probe` and `aikit:implementer` are
-fixed at sonnet with no automatic escalation at all: two failed attempts
-stop the loop and hand the decision to a human, rather than buying a bigger
-model.
+`aikit:planner` and `aikit:reviewer` run on opus at effort `high`: a wrong
+plan is the most expensive failure this method has, and the review is the
+net every task passes through — both are evaluative work where judgement
+pays. `aikit:explorer`, `aikit:implementer`, `aikit:probe` and
+`aikit:verifier` run on sonnet at effort `medium`: high-volume reading,
+bounded production work, a finding, a command and its output — none needs
+the ceiling. The values themselves live in `agents/*.md`, mirrored in
+`aikit:using-aikit`.
 
-Full table with the rationale per role: `aikit:executing-plans`.
+Effort rises automatically on a mechanical signal; the model changes only
+with the human partner. Two failed attempts stop the loop and hand the
+decision to a human, rather than buying a bigger model or a higher effort.
+The signals: `aikit:executing-plans`' escalation table — this file does not
+copy it.
 
 ## The task-review exemption
 
@@ -74,6 +77,7 @@ Going down is cheap, going up is expensive — but retrying a wrong plan is the
 most expensive thing of all. Never spend an attempt budget on a failure that
 belongs upward. **The attempt budget is two, counted in `vault/<project>/<feature>/plan.md`, not
 in your head.** When it's spent, stop and ask a human partner for
-arbitration — there is no third attempt and no automatic model escalation.
+arbitration — there is no third attempt and no automatic model escalation,
+and an effort escalation does not buy one either.
 
 Full protocol and cycle report: `aikit:routing-failures`.

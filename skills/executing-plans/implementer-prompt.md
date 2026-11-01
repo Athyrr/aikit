@@ -7,8 +7,9 @@ paste code excerpts, file contents, or session history into it.
 ```
 Subagent (aikit:implementer):
   description: "Implement Task N: [task name]"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
+  model: [MODEL — omit this line unless a row of SKILL.md's escalation
+         table applies (a confirmed `Model: opus`, or a domain expert)]
+  effort: [EFFORT — omit this line unless the same row applies]
   prompt: |
     You are implementing Task N: [task name]
 

@@ -4,13 +4,30 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **Effort par archetype.** Chaque archetype declare `model:` et `effort:`
+  dans son frontmatter : `aikit:planner` et `aikit:reviewer` sur opus a
+  `high` ; `aikit:explorer`, `aikit:implementer`, `aikit:probe` et
+  `aikit:verifier` sur sonnet a `medium`. La table de `aikit:using-aikit` en
+  est le miroir, gardee par la nouvelle porte 12 de `scripts/doctor` (douze
+  portes). Table d'escalade unique dans `aikit:executing-plans` (Model and
+  Effort Selection) : l'effort monte automatiquement sur signal mecanique
+  (revue finale, tache `Security: yes`, audit demande, re-revue apres le
+  deuxieme fix, demande de l'humain pour le planner), le modele ne change
+  jamais sans l'humain, un expert de domaine part toujours sur opus a `high`.
+  Les gabarits de dispatch ne passent plus `model`/`effort` hors de cette
+  table. Nouvelle propriete de tache `**Security:** yes` (`aikit:writing-plans`,
+  `VOCABULARY.md`) ; champ `effort` dans l'evenement `dispatch`.
+  `hooks/session-start` avertit quand `CLAUDE_CODE_EFFORT_LEVEL` ou
+  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` est defini (`dispatch_override_warnings`
+  dans `lib/vaults`) ; `aikit:understanding-need` suggere `/model opus` a un
+  besoin Heavy-Path dans une session qui n'est pas sur opus.
 - **`aikit:planner` passe a opus par defaut.** Un plan faux est l'echec le
   plus couteux de la methode, et le planner pese peu dans le cout d'un run.
   `agents/planner.md`, `using-aikit`, `reference.md` et le README sont alignes
   sur `executing-plans` (qui disait deja opus) ; le planner peut etre
-  retrograde a sonnet a la main, jamais automatiquement. `using-aikit` ne
-  force plus opus sur les experts de domaine : le modele vient de la fiche du
-  projet ou du champ `Model:` confirme. Suppression du prompt orphelin
+  retrograde a sonnet a la main, jamais automatiquement. `using-aikit` :
+  un expert de domaine (ligne `Agent:`) demarre toujours sur opus a `high`.
+  Suppression du prompt orphelin
   `plan-document-reviewer-prompt.md` : la relecture du plan reste
   l'auto-relecture, le scan pre-flight et la validation humaine.
 - **References.** Nouveau dossier `_reference/` par projet, ecosysteme et

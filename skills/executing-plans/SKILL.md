@@ -174,34 +174,55 @@ plan is its argument — record the ruling beside its row, and dispatch
 Task 1. The review loop remains the net for conflicts that only emerge from
 implementation.
 
-## Model Selection
+## Model and Effort Selection
 
-**aiKit fixes the model per role. It is not a per-task judgement call, and
-there is no automatic escalation between models.**
+**Each archetype runs at the `model` and `effort` its own frontmatter
+declares (`agents/*.md`) — the only place the base values live.**
+`aikit:using-aikit` mirrors them in a table for reading; `scripts/doctor`
+keeps the two equal. Dispatching by archetype name gets both without passing
+either.
 
-| Role | Model | Why |
+Two rules, never merged into one:
+
+- **Effort rises automatically** when a signal of the escalation table below
+  is present. No confirmation: the signal is mechanical, the cost bounded,
+  and the event log records it.
+- **The model never changes without your human partner.** Only a task's
+  `Model: opus`, confirmed for that task, changes it (see Per-task model and
+  security, below). A domain expert's row is part of how an expert is
+  dispatched, not a choice made in the moment.
+
+An effort escalation never buys a third attempt: two failed attempts at one
+task always stop the loop and go to your human partner
+(`aikit:routing-failures`).
+
+### Escalation table
+
+| Mechanical signal | Role | Passed at dispatch |
 |---|---|---|
-| `aikit:planner` | **opus** | Planning is evaluative work: reading the spec against the codebase and deciding what the tasks are — a wrong plan is the most expensive failure this method has, so it gets the strongest available judgement. |
-| `aikit:reviewer` | **sonnet** | The review is the safety net every task passes through, but it does not need the ceiling tier by default. A human partner can dispatch a review manually on opus for a security-sensitive audit, or after two consecutive fix attempts still fail review — see `aikit:routing-failures`. |
-| `aikit:probe` | **sonnet** | A probe produces a finding, not code — bounded and low-stakes. |
-| `aikit:implementer` | **sonnet** | Most production work does not need the ceiling tier. |
-| `aikit:explorer` | sonnet | High-volume reading, low judgement. |
-| `aikit:verifier` | sonnet | Runs the registry's command and reports what came back. |
+| Final review of the whole branch | `aikit:reviewer` | `effort: xhigh` |
+| Task marked `Security: yes` (its task review and every re-review) | `aikit:reviewer` | `effort: xhigh` |
+| A security audit your human partner explicitly asked for | `aikit:reviewer` | `effort: xhigh` |
+| The re-review that follows a task's **second** fix attempt | `aikit:reviewer` | `effort: xhigh` |
+| Your human partner explicitly asks for it | `aikit:planner` | `effort: xhigh` |
+| A task whose `Model: opus` your human partner **confirmed** | `aikit:implementer` (or `aikit:probe`) | `model: opus`, `effort: high` |
+| Every dispatch of a project's domain expert (`Agent:` line) | the expert | `model: opus`, `effort: high` |
 
-Each archetype carries this in its frontmatter, so dispatching by archetype
-name gets the right model without you specifying one. No role escalates
-automatically: a failed pass is answered with more context, a narrower
-target, a probe, or fresh eyes at the same tier — never a bigger model
-picked in the moment. If two attempts at the same task both fail, stop and
-ask your human partner for arbitration (`aikit:routing-failures`); they may
-choose to re-dispatch on a stronger model themselves, but that is their call,
-not an automatic step.
+**No other case passes `model` or `effort` at dispatch — the dispatch
+templates included.** Without a signal, the archetype runs at its frontmatter
+values. A domain expert is not an aiKit archetype — its frontmatter belongs
+to its project — which is why its row always passes both.
 
-**When a task names a project's domain expert instead (`Agent: api-expert`),
-that agent carries its own model, and it is not necessarily the right tier.**
-Check the project's registry file: on one project, `schema-expert` and
-`api-expert` are already opus, while `ui-expert` and `docs-expert` are
-sonnet. Domain knowledge and model tier are separate choices.
+**Always pass the model explicitly when you dispatch an agent that is
+neither an aiKit archetype nor a domain expert.** An omitted model inherits
+your session's.
+
+**Limits you cannot see from here.** The `effort` dispatch parameter needs a
+harness that accepts it (v2.1.292 or later); an organisation-wide effort
+ceiling, or a level the model does not support, lowers it without a word.
+`CLAUDE_CODE_EFFORT_LEVEL` overrides every effort, dispatched or declared, and
+`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` every frontmatter model — the session-start
+context names either one when it is set.
 
 ### The consequence you have to plan around
 
@@ -211,14 +232,10 @@ A retry must always change something real:
 - a narrower target (split the task, dispatch the remainder separately);
 - a `aikit:probe` first, so the attempt stops guessing at an unknown.
 
-Re-dispatching the same brief to the same tier is not an attempt. It is a coin
-flip charged to your attempt budget. **The attempt budget is two.** When the
-second attempt also fails, stop dispatching and ask for arbitration — see
-`aikit:routing-failures`.
-
-**Always pass the model explicitly when you dispatch anything that is not one
-of these archetypes.** An omitted model inherits your session's, which
-silently defeats the table above.
+Re-dispatching the same brief at the same model and effort is not an attempt.
+It is a coin flip charged to your attempt budget. **The attempt budget is
+two.** When the second attempt also fails, stop dispatching and ask for
+arbitration — see `aikit:routing-failures`.
 
 ## Optional event log
 
@@ -230,7 +247,12 @@ reviewers, scoped re-reviewers, the final reviewer, and any planner or
 explorer you dispatch. An agent with no line is invisible to whoever reads
 the log.
 
-Dispatch: `{"event":"dispatch","role":"<archetype or agent name>","project":"<name>","feature":"<slug>","task":<N>,"attempt":<K>,"model":"<model>","ts":"<ISO 8601>"}`.
+Dispatch: `{"event":"dispatch","role":"<archetype or agent name>","project":"<name>","feature":"<slug>","task":<N>,"attempt":<K>,"model":"<model>","effort":"<effort>","ts":"<ISO 8601>"}`.
+`effort` is present **only** when the dispatch passed it explicitly (a row of
+the escalation table): it records the effort requested, not the effort in
+force, and its absence means the frontmatter value. `model` is always
+present — the model passed at dispatch, otherwise the archetype's model in
+`aikit:using-aikit`'s mirror table.
 `task` is `0` for a role that belongs to no task (final reviewer, planner,
 explorer). Report: the same fields, with `"event":"report"`, plus `"status":"success"` or
 `"status":"failure"`, read off the implementer's `STATUS:` line, or `success`
@@ -263,13 +285,13 @@ any that finished without reporting. A bounded stretch keeps nearly
 all of a long wait's efficiency while guaranteeing a stuck or lost
 child is noticed within minutes, not at the end of the session.
 
-### Règle de routage dynamique du modèle par tâche
+### Per-task model and security
 
-Before assembling the dispatch payload, read the `Model:` field under the
-current task's heading in `vault/<project>/<feature>/plan.md`.
+Before assembling the dispatch payload, read the `Model:` and `Security:`
+fields under the current task's heading in `vault/<project>/<feature>/plan.md`.
 
-- **Absent** → `sonnet`. Nothing to confirm.
-- **`Model: sonnet`** → apply it directly. Not an escalation.
+- **`Model:` absent, or `Model: sonnet`** → pass no `model`: the archetype's
+  frontmatter applies. Nothing to confirm.
 - **`Model: opus`** → this is the planner's **proposal**, not a decision. It
   is only a legitimate proposal when the task itself meets one of the
   criteria in `aikit:writing-plans`' Task Structure (concurrent state or
@@ -277,14 +299,19 @@ current task's heading in `vault/<project>/<feature>/plan.md`.
   invariants; a cross-cutting refactor touching more than 4 modules with no
   prior integration tests). Before dispatching **this task** on opus, name
   the task and the criterion to your human partner and get their explicit
-  confirmation — the same rule that already governs escalating
-  `aikit:planner` or `aikit:reviewer` to opus: **no escalation to opus is
-  ever automatic in this method.** Without confirmation, dispatch on
-  `sonnet` and record the disagreement in `vault/<project>/<feature>/plan.md`.
+  confirmation: **the model never changes without your human partner** — in
+  this method only effort rises automatically, and only on the signals of
+  the escalation table. Confirmed → pass `model: opus` and `effort: high`.
+  Without confirmation, pass nothing and record the disagreement in
+  `vault/<project>/<feature>/plan.md`.
+- **`Security: yes`** → the task's review and every re-review of it are
+  dispatched with `effort: xhigh`. Absent means `no`: nothing is passed.
 
-**No propagation.** A task's `Model:` field — confirmed opus, sonnet, or
-absent — governs that task alone. Task N+1 is read fresh from its own
-`Model:` field, or defaults to `sonnet`; it never inherits Task N's model.
+A task with an `Agent:` line ignores `Model:`: the domain-expert row of the
+escalation table always applies.
+
+**No propagation.** A task's `Model:` and `Security:` fields govern that task
+alone. Task N+1 is read fresh from its own fields; it never inherits Task N's.
 
 ### Human tasks
 
@@ -485,8 +512,8 @@ Before the loop starts, two routes leave it immediately:
   contradicts the plan without a recorded ruling.
 
 Everything else enters the loop. **The attempt budget is two.** Resume the
-original implementer, at its fixed model (sonnet by default, or its expert's
-tier). Send it the open findings verbatim — its context is intact: it knows
+original implementer, at the model and effort it was dispatched with —
+resuming changes neither. Send it the open findings verbatim — its context is intact: it knows
 the task, the code, and its own choices. If your harness cannot send another
 message to a live subagent, dispatch a fresh implementer with Task N's
 section in `vault/<project>/<feature>/plan.md`, its checklist line recording the first
@@ -496,7 +523,9 @@ persists between attempts, since there is no separate report file.
 **Every attempt:** the implementer fixes, re-runs the test command, and
 returns the same three-line contract. Before re-dispatching the reviewer,
 confirm the `TEST:` line names the covering command and a passing result;
-then re-review. A one-line fix does not need the whole suite re-run.
+then re-review. A one-line fix does not need the whole suite re-run. The
+re-review that follows the **second** fix attempt goes out with
+`effort: xhigh` (escalation table).
 
 **The re-review is scoped.** Get the diff directly — `git diff FIX_BASE..HEAD -U10`,
 where FIX_BASE is the head the previous review saw — and dispatch
@@ -548,8 +577,9 @@ The final whole-branch review gets a diff too: get it directly
 from, e.g. `git merge-base main HEAD`) to a scratch file and include that
 path in the final review dispatch, so the final reviewer reads one file
 instead of re-deriving the branch diff with git commands. Log its dispatch
-and report lines (`task` 0, see Optional event log). Dispatch on the
-most capable available model (see Model Selection), using
+and report lines (`task` 0, see Optional event log). Dispatch `aikit:reviewer`
+with `effort: xhigh` — a row of the escalation table; its frontmatter already
+puts it on opus — using
 aikit:requesting-code-review's
 [code-reviewer.md](../requesting-code-review/code-reviewer.md). Point it at
 `vault/<project>/<feature>/plan.md`'s deferred-minor and parked lines so it can triage which
@@ -654,7 +684,7 @@ Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
 ...
 
 [After all tasks]
-[git diff MERGE_BASE..HEAD -U10; dispatch final code-reviewer, most capable model]
+[git diff MERGE_BASE..HEAD -U10; dispatch final aikit:reviewer, effort xhigh]
 Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
 [Leave vault/<project>/<feature>/plan.md in place — phase 6 moves it to traces/]

@@ -401,6 +401,71 @@ esac
 is "le fixture \$VAULT existant reste sans amont (aucun fetch reseau)" \
    "" "$(vault_behind_commits "$VAULT")"
 
+echo "dispatch_override_warnings"
+# Variables qui ecrasent model/effort des archetypes. Chaque cas fixe les DEUX
+# variables : la suite herite de l'environnement de qui la lance (porte 9), et
+# une variable definie chez l'humain ne doit pas fausser un cas « absente ».
+is "aucune variable -> rien" "" \
+   "$(unset CLAUDE_CODE_EFFORT_LEVEL CLAUDE_CODE_SUBAGENT_MODEL_FORCE; dispatch_override_warnings)"
+is "variables vides -> rien" "" \
+   "$(CLAUDE_CODE_EFFORT_LEVEL= CLAUDE_CODE_SUBAGENT_MODEL_FORCE= dispatch_override_warnings)"
+dow=$(unset CLAUDE_CODE_SUBAGENT_MODEL_FORCE; CLAUDE_CODE_EFFORT_LEVEL=high dispatch_override_warnings)
+is "EFFORT_LEVEL=high -> une ligne" "1" "$(printf '%s\n' "$dow" | grep -c .)"
+case "$dow" in
+  *'`CLAUDE_CODE_EFFORT_LEVEL` is set to `high`'*'overrides every effort passed at dispatch'*) \
+     ok "la ligne effort nomme la variable et sa valeur" ;;
+  *) ko "la ligne effort nomme la variable et sa valeur" "CLAUDE_CODE_EFFORT_LEVEL ... high" "${dow:-vide}" ;;
+esac
+dow=$(unset CLAUDE_CODE_EFFORT_LEVEL; CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 dispatch_override_warnings)
+is "MODEL_FORCE=1 -> une ligne" "1" "$(printf '%s\n' "$dow" | grep -c .)"
+case "$dow" in
+  *'`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is set'*'frontmatter is ignored'*) \
+     ok "la ligne modele dit que le frontmatter est ignore" ;;
+  *) ko "la ligne modele dit que le frontmatter est ignore" "CLAUDE_CODE_SUBAGENT_MODEL_FORCE ... ignored" "${dow:-vide}" ;;
+esac
+dow=$(CLAUDE_CODE_EFFORT_LEVEL=high CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 dispatch_override_warnings)
+is "les deux variables -> deux lignes" "2" "$(printf '%s\n' "$dow" | grep -c .)"
+dow=$(unset CLAUDE_CODE_SUBAGENT_MODEL_FORCE; CLAUDE_CODE_EFFORT_LEVEL=$'a"b\nc`d' dispatch_override_warnings)
+is "valeur hostile -> toujours une seule ligne" "1" "$(printf '%s\n' "$dow" | grep -c .)"
+case "$dow" in
+  *"\`a\"b c'd\`"*) ok "valeur hostile mise a plat (saut de ligne -> espace, backtick -> apostrophe)" ;;
+  *) ko "valeur hostile mise a plat" "\`a\"b c'd\`" "${dow:-vide}" ;;
+esac
+is "sous set -euo pipefail, variables absentes : l'hote survit" "survit" \
+   "$(env -u CLAUDE_CODE_EFFORT_LEVEL -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE \
+        bash -c 'set -euo pipefail; . lib/vaults; dispatch_override_warnings; echo survit')"
+
+echo "hook : variables qui ecrasent model/effort"
+hk_eff=$(env -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE CLAUDE_CODE_EFFORT_LEVEL=high AIKIT_VAULTS="$CONF" bash hooks/session-start)
+printf '%s' "$hk_eff" | json_valid \
+  && ok "EFFORT_LEVEL=high : JSON valide" || ko "EFFORT_LEVEL=high : JSON valide" "JSON" "invalide"
+case "$(printf '%s' "$hk_eff" | json_ctx)" in
+  *'## Agent settings overridden by this environment'*'`CLAUDE_CODE_EFFORT_LEVEL` is set to `high`'*) \
+     ok "EFFORT_LEVEL=high : la ligne est injectee" ;;
+  *) ko "EFFORT_LEVEL=high : la ligne est injectee" "section + ligne effort" "absente" ;;
+esac
+hk_force=$(env -u CLAUDE_CODE_EFFORT_LEVEL CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 AIKIT_VAULTS="$CONF" bash hooks/session-start)
+printf '%s' "$hk_force" | json_valid \
+  && ok "MODEL_FORCE=1 : JSON valide" || ko "MODEL_FORCE=1 : JSON valide" "JSON" "invalide"
+case "$(printf '%s' "$hk_force" | json_ctx)" in
+  *'`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is set'*) ok "MODEL_FORCE=1 : la ligne est injectee" ;;
+  *) ko "MODEL_FORCE=1 : la ligne est injectee" "ligne modele" "absente" ;;
+esac
+hk_host=$(env -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE CLAUDE_CODE_EFFORT_LEVEL=$'x"y\nz' AIKIT_VAULTS="$CONF" bash hooks/session-start)
+printf '%s' "$hk_host" | json_valid \
+  && ok "valeur hostile : JSON valide" || ko "valeur hostile : JSON valide" "JSON" "invalide"
+case "$(printf '%s' "$hk_host" | json_ctx)" in
+  *'`x"y z`'*) ok "valeur hostile : injectee sur une ligne" ;;
+  *) ko "valeur hostile : injectee sur une ligne" "\`x\"y z\`" "absente" ;;
+esac
+hk_none=$(env -u CLAUDE_CODE_EFFORT_LEVEL -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE AIKIT_VAULTS="$CONF" bash hooks/session-start)
+printf '%s' "$hk_none" | json_valid \
+  && ok "sans variable : JSON valide" || ko "sans variable : JSON valide" "JSON" "invalide"
+case "$(printf '%s' "$hk_none" | json_ctx)" in
+  *'Agent settings overridden'*) ko "sans variable : aucune ligne d'avertissement" "pas de section" "section presente" ;;
+  *) ok "sans variable : aucune ligne d'avertissement" ;;
+esac
+
 echo "hook : vaults declares mais sans fiche"
 # Un vault declare qui ne rend aucune fiche ne doit JAMAIS se taire : la methode
 # se chargerait sans routeur et sans explication. Trois cas qui ne doivent pas

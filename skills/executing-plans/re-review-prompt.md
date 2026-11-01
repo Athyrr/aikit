@@ -10,8 +10,10 @@ that the fix itself broke nothing.
 ```
 Subagent (aikit:reviewer):
   description: "Re-review Task N fix attempt K"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
+  model: [MODEL — omit this line: no row of SKILL.md's escalation table
+         changes a reviewer's model]
+  effort: [EFFORT — omit this line unless a row of SKILL.md's escalation
+          table applies]
   prompt: |
     You are re-reviewing one task's fix attempt. A previous review produced
     findings; an implementer has attempted to fix them. Your job is to
@@ -108,8 +110,10 @@ Subagent (aikit:reviewer):
 ```
 
 **Placeholders:**
-- `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection; scoped
-  re-reviews of small fix diffs take a cheap-to-mid tier
+- `[MODEL]`, `[EFFORT]` — omit both lines unless a row of SKILL.md's
+  escalation table applies: `effort: xhigh` for a task marked
+  `Security: yes`, and for the re-review that follows a task's second fix
+  attempt. Without a row, the reviewer runs at its frontmatter values.
 - `[FINDINGS]` — the `REJECT`-level findings from the previous review,
   copied verbatim, one per bullet
 - `[FIX_BASE_SHA]` — the head the previous review saw

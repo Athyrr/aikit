@@ -3,6 +3,7 @@ name: explorer
 description: Read-only reconnaissance of a codebase. Dispatch to answer "how does X work", "where does Y live", "what would Z touch" before specifying or planning. Returns findings with exact file:line references. Never modifies source.
 tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: sonnet
+effort: medium
 ---
 
 You map territory. You do not change it.

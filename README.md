@@ -58,16 +58,17 @@ from outside the method's own review loop.
 
 ## Model selection
 
-`aikit:planner` runs on opus by default, and a human partner may downgrade it
-to sonnet by hand for a trivial plan. Every other role runs on sonnet, and
-none escalates automatically. `aikit:implementer`, `aikit:probe`,
-`aikit:explorer` and `aikit:verifier` are fixed there with no escalation at
-all. `aikit:reviewer` has a manual-only escalation to opus, for a
-security-sensitive audit or two consecutive fix attempts that still fail
-review. When a task's second
-attempt also fails, `aikit:routing-failures` stops the loop and asks the
-human partner for arbitration instead of trying a third time or reaching for
-a bigger model.
+Each archetype declares its model and effort in its own frontmatter
+(`agents/*.md`); `aikit:using-aikit` mirrors them in one table, which
+`scripts/doctor` keeps equal to the frontmatter. Two rules govern any change.
+**Effort rises automatically** on a mechanical signal — a final whole-branch
+review, a task marked `Security: yes`, a re-review after a second fix —
+passed at dispatch and recorded in the event log. **The model never changes
+without the human partner**: only a task's `Model: opus`, confirmed for that
+task, does it. A project's domain expert is not an aiKit archetype and is
+always dispatched on opus at effort `high`. When a task's second attempt also
+fails, `aikit:routing-failures` stops the loop and asks the human partner for
+arbitration instead of trying a third time, whatever the model or effort.
 
 A **diagnostic** does not run these phases. `aikit:diagnosing` opens
 `diagnosis.md` before investigating and updates it after every hypothesis —
@@ -136,7 +137,8 @@ itself is the record.
 
 **Two attempts, then a human, never a bigger model automatically.** A task
 that still fails review after its second attempt stops the loop — no
-K-of-N escalation, no automatic model bump. The orchestrator asks, states
+K-of-N escalation, no automatic model bump; an effort escalation, the only
+automatic one, never buys a third attempt. The orchestrator asks, states
 what it tried, and waits.
 
 **A trap earns a line only once it's real.** `heuristics.md` (per-project
@@ -167,16 +169,14 @@ must be reported explicitly, not corrected silently.
 ## The archetypes
 
 `aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`,
-`aikit:verifier`, `aikit:probe` — roles in the process, each on **sonnet** by
-default except `aikit:planner`, which runs on **opus**; no automatic
-escalation between models. A human partner can downgrade the planner to
-sonnet by hand for a trivial plan, and escalate `aikit:reviewer` to opus by
-hand for a security-sensitive audit or after two consecutive fix attempts
-still fail review. Two failed attempts at a task
-stop the loop and hand the decision to the human partner instead of buying a
-bigger model; see `aikit:routing-failures`. A project's domain agents are the
-other axis: when a plan task names one, it is dispatched instead of the
-generic `aikit:implementer`. The registry says which exist.
+`aikit:verifier`, `aikit:probe` — roles in the process, each with its own
+model and effort (see Model selection above). Effort rises automatically on
+a mechanical signal; the model changes only by the human partner's hand. Two
+failed attempts at a task stop the loop and hand the decision to the human
+partner instead of buying a bigger model; see `aikit:routing-failures`. A
+project's domain agents are the other axis: when a plan task names one, it is
+dispatched instead of the generic `aikit:implementer`. The registry says which
+exist.
 
 ## Where things live
 
@@ -253,7 +253,7 @@ reports "already at the latest version" and the stale copy keeps running.
 scripts/deploy [patch|minor|major] "message"
 ```
 
-from the clone bumps both manifests, runs the eleven gates, commits, pushes,
+from the clone bumps both manifests, runs every gate of `scripts/doctor`, commits, pushes,
 refreshes the marketplace and updates the install. **Takes effect in a new
 session.** Run `scripts/doctor` any time for the gates without deploying, and
 `claude --plugin-dir .` to load the working tree into one session only.

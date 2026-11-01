@@ -135,6 +135,15 @@ integration tests. This is a proposal, not a decision: `aikit:executing-plans`
 confirms it with the human partner per task before dispatching on opus, and
 it never carries over to the next task.]
 
+**Security:** [optional — `yes`, or omit; absent means `no`. Set it when the
+task meets at least one of: (1) authentication or authorisation; (2) secrets
+or credentials — see `aikit:handling-secrets`; (3) cryptography; (4)
+untrusted input (parsing, deserialisation); (5) network exposure or
+permissions. It is a property of the task, not a dispatch parameter:
+`aikit:executing-plans` translates it through its escalation table. Your
+human partner may add or remove it when reviewing the plan. A plan never
+carries an `Effort:` line.]
+
 **Skill:** [optional — for a task that builds or restyles UI, the skill to
 invoke, e.g. `frontend-design`. Omit otherwise; ignored if unavailable.]
 
@@ -193,7 +202,7 @@ git commit -m "feat: add specific feature"
 
 A check only a human can make (a visual render, real-time behaviour, a judgement call) is a task like any other. Each step the spec's Verification section reserves for the human becomes a checkbox of such a task, placed right after the last task that makes the object verifiable — sometimes between two code tasks, not always last.
 
-Title it `### Task N: [humain] <title>`. `[human]` is also accepted, case-insensitive, first in the title and followed by a space. It carries at least one checkbox (a task without any is never checked and would wait forever) and no Files, Agent, Model or Skill. The monitor raises a badge while the first open task of the plan is a human one.
+Title it `### Task N: [humain] <title>`. `[human]` is also accepted, case-insensitive, first in the title and followed by a space. It carries at least one checkbox (a task without any is never checked and would wait forever) and no Files, Agent, Model, Security or Skill. The monitor raises a badge while the first open task of the plan is a human one.
 
 ## No Placeholders
 

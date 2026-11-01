@@ -10,8 +10,10 @@ more, nothing less) and is well-built (clean, tested, maintainable)
 ```
 Subagent (aikit:reviewer):
   description: "Review Task N (spec + quality)"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
+  model: [MODEL — omit this line: no row of SKILL.md's escalation table
+         changes a reviewer's model]
+  effort: [EFFORT — omit this line unless a row of SKILL.md's escalation
+          table applies]
   prompt: |
     You are reviewing one task's implementation: first whether it matches its
     requirements, then whether it is well-built. This is a task-scoped gate,
@@ -200,7 +202,9 @@ Subagent (aikit:reviewer):
 ```
 
 **Placeholders:**
-- `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection
+- `[MODEL]`, `[EFFORT]` — omit both lines unless a row of SKILL.md's
+  escalation table applies: `effort: xhigh` for a task marked
+  `Security: yes`. Without a row, the reviewer runs at its frontmatter values.
 - `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from
   the plan's Global Constraints section or the spec: exact values, formats,
   and stated relationships between components (not process rules — those
