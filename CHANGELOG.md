@@ -4,6 +4,23 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **Effort par archetype.** Chaque archetype declare `model:` et `effort:`
+  dans son frontmatter : `aikit:planner` et `aikit:reviewer` sur opus a
+  `high` ; `aikit:explorer`, `aikit:implementer`, `aikit:probe` et
+  `aikit:verifier` sur sonnet a `medium`. La table de `aikit:using-aikit` en
+  est le miroir, gardee par la nouvelle porte 12 de `scripts/doctor` (douze
+  portes). Table d'escalade unique dans `aikit:executing-plans` (Model and
+  Effort Selection) : l'effort monte automatiquement sur signal mecanique
+  (revue finale, tache `Security: yes`, audit demande, re-revue apres le
+  deuxieme fix, demande de l'humain pour le planner), le modele ne change
+  jamais sans l'humain, un expert de domaine part toujours sur opus a `high`.
+  Les gabarits de dispatch ne passent plus `model`/`effort` hors de cette
+  table. Nouvelle propriete de tache `**Security:** yes` (`aikit:writing-plans`,
+  `VOCABULARY.md`) ; champ `effort` dans l'evenement `dispatch`.
+  `hooks/session-start` avertit quand `CLAUDE_CODE_EFFORT_LEVEL` ou
+  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` est defini (`dispatch_override_warnings`
+  dans `lib/vaults`) ; `aikit:understanding-need` suggere `/model opus` a un
+  besoin Heavy-Path dans une session qui n'est pas sur opus.
 - **`aikit:planner` passe a opus par defaut.** Un plan faux est l'echec le
   plus couteux de la methode, et le planner pese peu dans le cout d'un run.
   `agents/planner.md`, `using-aikit`, `reference.md` et le README sont alignes
