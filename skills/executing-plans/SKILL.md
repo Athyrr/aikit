@@ -307,6 +307,9 @@ fields under the current task's heading in `vault/<project>/<feature>/plan.md`.
 - **`Security: yes`** → the task's review and every re-review of it are
   dispatched with `effort: xhigh`. Absent means `no`: nothing is passed.
 
+A task with an `Agent:` line ignores `Model:`: the domain-expert row of the
+escalation table always applies.
+
 **No propagation.** A task's `Model:` and `Security:` fields govern that task
 alone. Task N+1 is read fresh from its own fields; it never inherits Task N's.
 
