@@ -438,6 +438,69 @@ deps sansclone
 has "release lue sans clone" "! a  vu vide, amont v4.4.0" "$OUT"
 has "seul <clone> exige un clone" "x b  non verifie : clone absent : fantome" "$OUT"
 
+
+echo "surveille"
+release_de acme/lib v4.4.0
+clone garde main "$(props Acme.Un 4.4.0 Acme.Pack.Un 4.4.0 Acme.Pack.Deux 4.4.0 Autre.Tiers 1.0.0 Hors.Sujet 2.0.0 acme.minuscule 3.0.0)"
+LW="dans garde:Directory.Packages.props"
+fiche sw "| un | acme/lib | paquet Acme.Un $LW |" "| pack | acme/lib | paquet Acme.Pack.* $LW |" "| veille | | surveille Acme.* $LW |"
+oublie_appels
+deps sw
+has "tout couvert, par nom exact et par prefixe" "= veille  tout declare (garde sur main)" "$OUT"
+is "... sortie 0" "0" "$RC"
+is "... seules les deux lignes paquet appellent gh" "2" "$(appels | grep -c 'releases/latest')"
+
+fiche sw "| un | acme/lib | paquet Acme.Un $LW |" "| veille | | surveille Acme.* $LW |"
+deps sw
+has "paquets non declares, tous nommes" "x veille  non declares : Acme.Pack.Un, Acme.Pack.Deux" "$OUT"
+has "... compte en non verifie" "0 ecart a trier, 1 non verifie" "$OUT"
+is "... ne bloque pas : sortie 0" "0" "$RC"
+
+fiche sw "| veille | | surveille Acme.*,Autre.* $LW |"
+oublie_appels
+deps sw
+has "plusieurs motifs" "x veille  non declares : Acme.Un, Acme.Pack.Un, Acme.Pack.Deux, Autre.Tiers" "$OUT"
+hasnt "... rien hors des motifs" "Hors.Sujet" "$OUT"
+hasnt "... sensible a la casse" "acme.minuscule" "$OUT"
+is "... aucun appel gh" "" "$(appels)"
+
+clone autre main "$(props Acme.Un 4.4.0)"
+fiche sw "| un | acme/lib | paquet Acme.Un dans autre:Directory.Packages.props |" "| veille | | surveille Acme.* $LW |"
+deps sw
+has "une ligne paquet d'un autre clone ne couvre pas" "Acme.Un" "$(printf '%s\n' "$OUT" | grep '^x veille')"
+
+cat > "$ROOT/garde/package.json" <<'JSON'
+{
+  "dependencies": {
+    "@acme/un": "^1.2.3",
+    "@acme/deux": "2.0.0",
+    "tiers": "1.0.0"
+  }
+}
+JSON
+LJ="dans garde:package.json"
+fiche sj "| un | acme/lib | paquet @acme/un $LJ |" "| veille | | surveille @acme/* $LJ |"
+deps sj
+has "manifeste JSON" "x veille  non declares : @acme/deux" "$OUT"
+
+planmd sj b "| plan | acme/lib | paquet @acme/deux $LJ | | | |"
+deps sj b
+has "une ligne paquet du plan couvre aussi" "= veille  tout declare (garde sur main)" "$OUT"
+
+fiche sk "| veille | | surveille Acme.* dans fantome:x |" "| m | | surveille Acme.* dans garde:absent |" "| f | | surveille Acme dans garde:package.json |" "| v | | surveille Acme.*, Autre.* dans garde:package.json |" "| n | | surveille Acme.* |"
+oublie_appels
+deps sk
+has "surveille, clone absent" "x veille  non verifie : clone absent : fantome" "$OUT"
+has "surveille, manifeste absent" "x m       non verifie : manifeste introuvable : absent" "$OUT"
+has "motif sans etoile" "x f       non verifie : base inconnue" "$OUT"
+has "motifs separes par une espace" "x v       non verifie : base inconnue" "$OUT"
+has "forme invalide" "x n       non verifie : base inconnue" "$OUT"
+is "... aucun appel gh" "" "$(appels)"
+
+fiche sl
+planmd sl b "| veille | | surveille Acme.* $LW | | | |"
+deps sl b
+hasnt "ligne de plan surveille sans Source : pas de source absente" "source absente" "$OUT"
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.

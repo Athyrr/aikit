@@ -291,6 +291,73 @@ eval_package() {  # eval_package <source> <seen> <base>
   fi
 }
 
+# undeclared <file> <motifs> <covered, one per line> -> the manifest tokens the
+# motifs aim at and no `paquet` covers, one per line, first seen first. No reader
+# per language: a token is whatever looks like a package name.
+undeclared() {
+  MOTIFS="$2" COVERED="$3" LC_ALL=C awk '
+    BEGIN {
+      nm = split(ENVIRON["MOTIFS"], m, ",")
+      for (i = 1; i <= nm; i++) sub(/\*$/, "", m[i])
+      nc = split(ENVIRON["COVERED"], c, "\n")
+    }
+    function aimed(t,    i) {
+      for (i = 1; i <= nm; i++) if (index(t, m[i]) == 1) return 1
+      return 0
+    }
+    function covered(t,    i, p) {
+      for (i = 1; i <= nc; i++) {
+        p = c[i]
+        if (p == "") continue
+        if (p == t) return 1
+        if (p ~ /\*$/) { sub(/\*$/, "", p); if (index(t, p) == 1) return 1 }
+      }
+      return 0
+    }
+    {
+      line = $0
+      while (match(line, /[A-Za-z0-9._\/@-]+/)) {
+        t = substr(line, RSTART, RLENGTH)
+        line = substr(line, RSTART + RLENGTH)
+        if (t in met) continue
+        met[t] = 1
+        if (aimed(t) && !covered(t)) print t
+      }
+    }' "$1"
+}
+
+eval_watch() {  # eval_watch <base>
+  local rest motif covered="" j=0 name other found
+  if ! parse_location "${1#surveille }"; then unverified "base inconnue"; return 0; fi
+  rest="$WHAT,"
+  while [ -n "$rest" ]; do
+    motif=${rest%%,*}; rest=${rest#*,}
+    case "$motif" in
+      *' '*) unverified "base inconnue"; return 0 ;;
+      ?*\*) ;;
+      *) unverified "base inconnue"; return 0 ;;
+    esac
+  done
+  while [ "$j" -lt "$count" ]; do
+    case "${BASES[$j]}" in
+      paquet\ *' dans '*)
+        rest=${BASES[$j]#paquet }
+        name=${rest%% dans *}
+        other=${rest#* dans }
+        if [ "${other%%:*}" = "$CLONE" ]; then covered="$covered$name"$'\n'; fi
+        ;;
+    esac
+    j=$((j + 1))
+  done
+  open_manifest || return 0
+  found=$(undeclared "$MANIFEST" "$WHAT" "$covered")
+  if [ -n "$found" ]; then
+    SIGN=x; TEXT="non declares : ${found//$'\n'/, }"
+  else
+    SIGN='='; TEXT="tout declare ($CLONE sur $BRANCH)"
+  fi
+}
+
 evaluate() {  # evaluate <index> -> SIGN, TEXT
   local i=$1
   local src=${SOURCES[$i]} base=${BASES[$i]} seen=${SEEN[$i]} on=${ON[$i]} rest
@@ -333,6 +400,9 @@ evaluate() {  # evaluate <index> -> SIGN, TEXT
       return 0 ;;
     paquet\ *)
       eval_package "$src" "$seen" "$base"
+      return 0 ;;
+    surveille\ *)
+      eval_watch "$base"
       return 0 ;;
     *) unverified "base inconnue"; return 0 ;;
   esac
