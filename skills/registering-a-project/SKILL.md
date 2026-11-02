@@ -109,6 +109,46 @@ Nothing is written to stderr: the hook runs at every session start.
 
 An **ecosystem** is a registry file with `kind: ecosysteme` and no `repo:`. It carries four sections — **Identity**, **What it is**, **Load before working**, **Traps** — and neither *Domain agents* nor *Completion criterion*: it has no code to finish. *Load before working* routes to `<ecosystem>/_reference/INDEX.md`; a pointer reference carries `sources:`, `read:` (when to read it) and `checked:` (the date it was last verified against its source). **The vault keeps accounts and pointers; the source of truth stays in the repository that owns it.** An ecosystem cannot bear a member's name: a registry file shares its name with its file and its directory.
 
+## Optional last section — `## Dépendances`
+
+What the project relies on and that can change without it (`VOCABULARY.md`,
+**upstream dependency**). `aikit-deps` reads it; without it, the command prints
+`aucune dependance declaree`. One need's own dependency goes in `## Dépendances`
+of its `plan.md`, above the first task, with three more columns: Vu, Le,
+Conclusion.
+
+```markdown
+## Dépendances
+
+| Nom | Source | Base |
+|---|---|---|
+| framework-moteur | acme/lib | paquet Acme.Lib.* dans mon-clone:Directory.Packages.props |
+| internes | | surveille Acme.*,Autre.* dans mon-clone:Directory.Packages.props |
+| contrat | acme/contrat | fige v0.9.0 - gele jusqu'a la fin du chantier |
+| cadrage | https://exemple.test/page | manuel |
+```
+
+| Base | Source | What it follows |
+|---|---|---|
+| `paquet <nom> dans <clone>:<fichier>` | `owner/repo` | the latest stable release, against the version read in the manifest |
+| `surveille <motif>,<motif> dans <clone>:<fichier>` | empty | the manifest's packages that the motifs aim at and no `paquet` row of the same clone covers |
+| `release` | `owner/repo` | the latest stable release |
+| `branche <nom>` | `owner/repo` | the last commit of the branch |
+| `pr` | `owner/repo#N` | the head commit and the state of the PR |
+| `fige <valeur> - <motif>` | any | nothing: frozen, the motif is mandatory, the separator is ` - ` |
+| `manuel` | any | nothing: a line reminds you to look |
+
+- `<clone>` is the registry name of a project, read in its local clone on its
+  current branch. Only `<clone>` needs a clone: a `conception` file works.
+- A `<nom>` ending in `*` covers every package of that prefix, for a group
+  released together. They must all carry the same version.
+- **A project with a manifest declares a `surveille` row.** Without it, a package
+  nobody declared stays invisible. A motif is a prefix ending in `*`.
+- To follow a dependency merge by merge, declare `branche master`. An open PR is
+  declared `pr`: it is followed commit by commit, not at the merge.
+- Two repositories consuming the same thing take two names, for example
+  `framework-moteur` and `framework-connecteur`.
+
 ## Costs are measured
 
 Every token figure in a registry file was measured, not estimated. A wrong
