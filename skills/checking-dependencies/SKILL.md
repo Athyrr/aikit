@@ -40,14 +40,14 @@ Never read the plan whole. A task is open if it carries at least one unchecked
 box, or no box at all. This prints the title and Files block of each open task:
 
 awk 'function flush() { if (head != "" && (open || !boxes)) printf "%s", head }
-/^### Task / { flush(); head = $0 "\n"; open = 0; boxes = 0; files = 0; next }
+/^### Task / { flush(); head = $(0) "\n"; open = 0; boxes = 0; files = 0; next }
 head == "" { next }
 /^[ \t]*- \[ \]/ { open = 1; boxes = 1 }
 /^[ \t]*- \[[xX]\]/ { boxes = 1 }
 /^\*\*Files:\*\*/ { files = 1; next }
-files && /^[-*] / { head = head $0 "\n"; next }
+files && !/^[-*] \[/ && /^[-*] / { head = head $(0) "\n"; next }
 files && !/^[ \t]*$/ { files = 0 }
-END { flush() }' <plan.md>
+END { flush() }' "<plan.md>"
 
 Open a diff only if a change seems to touch one of these tasks. Return, for each
 dependency, `sans effet` or `touche Task N`, with one line of motive.
@@ -71,8 +71,8 @@ task. Create the row, or the section, if it is missing:
 ```
 
 For each **!** line: Vu is the upstream value of the line, Le is today, Conclusion
-is what your human partner validated. Source and Base stay empty unless the row
-is specific to this need.
+is what your human partner validated. Source and Base are left as they are: empty
+on a created row, untouched on an existing one.
 
 For a `touche Task N`, rewrite `## Re-enter at` in the same edit: it names the
 task and sends to `aikit:routing-failures`, so the impact survives if the session
