@@ -88,7 +88,10 @@ index_of() {  # index_of <name> -> its index, or -1
 # read_table <file> <fiche|plan>: a plan cell filled in wins, an empty one keeps
 # the fiche's. Two rows of one name are a fault of THAT table only.
 read_table() {
-  local file=$1 origin=$2 name src base seen on _rest i met="$SEP"
+  local file=$1 origin=$2 name src base seen on _rest i met="$SEP" rows
+  # Captured first: a process substitution loses the status, `set -e` sees this one.
+  rows=$(table_rows "$file")
+  [ -n "$rows" ] || return 0
   while IFS=$SEP read -r name src base seen on _rest; do
     [ -n "$name" ] || name="(sans nom)"
     i=$(index_of "$name")
@@ -105,13 +108,16 @@ read_table() {
     if [ "$origin" = plan ]; then
       SEEN[$i]=$seen; ON[$i]=$on; IN_PLAN[$i]=1
     fi
-  done < <(table_rows "$file")
+  done <<EOF
+$rows
+EOF
 }
 
 unverified() { SIGN=x; TEXT="non verifie : $1"; }
 
 evaluate() {  # evaluate <index> -> SIGN, TEXT
-  local i=$1 src=${SOURCES[$i]} base=${BASES[$i]}
+  local i=$1
+  local src=${SOURCES[$i]} base=${BASES[$i]}
   if [ "${DOUBLE[$i]}" = 1 ]; then unverified "nom en double"; return 0; fi
   if [ "${IN_PLAN[$i]}" = 1 ]; then
     if [ -z "$base" ]; then unverified "base absente"; return 0; fi

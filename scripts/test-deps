@@ -143,6 +143,26 @@ planmd leurre b
 deps leurre b
 has "un titre cite dans une tache n'est pas la section" "aucune dependance declaree" "$OUT"
 
+fiche nosec
+mkdir -p "$VAULT/nosec/b"
+printf -- '---\nproject: nosec\n---\n\n## Re-enter at\nici\n\n### Task 1: x\n\n```markdown\n%s\n\n| Nom | Source | Base |\n|---|---|---|\n| leurre | a/b | release |\n```\n' "$ACCENT" > "$VAULT/nosec/b/plan.md"
+deps nosec b
+has "plan sans section : seul un titre cite dans une tache" "aucune dependance declaree" "$OUT"
+
+if [ "$(id -u)" != 0 ]; then
+  fiche illisible "| a | acme/lib | fichier x |"
+  chmod 000 "$VAULT/projects/illisible.md"
+  deps illisible
+  is "fiche illisible : sortie 2, jamais 0 ni 1" "2" "$RC"
+  chmod 644 "$VAULT/projects/illisible.md"
+  fiche illplan "| a | acme/lib | fichier x |"
+  planmd illplan b "| a | | | 1 | 2026-11-01 | |"
+  chmod 000 "$VAULT/illplan/b/plan.md"
+  deps illplan b
+  is "plan illisible : sortie 2, jamais 0 ni 1" "2" "$RC"
+  chmod 644 "$VAULT/illplan/b/plan.md"
+fi
+
 avant=$(find "$VAULT" -type f -exec cksum {} + | sort)
 deps fp b
 is "la commande ne modifie rien" "$avant" "$(find "$VAULT" -type f -exec cksum {} + | sort)"
