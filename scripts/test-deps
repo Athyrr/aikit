@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# Tests de bin/aikit-deps. Aucune dependance reseau, aucune fixture versionnee :
+# un faux gh dans le PATH rejoue des sorties reelles (mesurees le 2026-11-02,
+# `MERGED` en majuscules, tag `v4.4.0`, `HTTP 404` sur stderr).
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+
+pass=0; fail=0
+ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
+ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
+is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
+has() { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
+hasnt() { case "$3" in *"$2"*) ko "$1" "ne contient pas [$2]" "$3" ;; *) ok "$1" ;; esac; }
+
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+# Une espace dans le chemin, DELIBEREMENT : c'est le cas reel.
+W="$TMP/Mon Espace"
+VAULT="$W/levault"; ROOT="$W/code"
+mkdir -p "$VAULT/projects" "$ROOT"
+printf 'vault test %s\nroot  test %s\n' "$VAULT" "$ROOT" > "$W/vaults"
+export AIKIT_VAULTS="$W/vaults"
+
+ACCENT=$'## D\xc3\xa9pendances'
+FIN=$'\nfin de section\n\n| hors | section | ignore |'
+
+# fiche_titre <titre> <projet> <ligne de tableau>...
+fiche_titre() {
+  local titre=$1 p=$2 l; shift 2
+  {
+    printf -- '---\nname: %s\nkind: conception\nsummary: x\n---\n\n# %s\n\n' "$p" "$p"
+    printf '%s\n\n| Nom | Source | Base |\n|---|---|---|\n' "$titre"
+    for l in "$@"; do printf '%s\n' "$l"; done
+    printf '%s\n' "$FIN"
+  } > "$VAULT/projects/$p.md"
+}
+fiche() { fiche_titre "$ACCENT" "$@"; }
+
+# planmd <projet> <besoin> <ligne de tableau>...
+planmd() {
+  local p=$1 b=$2 l; shift 2
+  mkdir -p "$VAULT/$p/$b"
+  {
+    printf -- '---\nproject: %s\n---\n\n## Re-enter at\nici\n\n' "$p"
+    printf '%s\n\n| Nom | Source | Base | Vu | Le | Conclusion |\n|---|---|---|---|---|---|\n' "$ACCENT"
+    for l in "$@"; do printf '%s\n' "$l"; done
+    printf '\n## Global Constraints\n\n### Task 1: x\n\n```markdown\n%s\n\n| Nom | Source | Base |\n|---|---|---|\n| leurre | a/b | release |\n```\n' "$ACCENT"
+  } > "$VAULT/$p/$b/plan.md"
+}
+
+deps() { OUT=$(bin/aikit-deps "$@" 2>&1); RC=$?; }
+
+echo "usage et pannes"
+deps
+is "aucun argument : sortie 2" "2" "$RC"
+has "... et l'usage s'affiche" "usage: aikit-deps" "$OUT"
+deps a b c
+is "trois arguments : sortie 2" "2" "$RC"
+deps --aide
+is "une option inconnue : sortie 2" "2" "$RC"
+deps p/q
+is "un projet avec un / : sortie 2" "2" "$RC"
+
+PANNE="$TMP/panne"; mkdir -p "$PANNE/bin" "$PANNE/lib"
+cp bin/aikit-deps "$PANNE/bin/aikit-deps"
+OUT=$("$PANNE/bin/aikit-deps" x 2>&1); RC=$?
+is "lib/vaults absente : panne en 2, jamais en 1" "2" "$RC"
+has "... et la panne se dit" "panne interne" "$OUT"
+printf ': "$variable_jamais_definie"\n' > "$PANNE/lib/vaults"
+OUT=$("$PANNE/bin/aikit-deps" x 2>&1); RC=$?
+is "variable non definie sous set -u : 2, jamais 1" "2" "$RC"
+
+echo "cas d'entree"
+deps inconnu
+is "projet inconnu : sortie 0" "0" "$RC"
+has "... x projet inconnu" "x projet inconnu : inconnu" "$OUT"
+has "... compte dans le verdict" "verdict : 0 ecart a trier, 1 non verifie" "$OUT"
+
+printf -- '---\nname: nue\nkind: conception\nsummary: x\n---\n\n# nue\n' > "$VAULT/projects/nue.md"
+deps nue
+is "fiche sans section : sortie 0" "0" "$RC"
+is "... aucune dependance declaree" "dependances nue
+aucune dependance declaree
+verdict : rien a trier" "$OUT"
+hasnt "... jamais a jour" "a jour" "$OUT"
+
+deps nue absent
+has "plan introuvable : la ligne le dit" "x plan introuvable : $VAULT/nue/absent/plan.md" "$OUT"
+has "... et le verdict le compte" "verdict : 0 ecart a trier, 1 non verifie" "$OUT"
+
+fiche base "| a | acme/lib | fichier x@y |" "| b | acme/lib | |"
+deps base
+is "base inconnue ou vide : sortie 0" "0" "$RC"
+is "... ligne, alignement et verdict" "dependances base
+x a  non verifie : base inconnue
+x b  non verifie : base inconnue
+verdict : 0 ecart a trier, 2 non verifie" "$OUT"
+
+echo "lecture des tableaux"
+fiche double "| a | acme/lib | fichier x |" "| a | acme/lib | fichier y |"
+deps double
+is "nom en double dans la fiche : une seule ligne" "x a  non verifie : nom en double" "$(printf '%s\n' "$OUT" | sed -n 2,2p)"
+has "... et un seul non verifie" "0 ecart a trier, 1 non verifie" "$OUT"
+
+fiche dbl2 "| a | acme/lib | fichier x |"
+planmd dbl2 b "| a | | | 1 | 2026-11-01 | |" "| a | | | 2 | 2026-11-02 | |"
+deps dbl2 b
+has "nom en double dans le plan" "x a  non verifie : nom en double" "$OUT"
+
+planmd dbl2 c "| a | | | 1 | 2026-11-01 | |"
+deps dbl2 c
+hasnt "un nom dans la fiche ET dans le plan n'est pas un double" "nom en double" "$OUT"
+
+fiche fp
+planmd fp b "| seul | | release | | | |" "| autre | acme/lib | | | | |"
+deps fp b
+has "ligne de plan sans Source, base qui en exige une" "x seul   non verifie : source absente" "$OUT"
+has "ligne de plan sans Base" "x autre  non verifie : base absente" "$OUT"
+
+fiche_titre "## Dependances" sansaccent "| a | acme/lib | fichier x |"
+deps sansaccent
+has "titre sans accent" "x a  non verifie : base inconnue" "$OUT"
+
+fiche accentc "| a | acme/lib | fichier x |"
+OUT=$(LC_ALL=C LANG=C bin/aikit-deps accentc 2>&1)
+has "titre accentue sous LC_ALL=C" "x a  non verifie : base inconnue" "$OUT"
+
+fiche crlf "| a | acme/lib | fichier x |"
+sed -i 's/$/\r/' "$VAULT/projects/crlf.md"
+deps crlf
+has "fiche en CRLF" "x a  non verifie : base inconnue" "$OUT"
+hasnt "... sans \\r dans la sortie" $'\r' "$OUT"
+
+fiche pipe '| a\|b | acme/lib | fichier x |'
+deps pipe
+has '\| dans une cellule' "x a|b  non verifie : base inconnue" "$OUT"
+
+printf -- '---\nname: entre\nkind: conception\nsummary: x\n---\n\n%s\n\nDu texte avant le tableau.\n\n| Nom | Source | Base |\n|---|---|---|\n| a | acme/lib | release |\n' "$ACCENT" > "$VAULT/projects/entre.md"
+deps entre
+has "la section finit a la premiere ligne hors tableau" "aucune dependance declaree" "$OUT"
+
+fiche leurre
+planmd leurre b
+deps leurre b
+has "un titre cite dans une tache n'est pas la section" "aucune dependance declaree" "$OUT"
+
+avant=$(find "$VAULT" -type f -exec cksum {} + | sort)
+deps fp b
+is "la commande ne modifie rien" "$avant" "$(find "$VAULT" -type f -exec cksum {} + | sort)"
+
+is "bash 3 : aucune construction de bash 4" "" "$(grep -nE 'declare -A|mapfile|readarray|\$\{[A-Za-z_]+(\^|,)' bin/aikit-deps)"
+
+echo
+echo "$pass passes, $fail echecs"
+# `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.
+exit $(( fail != 0 ))

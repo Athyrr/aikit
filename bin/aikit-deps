@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# Where do a project's upstream dependencies stand, and those of one of its needs?
+#
+# Reads the `## Dependances` section of the registry file and, when a need is
+# named, of its plan.md, then compares each line to what upstream says today.
+# Writes nothing: acknowledging a change is the orchestrator's job, once its
+# human partner validated it (aikit:checking-dependencies).
+#
+# One line per dependency, then a verdict:
+#   x  not verified, the cause is on the line; never blocks
+#   ~  frozen     ?  manual     =  nothing to look at     !  changed since seen
+#
+# Usage: aikit-deps <project> [<need>]
+# Exit:  1 at least one `!`; 0 otherwise, `x` included; 2 usage or internal failure.
+set -euo pipefail
+
+# `set -e` and `set -u` die with 1, which a caller would read as a `!`.
+finished=0
+trap 'rc=$?; rm -f "${ERRFILE:-}"; [ "$finished" = 1 ] || { echo "aikit-deps: panne interne (code $rc)" >&2; exit 2; }' EXIT
+
+LIB="$(cd "$(dirname "$0")/.." && pwd)/lib/vaults"
+. "$LIB"
+
+usage() {
+  echo "usage: aikit-deps <project> [<need>]" >&2
+  finished=1
+  exit 2
+}
+
+[ $# -ge 1 ] && [ $# -le 2 ] || usage
+project=$1; need=${2:-}
+case "$project" in ''|-*|*/*) usage ;; esac
+case "$need" in -*|*/*) usage ;; esac
+
+# Cells travel joined by US, not by a tab: `read` collapses consecutive tabs,
+# and an empty cell is the normal case in a plan.md row.
+SEP=$'\037'
+# The accented title as bytes: this file stays ASCII and awk compares bytes under
+# LC_ALL=C, so the locale of the session cannot change what matches.
+TITLE_ACCENT=$'## D\303\251pendances'
+TITLE_ASCII='## Dependances'
+
+# table_rows <file> -> one line per data row of the section, six cells each.
+# Stops at the first `### Task` heading: the section sits above the first task,
+# and a task's body may quote the title in a code block. A blank line is allowed
+# between the title and the table; the first other line outside the table ends it.
+table_rows() {
+  T1="$TITLE_ACCENT" T2="$TITLE_ASCII" LC_ALL=C awk '
+    BEGIN { sep = sprintf("%c", 31); pipe = sprintf("%c", 30) }
+    {
+      line = $0
+      sub(/\r$/, "", line); sub(/[ \t]+$/, "", line)
+    }
+    !insec {
+      if (line ~ /^###[ \t]+Task[ \t]/) exit
+      if (line == ENVIRON["T1"] || line == ENVIRON["T2"]) insec = 1
+      next
+    }
+    line == "" && !rows { next }
+    line !~ /^[ \t]*\|/ { exit }
+    {
+      rows++
+      if (rows == 1 || line ~ /^[-:| \t]+$/) next
+      gsub(/\\\|/, pipe, line)
+      sub(/^[ \t]*\|/, "", line); sub(/\|$/, "", line)
+      n = split(line, cell, "|")
+      out = ""
+      for (i = 1; i <= 6; i++) {
+        v = (i <= n) ? cell[i] : ""
+        gsub(pipe, "|", v)
+        gsub(/^[ \t]+|[ \t]+$/, "", v)
+        out = out (i > 1 ? sep : "") v
+      }
+      print out
+    }' "$1"
+}
+
+count=0
+index_of() {  # index_of <name> -> its index, or -1
+  local i=0
+  while [ "$i" -lt "$count" ]; do
+    if [ "${NAMES[$i]}" = "$1" ]; then printf '%s' "$i"; return 0; fi
+    i=$((i + 1))
+  done
+  printf '%s' -1
+}
+
+# read_table <file> <fiche|plan>: a plan cell filled in wins, an empty one keeps
+# the fiche's. Two rows of one name are a fault of THAT table only.
+read_table() {
+  local file=$1 origin=$2 name src base seen on _rest i met="$SEP"
+  while IFS=$SEP read -r name src base seen on _rest; do
+    [ -n "$name" ] || name="(sans nom)"
+    i=$(index_of "$name")
+    if [ "$i" = -1 ]; then
+      i=$count
+      NAMES[$i]=$name; SOURCES[$i]=""; BASES[$i]=""; SEEN[$i]=""; ON[$i]=""
+      IN_PLAN[$i]=0; DOUBLE[$i]=0
+      count=$((count + 1))
+    fi
+    case "$met" in *"$SEP$name$SEP"*) DOUBLE[$i]=1; continue ;; esac
+    met="$met$name$SEP"
+    [ -z "$src" ] || SOURCES[$i]=$src
+    [ -z "$base" ] || BASES[$i]=$base
+    if [ "$origin" = plan ]; then
+      SEEN[$i]=$seen; ON[$i]=$on; IN_PLAN[$i]=1
+    fi
+  done < <(table_rows "$file")
+}
+
+unverified() { SIGN=x; TEXT="non verifie : $1"; }
+
+evaluate() {  # evaluate <index> -> SIGN, TEXT
+  local i=$1 src=${SOURCES[$i]} base=${BASES[$i]}
+  if [ "${DOUBLE[$i]}" = 1 ]; then unverified "nom en double"; return 0; fi
+  if [ "${IN_PLAN[$i]}" = 1 ]; then
+    if [ -z "$base" ]; then unverified "base absente"; return 0; fi
+    if [ -z "$src" ]; then
+      case "$base" in
+        paquet\ *|release|branche\ *|pr) unverified "source absente"; return 0 ;;
+      esac
+    fi
+  fi
+  case "$base" in
+    *) unverified "base inconnue"; return 0 ;;
+  esac
+}
+
+verdict() {
+  local text
+  if [ "$gaps" = 0 ] && [ "$missed" = 0 ]; then
+    text="rien a trier"
+  else
+    text="$gaps ecart a trier, $missed non verifie"
+  fi
+  echo "verdict : $text"
+}
+
+finish() {
+  verdict
+  finished=1
+  if [ "$gaps" -gt 0 ]; then exit 1; fi
+  exit 0
+}
+
+gaps=0; missed=0
+echo "dependances $project${need:+/$need}"
+
+fiche=""; vault=""
+while IFS=$'\t' read -r _ vpath; do
+  if [ -f "$vpath/projects/$project.md" ]; then
+    fiche="$vpath/projects/$project.md"; vault=$vpath
+    break
+  fi
+done < <(vaults_list)
+
+if [ -z "$fiche" ]; then
+  echo "x projet inconnu : $project"
+  missed=1
+  finish
+fi
+
+read_table "$fiche" fiche
+if [ -n "$need" ]; then
+  plan="$vault/$project/$need/plan.md"
+  if [ -f "$plan" ]; then
+    read_table "$plan" plan
+  else
+    echo "x plan introuvable : $plan"
+    missed=$((missed + 1))
+  fi
+fi
+
+if [ "$count" = 0 ]; then
+  echo "aucune dependance declaree"
+  finish
+fi
+
+width=0; i=0
+while [ "$i" -lt "$count" ]; do
+  if [ "${#NAMES[$i]}" -gt "$width" ]; then width=${#NAMES[$i]}; fi
+  i=$((i + 1))
+done
+
+i=0
+while [ "$i" -lt "$count" ]; do
+  evaluate "$i"
+  printf '%s %-*s  %s\n' "$SIGN" "$width" "${NAMES[$i]}" "$TEXT"
+  case "$SIGN" in
+    '!') gaps=$((gaps + 1)) ;;
+    x)   missed=$((missed + 1)) ;;
+  esac
+  i=$((i + 1))
+done
+
+finish
