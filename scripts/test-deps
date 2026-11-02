@@ -560,6 +560,21 @@ printf '#!/usr/bin/env bash\necho "Erreur : syntaxe incorrecte." >&2\nexit 1\n' 
 OUT=$(PATH="$WIN:$PATH" bin/aikit-deps sr2 b 2>&1)
 has "un timeout qui ne repond pas a --version ne compte pas" "budget non garanti (timeout absent)" "$OUT"
 has "... et n'est pas appele" "= rel  vu v4.4.0" "$OUT"
+
+echo "budget : un seul total par dependance"
+d=$(gh_dir api repos/acme/lent/releases/latest --jq .tag_name); echo 0.85 > "$d/dort"
+gh_repond v4.4.0 api repos/acme/lent/releases/latest --jq .tag_name
+d=$(gh_dir api repos/acme/lent/compare/v4.4.0...HEAD --jq .ahead_by); echo 5 > "$d/dort"
+fiche ss "| a | acme/lent | release |"
+debut=$SECONDS
+OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps ss 2>&1); RC=$?
+has "second appel sans budget : non verifie" "commits non publies : non verifie" "$OUT"
+[ $((SECONDS - debut)) -lt 2 ] && ok "... le total ne depasse pas le budget" || ko "... le total ne depasse pas le budget" "< 2 s" "$((SECONDS - debut)) s"
+for b in 5s 1.5; do
+  OUT=$(AIKIT_DEPS_BUDGET=$b bin/aikit-deps ss 2>&1); RC=$?
+  is "budget $b : sortie 2" "2" "$RC"
+  has "... panne interne" "panne interne" "$OUT"
+done
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.

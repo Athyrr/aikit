@@ -34,10 +34,13 @@ case "$need" in -*|*/*) usage ;; esac
 
 # Seconds per dependency. The variable exists for scripts/test-deps alone.
 BUDGET=${AIKIT_DEPS_BUDGET:-5}
+case "$BUDGET" in
+  ''|*[!0-9]*) echo "aikit-deps: panne interne (AIKIT_DEPS_BUDGET : entier attendu)" >&2; finished=1; exit 2 ;;
+esac
 # `timeout --version`, never `command -v timeout`: on Windows that finds
 # System32\timeout.exe, whose syntax is another one.
 HAS_TIMEOUT=0
-if timeout --version > /dev/null 2>&1; then HAS_TIMEOUT=1; fi
+if timeout --version > /dev/null 2>&1 < /dev/null; then HAS_TIMEOUT=1; fi
 # Cells travel joined by US, not by a tab: `read` collapses consecutive tabs,
 # and an empty cell is the normal case in a plan.md row.
 SEP=$'\037'
@@ -127,7 +130,10 @@ call_gh() {
   local rc=0 err left
   GH_OUT=""; GH_CAUSE=""
   if ! command -v gh > /dev/null 2>&1; then GH_CAUSE="gh absent"; return 1; fi
-  left=$((DEADLINE - SECONDS))
+  # SECONDS ticks whole seconds: once a call has run, one second is withheld so
+  # a dependency never exceeds BUDGET.
+  left=$((DEADLINE - SECONDS - CALLED))
+  CALLED=1
   if [ "$left" -le 0 ]; then GH_CAUSE="delai depasse"; return 1; fi
   if [ "$HAS_TIMEOUT" = 1 ]; then
     GH_OUT=$(timeout "$left" gh "$@" 2> "$ERRFILE" < /dev/null) || rc=$?
@@ -393,7 +399,7 @@ eval_watch() {  # eval_watch <base>
 evaluate() {  # evaluate <index> -> SIGN, TEXT
   local i=$1
   local src=${SOURCES[$i]} base=${BASES[$i]} seen=${SEEN[$i]} on=${ON[$i]} rest
-  DEADLINE=$((SECONDS + BUDGET))
+  DEADLINE=$((SECONDS + BUDGET)); CALLED=0
   if [ "${DOUBLE[$i]}" = 1 ]; then unverified "nom en double"; return 0; fi
   if [ "${IN_PLAN[$i]}" = 1 ]; then
     if [ -z "$base" ]; then unverified "base absente"; return 0; fi
