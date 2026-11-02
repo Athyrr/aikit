@@ -58,7 +58,7 @@ cat > "$FAUXBIN/gh" <<'FAUX'
 echo "$*" >> "$FAUX_GH/appels"
 d="$FAUX_GH/$(printf '%s' "$*" | cksum | cut -d' ' -f1)"
 if [ ! -d "$d" ]; then echo 'gh: Not Found (HTTP 404)' >&2; exit 1; fi
-if [ -s "$d/dort" ]; then exec sleep "$(cat "$d/dort")"; fi
+if [ -s "$d/dort" ]; then sleep "$(cat "$d/dort")" > /dev/null 2>&1; fi
 cat "$d/err" >&2
 cat "$d/out"
 exit "$(cat "$d/rc")"
@@ -562,19 +562,31 @@ has "un timeout qui ne repond pas a --version ne compte pas" "budget non garanti
 has "... et n'est pas appele" "= rel  vu v4.4.0" "$OUT"
 
 echo "budget : un seul total par dependance"
-d=$(gh_dir api repos/acme/lent/releases/latest --jq .tag_name); echo 0.85 > "$d/dort"
 gh_repond v4.4.0 api repos/acme/lent/releases/latest --jq .tag_name
+d=$(gh_dir api repos/acme/lent/releases/latest --jq .tag_name); echo v4.4.0 > "$d/out"; echo 0.05 > "$d/dort"
 d=$(gh_dir api repos/acme/lent/compare/v4.4.0...HEAD --jq .ahead_by); echo 5 > "$d/dort"
 fiche ss "| a | acme/lent | release |"
-debut=$SECONDS
-OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps ss 2>&1); RC=$?
-has "second appel sans budget : non verifie" "commits non publies : non verifie" "$OUT"
-[ $((SECONDS - debut)) -lt 2 ] && ok "... le total ne depasse pas le budget" || ko "... le total ne depasse pas le budget" "< 2 s" "$((SECONDS - debut)) s"
+# Le tic de SECONDS du script n'est pas maitrisable : plusieurs passes, pour que
+# la variante sans retenue d'une seconde ne passe jamais au travers.
+debut=$SECONDS; partis=0; lances=0
+for _ in 1 2 3 4 5 6; do
+  oublie_appels
+  OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps ss 2>&1); RC=$?
+  case "$(appels)" in *releases/latest*) lances=$((lances + 1)) ;; esac
+  case "$(appels)" in *compare*) partis=$((partis + 1)) ;; esac
+done
+has "premier appel lent, second sans budget : non verifie" "commits non publies : non verifie" "$OUT"
+is "... le premier appel a eu lieu a chaque passe" "6" "$lances"
+is "... le second ne part jamais" "0" "$partis"
+[ $((SECONDS - debut)) -lt 4 ] && ok "... le total ne depasse pas le budget" || ko "... le total ne depasse pas le budget" "< 2 s" "$((SECONDS - debut)) s"
 for b in 5s 1.5; do
   OUT=$(AIKIT_DEPS_BUDGET=$b bin/aikit-deps ss 2>&1); RC=$?
   is "budget $b : sortie 2" "2" "$RC"
   has "... panne interne" "panne interne" "$OUT"
 done
+OUT=$(AIKIT_DEPS_BUDGET=08 bin/aikit-deps ss 2>&1); RC=$?
+is "budget 08 : lu en base 10, l'ecart reste un ecart" "1" "$RC"
+has "... et le verdict le dit" "verdict : 1 ecart a trier" "$OUT"
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.

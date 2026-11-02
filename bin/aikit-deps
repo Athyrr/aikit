@@ -37,6 +37,8 @@ BUDGET=${AIKIT_DEPS_BUDGET:-5}
 case "$BUDGET" in
   ''|*[!0-9]*) echo "aikit-deps: panne interne (AIKIT_DEPS_BUDGET : entier attendu)" >&2; finished=1; exit 2 ;;
 esac
+# Base 10: bash reads 08 as an invalid octal and 010 as 8.
+BUDGET=$((10#$BUDGET))
 # `timeout --version`, never `command -v timeout`: on Windows that finds
 # System32\timeout.exe, whose syntax is another one.
 HAS_TIMEOUT=0
