@@ -191,7 +191,7 @@ the method itself.
   agents/                     the six archetypes
   VOCABULARY.md               one word, one meaning — read before naming anything
   scripts/                    doctor, deploy and their test suites — NOT on the Bash tool's PATH
-  bin/                        ezy and scoped — these ARE on it
+  bin/                        ezy, scoped and aikit-deps — these ARE on it
 
 ~/.config/aikit/vaults         which vaults this machine knows, and where
 <vault>/                      a clone of a vault (an Obsidian vault)

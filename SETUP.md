@@ -82,7 +82,7 @@ git config core.hooksPath .githooks     # arms the pre-commit gate — per clone
 git switch -c <chantier>
 # ... edit skills/ agents/ hooks/ ...
 
-scripts/doctor                          # the twelve gates
+scripts/doctor                          # the thirteen gates
 claude --plugin-dir .                   # test in a session WITHOUT publishing
                                         # (takes precedence over the installed
                                         # plugin, for that session only)
@@ -99,7 +99,7 @@ separation is native to the montage, not built on top of it.
 ## 5. The two directories that matter
 
 `bin/` is added to the Bash tool's `PATH` while the plugin is enabled — it holds
-execution commands (`ezy`, `scoped`) and the status line renderer
+execution commands (`ezy`, `scoped`, `aikit-deps`) and the status line renderer
 (`aikit-statusline`, prefixed so it cannot collide with a bare command name).
 
 `scripts/` is **not** on the `PATH` and holds repository maintenance (`deploy`,
