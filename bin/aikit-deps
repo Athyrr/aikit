@@ -115,9 +115,75 @@ EOF
 
 unverified() { SIGN=x; TEXT="non verifie : $1"; }
 
+# call_gh <gh args...> -> 0 and GH_OUT, or 1 and GH_CAUSE. stdin closed: gh must
+# never read the caller's input.
+call_gh() {
+  local rc=0 err
+  GH_OUT=""; GH_CAUSE=""
+  if ! command -v gh > /dev/null 2>&1; then GH_CAUSE="gh absent"; return 1; fi
+  GH_OUT=$(gh "$@" 2> "$ERRFILE" < /dev/null) || rc=$?
+  if [ "$rc" = 0 ]; then return 0; fi
+  err=$(cat "$ERRFILE")
+  case "$rc:$err" in
+    4:*|*"HTTP 401"*|*"gh auth login"*) GH_CAUSE="gh non authentifie" ;;
+    *"HTTP 404"*|*"Could not resolve"*) GH_CAUSE="introuvable" ;;
+    *) GH_CAUSE="reseau" ;;
+  esac
+  return 1
+}
+
+is_repo() {  # is_repo <source>: owner/repo, nothing else
+  case "$1" in
+    */*/*|/*|*/|*[!A-Za-z0-9._/-]*) return 1 ;;
+    */*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Each reader -> 0 and GH_OUT = the fingerprint, or 1 and GH_CAUSE.
+latest_release() {  # latest_release <owner/repo>
+  if ! is_repo "$1"; then GH_CAUSE="source invalide"; return 1; fi
+  if ! call_gh api "repos/$1/releases/latest" --jq .tag_name; then
+    if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="depot sans release"; fi
+    return 1
+  fi
+  if [ -z "$GH_OUT" ]; then GH_CAUSE="depot sans release"; return 1; fi
+}
+
+branch_head() {  # branch_head <owner/repo> <branch>
+  if ! is_repo "$1"; then GH_CAUSE="source invalide"; return 1; fi
+  if ! call_gh api "repos/$1/branches/$2" --jq .commit.sha; then
+    if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="branche introuvable"; fi
+    return 1
+  fi
+  GH_OUT=${GH_OUT:0:7}
+}
+
+pr_head() {  # pr_head <owner/repo#N>
+  local repo=${1%%#*} number=${1##*#} sha state
+  case "$number" in ''|*[!0-9]*) GH_CAUSE="source invalide"; return 1 ;; esac
+  if ! is_repo "$repo"; then GH_CAUSE="source invalide"; return 1; fi
+  if ! call_gh pr view "$number" --repo "$repo" --json headRefOid,state \
+      --jq '.headRefOid + ":" + .state'; then
+    if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="pr introuvable"; fi
+    return 1
+  fi
+  sha=${GH_OUT%%:*}
+  state=$(printf '%s' "${GH_OUT#*:}" | tr '[:upper:]' '[:lower:]')
+  GH_OUT="${sha:0:7}:$state"
+}
+
+settle() {  # settle <seen> <upstream>: rules 8 and 9, the bases without a manifest
+  if [ "$1" = "$2" ]; then
+    SIGN='='; TEXT="vu $1, amont $2"
+  else
+    SIGN='!'; TEXT="vu ${1:-vide}, amont $2"
+  fi
+}
+
 evaluate() {  # evaluate <index> -> SIGN, TEXT
   local i=$1
-  local src=${SOURCES[$i]} base=${BASES[$i]}
+  local src=${SOURCES[$i]} base=${BASES[$i]} seen=${SEEN[$i]} on=${ON[$i]} rest
   if [ "${DOUBLE[$i]}" = 1 ]; then unverified "nom en double"; return 0; fi
   if [ "${IN_PLAN[$i]}" = 1 ]; then
     if [ -z "$base" ]; then unverified "base absente"; return 0; fi
@@ -128,6 +194,33 @@ evaluate() {  # evaluate <index> -> SIGN, TEXT
     fi
   fi
   case "$base" in
+    fige|fige\ *)
+      rest=${base#fige}; rest=${rest# }
+      case "$rest" in
+        ?*' - '?*) ;;
+        *) unverified 'fige sans motif (separateur : " - ")'; return 0 ;;
+      esac
+      SIGN='~'; TEXT="fige ${rest%% - *} (${rest#* - })"
+      if latest_release "$src"; then TEXT="$TEXT, amont $GH_OUT"; fi
+      return 0 ;;
+    manuel)
+      SIGN='?'
+      if [ -n "$on" ]; then TEXT="manuel, vu $on, a regarder"; else TEXT="manuel, jamais vu, a regarder"; fi
+      return 0 ;;
+    release)
+      if ! latest_release "$src"; then unverified "$GH_CAUSE"; return 0; fi
+      settle "$seen" "$GH_OUT"
+      return 0 ;;
+    branche\ *)
+      rest=${base#branche }
+      case "$rest" in *' '*) unverified "base inconnue"; return 0 ;; esac
+      if ! branch_head "$src" "$rest"; then unverified "$GH_CAUSE"; return 0; fi
+      settle "$seen" "$GH_OUT"
+      return 0 ;;
+    pr)
+      if ! pr_head "$src"; then unverified "$GH_CAUSE"; return 0; fi
+      settle "$seen" "$GH_OUT"
+      return 0 ;;
     *) unverified "base inconnue"; return 0 ;;
   esac
 }
@@ -149,6 +242,7 @@ finish() {
   exit 0
 }
 
+ERRFILE=$(mktemp)
 gaps=0; missed=0
 echo "dependances $project${need:+/$need}"
 

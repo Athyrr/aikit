@@ -49,6 +49,37 @@ planmd() {
 
 deps() { OUT=$(bin/aikit-deps "$@" 2>&1); RC=$?; }
 
+# Faux gh : une reponse par ligne de commande. Sans reponse posee, il rend ce que
+# le vrai rend sur un depot sans release : le 404 sur stderr, code 1.
+FAUXBIN="$W/fauxbin"; export FAUX_GH="$W/fauxgh"
+mkdir -p "$FAUXBIN" "$FAUX_GH"
+cat > "$FAUXBIN/gh" <<'FAUX'
+#!/usr/bin/env bash
+echo "$*" >> "$FAUX_GH/appels"
+d="$FAUX_GH/$(printf '%s' "$*" | cksum | cut -d' ' -f1)"
+if [ ! -d "$d" ]; then echo 'gh: Not Found (HTTP 404)' >&2; exit 1; fi
+if [ -s "$d/dort" ]; then exec sleep "$(cat "$d/dort")"; fi
+cat "$d/err" >&2
+cat "$d/out"
+exit "$(cat "$d/rc")"
+FAUX
+chmod +x "$FAUXBIN/gh"
+export PATH="$FAUXBIN:$PATH"
+
+gh_dir() {  # gh_dir <args de gh>... -> le dossier de reponse, remis a vide
+  local d
+  d="$FAUX_GH/$(printf '%s' "$*" | cksum | cut -d' ' -f1)"
+  mkdir -p "$d"
+  : > "$d/out"; : > "$d/err"; : > "$d/dort"
+  echo 0 > "$d/rc"
+  printf '%s' "$d"
+}
+gh_repond() { local r=$1 d; shift; d=$(gh_dir "$@"); printf '%s\n' "$r" > "$d/out"; }  # gh_repond <sortie> <args>...
+gh_echoue() { local c=$1 e=$2 d; shift 2; d=$(gh_dir "$@"); printf '%s\n' "$e" > "$d/err"; echo "$c" > "$d/rc"; }  # gh_echoue <code> <stderr> <args>...
+release_de() { gh_repond "$2" api "repos/$1/releases/latest" --jq .tag_name; }  # release_de <owner/repo> <tag>
+appels() { cat "$FAUX_GH/appels" 2>/dev/null; }
+oublie_appels() { : > "$FAUX_GH/appels"; }
+
 echo "usage et pannes"
 deps
 is "aucun argument : sortie 2" "2" "$RC"
@@ -168,6 +199,125 @@ deps fp b
 is "la commande ne modifie rien" "$avant" "$(find "$VAULT" -type f -exec cksum {} + | sort)"
 
 is "bash 3 : aucune construction de bash 4" "" "$(grep -nE 'declare -A|mapfile|readarray|\$\{[A-Za-z_]+(\^|,)' bin/aikit-deps)"
+
+echo "fige et manuel"
+release_de acme/contrat v0.12.0
+fiche sg "| contrat | acme/contrat | fige v0.9.0 - gele jusqu'a la fin |" "| url | https://exemple.test/p | fige v1 - motif |" "| cadrage | https://exemple.test/p | manuel |"
+oublie_appels
+deps sg
+is "~ et ? seuls : sortie 0" "0" "$RC"
+is "... lignes et verdict" "dependances sg
+~ contrat  fige v0.9.0 (gele jusqu'a la fin), amont v0.12.0
+~ url      fige v1 (motif)
+? cadrage  manuel, jamais vu, a regarder
+verdict : rien a trier" "$OUT"
+is "... manuel et une source URL n'appellent pas gh" "api repos/acme/contrat/releases/latest --jq .tag_name" "$(appels)"
+
+planmd sg b "| cadrage | | | | 2026-10-12 | |"
+deps sg b
+has "? affiche la date Le" "? cadrage  manuel, vu 2026-10-12, a regarder" "$OUT"
+
+fiche sg2 "| contrat | acme/sansrelease | fige v0.9.0 - gele |"
+deps sg2
+is "~ sans amont lisible reste ~" "~ contrat  fige v0.9.0 (gele)" "$(printf '%s\n' "$OUT" | sed -n 2,2p)"
+has "... et ne compte pas" "verdict : rien a trier" "$OUT"
+
+DASH=$'\xe2\x80\x94'
+fiche sg3 "| a | acme/x | fige v0.9.0 |" "| b | acme/x | fige v0.9.0 $DASH tiret long |" "| c | acme/x | fige |"
+deps sg3
+has "fige sans motif" 'x a  non verifie : fige sans motif (separateur : " - ")' "$OUT"
+has "fige avec un tiret long" 'x b  non verifie : fige sans motif (separateur : " - ")' "$OUT"
+has "fige seul" 'x c  non verifie : fige sans motif (separateur : " - ")' "$OUT"
+
+echo "release, branche, pr"
+release_de acme/lib v4.4.0
+gh_repond 9c0d1e2a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0 api repos/acme/lib/branches/master --jq .commit.sha
+gh_repond '683da0b0f44d4e9417e944e9f1ec8daf959317cf:MERGED' pr view 107 --repo acme/contrat --json headRefOid,state --jq '.headRefOid + ":" + .state'
+gh_repond 'e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3:OPEN' pr view 108 --repo acme/contrat --json headRefOid,state --jq '.headRefOid + ":" + .state'
+fiche sr "| rel | acme/lib | release |" "| br | acme/lib | branche master |" "| prm | acme/contrat#107 | pr |" "| pro | acme/contrat#108 | pr |"
+deps sr
+is "vu vide : sortie 1" "1" "$RC"
+is "... chaque empreinte, l'etat en minuscules" "dependances sr
+! rel  vu vide, amont v4.4.0
+! br   vu vide, amont 9c0d1e2
+! prm  vu vide, amont 683da0b:merged
+! pro  vu vide, amont e4f5a6b:open
+verdict : 4 ecart a trier, 0 non verifie" "$OUT"
+
+planmd sr b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |" "| br | | | 9c0d1e2 | 2026-11-02 | sans effet |" "| prm | | | 683da0b:merged | 2026-11-02 | sans effet |" "| pro | | | e4f5a6b:open | 2026-11-02 | sans effet |"
+deps sr b
+is "tout acquitte : sortie 0" "0" "$RC"
+is "... lignes = et rien a trier" "dependances sr/b
+= rel  vu v4.4.0, amont v4.4.0
+= br   vu 9c0d1e2, amont 9c0d1e2
+= prm  vu 683da0b:merged, amont 683da0b:merged
+= pro  vu e4f5a6b:open, amont e4f5a6b:open
+verdict : rien a trier" "$OUT"
+
+release_de acme/lib v4.5.0
+deps sr b
+is "acquitte puis nouvelle release : sortie 1" "1" "$RC"
+has "... ! redonne" "! rel  vu v4.4.0, amont v4.5.0" "$OUT"
+release_de acme/lib v4.4.0
+
+planmd sr c
+sed -i '/^## D/,/^$/d' "$VAULT/sr/c/plan.md"
+deps sr c
+has "plan sans section : valide, vus vides" "! rel  vu vide, amont v4.4.0" "$OUT"
+
+fiche sp "| remp | acme/autre | release |"
+planmd sp b "| propre | acme/lib | release | v4.4.0 | 2026-11-02 | sans effet |"
+planmd sp c "| remp | acme/lib | | v4.4.0 | 2026-11-02 | sans effet |"
+deps sp b
+has "ligne propre au chantier" "= propre  vu v4.4.0, amont v4.4.0" "$OUT"
+deps sp c
+has "cellule Source du plan prioritaire" "= remp  vu v4.4.0, amont v4.4.0" "$OUT"
+fiche sp "| remp | acme/lib | branche master |"
+planmd sp d "| remp | | release | v4.4.0 | 2026-11-02 | sans effet |"
+deps sp d
+has "cellule Base du plan prioritaire, Source reprise de la fiche" "= remp  vu v4.4.0, amont v4.4.0" "$OUT"
+
+echo "amont illisible"
+fiche sx "| a | acme/absent | release |" "| b | acme/lib | branche absente |" "| c | acme/contrat#9 | pr |" "| d | pas-un-depot | release |" "| e | acme/contrat | pr |" "| f | acme/lib | branche a b |"
+gh_echoue 1 'GraphQL: Could not resolve to a PullRequest with the number of 9. (repository.pullRequest)' pr view 9 --repo acme/contrat --json headRefOid,state --jq '.headRefOid + ":" + .state'
+deps sx
+is "que des x : sortie 0" "0" "$RC"
+has "depot sans release" "x a  non verifie : depot sans release" "$OUT"
+has "branche introuvable" "x b  non verifie : branche introuvable" "$OUT"
+has "pr introuvable" "x c  non verifie : pr introuvable" "$OUT"
+has "source invalide, release" "x d  non verifie : source invalide" "$OUT"
+has "source invalide, pr sans numero" "x e  non verifie : source invalide" "$OUT"
+has "branche a deux mots" "x f  non verifie : base inconnue" "$OUT"
+
+planmd sx v "| a | | | v1 | 2026-11-02 | sans effet |"
+deps sx v
+has "un x ne regarde pas le vu" "x a  non verifie : depot sans release" "$OUT"
+
+fiche sy "| a | acme/auth | release |" "| b | acme/jeton | release |" "| c | acme/res | release |"
+gh_echoue 4 $'To get started with GitHub CLI, please run:  gh auth login\nAlternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.' api repos/acme/auth/releases/latest --jq .tag_name
+gh_echoue 1 'gh: Bad credentials (HTTP 401)' api repos/acme/jeton/releases/latest --jq .tag_name
+gh_echoue 1 'Get "https://api.github.com/repos/acme/res/releases/latest": dial tcp: connect: connection refused' api repos/acme/res/releases/latest --jq .tag_name
+deps sy
+has "gh non authentifie, code 4" "x a  non verifie : gh non authentifie" "$OUT"
+has "gh non authentifie, HTTP 401" "x b  non verifie : gh non authentifie" "$OUT"
+has "reseau" "x c  non verifie : reseau" "$OUT"
+is "... sortie 0" "0" "$RC"
+
+fiche sm "| rel | acme/lib | release |" "| mal | acme/absent | release |"
+deps sm
+is "un ! et un x : sortie 1" "1" "$RC"
+has "... les deux comptent" "verdict : 1 ecart a trier, 1 non verifie" "$OUT"
+
+fiche sz "| rel | acme/lib | release |" "| fig | acme/lib | fige v1 - motif |" "| man | https://exemple.test/p | manuel |"
+NOBIN="$W/nobin"; mkdir -p "$NOBIN"
+for o in awk bash cat cksum cut dirname env find git head mktemp rm sed sleep sort tr; do ln -s "$(command -v "$o")" "$NOBIN/$o"; done
+OUT=$(PATH="$NOBIN" bin/aikit-deps sz 2>&1); RC=$?
+is "sans gh : sortie 0" "0" "$RC"
+is "... x, ~ et ? restent" "dependances sz
+x rel  non verifie : gh absent
+~ fig  fige v1 (motif)
+? man  manuel, jamais vu, a regarder
+verdict : 0 ecart a trier, 1 non verifie" "$OUT"
 
 echo
 echo "$pass passes, $fail echecs"
