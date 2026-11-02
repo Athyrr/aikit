@@ -28,6 +28,11 @@ this kind of task → that section, with its cost. `example-service/EVENT_FLOWS.
 is 27,400 tokens; the slice you need is rarely above 4,000. Opening the file
 whole spends your context budget on text that has nothing to do with the spec.
 
+**Upstream dependencies are not yours.** `aikit:writing-plans` runs `aikit-deps`
+on the orchestrator's side, before your dispatch: you can neither ask your human
+partner nor dispatch an agent. Skip that section, and keep any `## Dépendances`
+section of `plan.md` above the first task.
+
 ## Non-negotiable
 
 - **Every task declares its files** — Create / Modify / Test, exact paths. This

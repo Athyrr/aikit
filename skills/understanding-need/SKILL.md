@@ -175,6 +175,14 @@ that does not block its own progress is a candidate, same as anywhere else
 A resumed feature whose `vault/<project>/<feature>/plan.md` names an unresolved blocker resumes at
 `aikit:routing-failures`, not at execution.
 
+## 3a. Upstream dependencies
+
+Before re-entering or starting, run `aikit-deps <project> <need>; echo "sortie=$?"`,
+without `<need>` unless its `plan.md` exists. A **!** line on a plan with a
+`### Task N:` heading: `aikit:checking-dependencies`. Otherwise show the lines, no
+stop. An `x`, or an exit code other than 0 and 1: tell your human partner in one
+sentence. A `?` whose `Le` is empty: check it with your own tools; they decide if `Le` moves.
+
 ## 4. Confirm before moving on
 
 **Heavy-Path:** state back, in three lines: the project, the feature slug, the
