@@ -501,6 +501,16 @@ fiche sl
 planmd sl b "| veille | | surveille Acme.* $LW | | | |"
 deps sl b
 hasnt "ligne de plan surveille sans Source : pas de source absente" "source absente" "$OUT"
+
+clone garde main "$(props Acme.Un 4.4.0 Acme.Pack.Un 4.4.0 Zed.Acme.Un 1.0.0)"
+fiche sm "| a | | surveille *Acme* $LW |" "| b | | surveille Acme.*.Un* $LW |" "| c | | surveille Acme.** $LW |" "| d | | surveille Acme:* $LW |"
+oublie_appels
+deps sm
+has "motif a etoile en tete" "x a  non verifie : base inconnue" "$OUT"
+has "motif a etoile au milieu" "x b  non verifie : base inconnue" "$OUT"
+has "motif a double etoile" "x c  non verifie : base inconnue" "$OUT"
+has "motif hors de l'alphabet" "x d  non verifie : base inconnue" "$OUT"
+hasnt "... aucun faux tout declare" "tout declare" "$OUT"
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.

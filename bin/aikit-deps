@@ -333,8 +333,9 @@ eval_watch() {  # eval_watch <base>
   while [ -n "$rest" ]; do
     motif=${rest%%,*}; rest=${rest#*,}
     case "$motif" in
-      *' '*) unverified "base inconnue"; return 0 ;;
-      ?*\*) ;;
+      ?*\*) case "${motif%\*}" in
+          ''|*[!A-Za-z0-9._/@-]*) unverified "base inconnue"; return 0 ;;
+        esac ;;
       *) unverified "base inconnue"; return 0 ;;
     esac
   done
