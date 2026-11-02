@@ -181,6 +181,117 @@ settle() {  # settle <seen> <upstream>: rules 8 and 9, the bases without a manif
   fi
 }
 
+# parse_location "<what> dans <clone>:<file>" -> WHAT, CLONE, FILE, or 1.
+parse_location() {
+  case "$1" in ?*' dans '?*:?*) ;; *) return 1 ;; esac
+  WHAT=${1%% dans *}
+  CLONE=${1#* dans }
+  FILE=${CLONE#*:}
+  CLONE=${CLONE%%:*}
+  [ -n "$CLONE" ] && [ -n "$FILE" ]
+}
+
+clone_path() {  # clone_path <registry name> -> its clone on this machine, or nothing
+  local vname name state where
+  while IFS=$'\t' read -r vname _; do
+    while IFS=$'\t' read -r name _ state where _; do
+      if [ "$name" = "$1" ] && [ "$state" = present ]; then
+        printf '%s' "$where"
+        return 0
+      fi
+    done < <(resolve_projects "$vname")
+  done < <(vaults_list)
+}
+
+# open_manifest -> MANIFEST, BRANCH, or 1 with SIGN and TEXT already set.
+open_manifest() {
+  local root
+  root=$(clone_path "$CLONE")
+  if [ -z "$root" ]; then unverified "clone absent : $CLONE"; return 1; fi
+  MANIFEST="$root/$FILE"
+  if [ ! -f "$MANIFEST" ]; then unverified "manifeste introuvable : $FILE"; return 1; fi
+  BRANCH=$(git -C "$root" symbolic-ref --short -q HEAD 2>/dev/null) || BRANCH="HEAD detachee"
+}
+
+# The version after a name, on the rest of its line. A symbolic value gives none.
+AWK_VERSION='
+  function version_after(rest,    v) {
+    if (!match(rest, /[0-9]+(\.[0-9]+)+([-+][0-9A-Za-z.+-]*)?/)) return ""
+    v = substr(rest, RSTART, RLENGTH)
+    if (index(substr(rest, 1, RSTART - 1), "$(") > 0) return ""
+    return v
+  }'
+
+# manifest_version <file> <name> -> `=<version>` from the first line naming it
+# whole, `=` when that line has no version, nothing when no line names it.
+manifest_version() {
+  PKG="$2" LC_ALL=C awk "$AWK_VERSION"'
+    BEGIN { pkg = ENVIRON["PKG"]; len = length(pkg); name = "[A-Za-z0-9._-]" }
+    {
+      off = 0
+      while ((p = index(substr($0, off + 1), pkg)) > 0) {
+        start = off + p
+        before = (start > 1) ? substr($0, start - 1, 1) : ""
+        after = substr($0, start + len, 1)
+        if (before !~ name && after !~ name) {
+          print "=" version_after(substr($0, start + len))
+          exit
+        }
+        off = start
+      }
+    }' "$1"
+}
+
+# group_version <file> <prefix> -> `=<version>` when every package of the prefix
+# carries the same one, `!` when two differ, `=` when one has none, nothing when
+# the prefix matches no package. A token equal to the prefix is prose, not a
+# package: a comment reading `Acme.Lib.*` must not fail the group.
+group_version() {
+  PREFIX="$2" LC_ALL=C awk "$AWK_VERSION"'
+    BEGIN { pre = ENVIRON["PREFIX"] }
+    {
+      line = $0
+      while (match(line, /[A-Za-z0-9._\/@-]+/)) {
+        t = substr(line, RSTART, RLENGTH)
+        line = substr(line, RSTART + RLENGTH)
+        if (index(t, pre) != 1 || length(t) == length(pre) || (t in met)) continue
+        met[t] = 1
+        v = version_after(line)
+        if (v == "") { print "="; bad = 1; exit }
+        if (first == "") first = v
+        else if (v != first) { print "!"; bad = 1; exit }
+      }
+    }
+    END { if (!bad && first != "") print "=" first }' "$1"
+}
+
+eval_package() {  # eval_package <source> <seen> <base>
+  local hit used at amont
+  if ! parse_location "${3#paquet }"; then unverified "base inconnue"; return 0; fi
+  case "$WHAT" in *' '*|'*') unverified "base inconnue"; return 0 ;; esac
+  open_manifest || return 0
+  case "$WHAT" in
+    *\*) hit=$(group_version "$MANIFEST" "${WHAT%\*}") ;;
+    *)   hit=$(manifest_version "$MANIFEST" "$WHAT") ;;
+  esac
+  case "$hit" in
+    '')  unverified "paquet introuvable : $WHAT"; return 0 ;;
+    '!') unverified "versions differentes"; return 0 ;;
+    '=') unverified "version introuvable : $WHAT"; return 0 ;;
+  esac
+  used=${hit#=}
+  if ! latest_release "$1"; then unverified "$GH_CAUSE"; return 0; fi
+  amont=${GH_OUT#v}
+  at="base $used ($CLONE sur $BRANCH), amont $amont"
+  if [ "$used" = "$amont" ]; then
+    SIGN='='; TEXT=$at
+  elif [ "$2" = "$amont" ]; then
+    SIGN='='; TEXT="$at, vu $2 (acquitte)"
+  else
+    SIGN='!'; TEXT="$at, vu ${2:-vide}"
+  fi
+}
+
 evaluate() {  # evaluate <index> -> SIGN, TEXT
   local i=$1
   local src=${SOURCES[$i]} base=${BASES[$i]} seen=${SEEN[$i]} on=${ON[$i]} rest
@@ -220,6 +331,9 @@ evaluate() {  # evaluate <index> -> SIGN, TEXT
     pr)
       if ! pr_head "$src"; then unverified "$GH_CAUSE"; return 0; fi
       settle "$seen" "$GH_OUT"
+      return 0 ;;
+    paquet\ *)
+      eval_package "$src" "$seen" "$base"
       return 0 ;;
     *) unverified "base inconnue"; return 0 ;;
   esac
