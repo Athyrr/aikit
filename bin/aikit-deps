@@ -209,7 +209,7 @@ open_manifest() {
   root=$(clone_path "$CLONE")
   if [ -z "$root" ]; then unverified "clone absent : $CLONE"; return 1; fi
   MANIFEST="$root/$FILE"
-  if [ ! -f "$MANIFEST" ]; then unverified "manifeste introuvable : $FILE"; return 1; fi
+  if [ ! -f "$MANIFEST" ] || [ ! -r "$MANIFEST" ]; then unverified "manifeste introuvable : $FILE"; return 1; fi
   BRANCH=$(git -C "$root" symbolic-ref --short -q HEAD 2>/dev/null) || BRANCH="HEAD detachee"
 }
 
@@ -254,8 +254,7 @@ group_version() {
       while (match(line, /[A-Za-z0-9._\/@-]+/)) {
         t = substr(line, RSTART, RLENGTH)
         line = substr(line, RSTART + RLENGTH)
-        if (index(t, pre) != 1 || length(t) == length(pre) || (t in met)) continue
-        met[t] = 1
+        if (index(t, pre) != 1 || (length(t) == length(pre) && substr(line, 1, 1) == "*")) continue
         v = version_after(line)
         if (v == "") { print "="; bad = 1; exit }
         if (first == "") first = v

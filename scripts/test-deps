@@ -412,6 +412,25 @@ has "une version symbolique dans le groupe" "x g  non verifie : version introuva
 clone groupe main "$(props Autre.Un 1.0.0)"
 deps sf
 has "aucun paquet du prefixe" "x g  non verifie : paquet introuvable : Acme.Pack.*" "$OUT"
+clone groupe main "$(props NUnit 3.0.0 NUnit.Analyzers 4.4.0 NUnit3TestAdapter 4.4.0)"
+fiche sf "| g | acme/lib | paquet NUnit* $LG |"
+deps sf
+has "un paquet egal au prefixe compte" "x g  non verifie : versions differentes" "$OUT"
+clone groupe main "$(props NUnit 4.4.0)"
+deps sf
+has "... seul, il est trouve" "= g  base 4.4.0 (groupe sur main), amont 4.4.0" "$OUT"
+clone groupe main "$(props Acme.P.Un 4.4.0 Acme.P.Un 3.0.0 Acme.P.Deux 4.4.0)"
+fiche sf "| g | acme/lib | paquet Acme.P.* $LG |"
+deps sf
+has "un paquet repete a une autre version" "x g  non verifie : versions differentes" "$OUT"
+if [ "$(id -u)" != 0 ]; then
+  clone groupe main "$(props Acme.Pack.Un 4.4.0)"
+  chmod 000 "$ROOT/groupe/Directory.Packages.props"
+  fiche sf "| g | acme/lib | paquet Acme.Pack.* $LG |"
+  deps sf
+  chmod 644 "$ROOT/groupe/Directory.Packages.props"
+  has "manifeste illisible" "x g  non verifie : manifeste introuvable : Directory.Packages.props" "$OUT"
+fi
 
 echo "fiche conception sans clone"
 printf -- '---\nname: sansclone\nkind: conception\nsummary: x\n---\n\n%s\n\n| Nom | Source | Base |\n|---|---|---|\n| a | acme/lib | release |\n| b | acme/lib | paquet Acme.Lib dans fantome:x |\n' "$ACCENT" > "$VAULT/projects/sansclone.md"
