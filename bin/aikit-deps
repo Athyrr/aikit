@@ -32,6 +32,12 @@ project=$1; need=${2:-}
 case "$project" in ''|-*|*/*) usage ;; esac
 case "$need" in -*|*/*) usage ;; esac
 
+# Seconds per dependency. The variable exists for scripts/test-deps alone.
+BUDGET=${AIKIT_DEPS_BUDGET:-5}
+# `timeout --version`, never `command -v timeout`: on Windows that finds
+# System32\timeout.exe, whose syntax is another one.
+HAS_TIMEOUT=0
+if timeout --version > /dev/null 2>&1; then HAS_TIMEOUT=1; fi
 # Cells travel joined by US, not by a tab: `read` collapses consecutive tabs,
 # and an empty cell is the normal case in a plan.md row.
 SEP=$'\037'
@@ -118,13 +124,20 @@ unverified() { SIGN=x; TEXT="non verifie : $1"; }
 # call_gh <gh args...> -> 0 and GH_OUT, or 1 and GH_CAUSE. stdin closed: gh must
 # never read the caller's input.
 call_gh() {
-  local rc=0 err
+  local rc=0 err left
   GH_OUT=""; GH_CAUSE=""
   if ! command -v gh > /dev/null 2>&1; then GH_CAUSE="gh absent"; return 1; fi
-  GH_OUT=$(gh "$@" 2> "$ERRFILE" < /dev/null) || rc=$?
+  left=$((DEADLINE - SECONDS))
+  if [ "$left" -le 0 ]; then GH_CAUSE="delai depasse"; return 1; fi
+  if [ "$HAS_TIMEOUT" = 1 ]; then
+    GH_OUT=$(timeout "$left" gh "$@" 2> "$ERRFILE" < /dev/null) || rc=$?
+  else
+    GH_OUT=$(gh "$@" 2> "$ERRFILE" < /dev/null) || rc=$?
+  fi
   if [ "$rc" = 0 ]; then return 0; fi
   err=$(cat "$ERRFILE")
   case "$rc:$err" in
+    124:*) GH_CAUSE="delai depasse" ;;
     4:*|*"HTTP 401"*|*"gh auth login"*) GH_CAUSE="gh non authentifie" ;;
     *"HTTP 404"*|*"Could not resolve"*) GH_CAUSE="introuvable" ;;
     *) GH_CAUSE="reseau" ;;
@@ -171,6 +184,21 @@ pr_head() {  # pr_head <owner/repo#N>
   sha=${GH_OUT%%:*}
   state=$(printf '%s' "${GH_OUT#*:}" | tr '[:upper:]' '[:lower:]')
   GH_OUT="${sha:0:7}:$state"
+}
+
+# unpublished <owner/repo> <tag> -> UNPUB, the text to append to the line. Never
+# a gap: a failed count stays on the line and changes nothing else.
+unpublished() {
+  UNPUB=""
+  if ! call_gh api "repos/$1/compare/$2...HEAD" --jq .ahead_by; then
+    UNPUB=", commits non publies : non verifie"
+    return 0
+  fi
+  case "$GH_OUT" in
+    0) ;;
+    ''|*[!0-9]*) UNPUB=", commits non publies : non verifie" ;;
+    *) UNPUB=", $GH_OUT commits non publies" ;;
+  esac
 }
 
 settle() {  # settle <seen> <upstream>: rules 8 and 9, the bases without a manifest
@@ -265,7 +293,7 @@ group_version() {
 }
 
 eval_package() {  # eval_package <source> <seen> <base>
-  local hit used at amont
+  local hit used at amont tag
   if ! parse_location "${3#paquet }"; then unverified "base inconnue"; return 0; fi
   case "$WHAT" in *' '*|'*') unverified "base inconnue"; return 0 ;; esac
   open_manifest || return 0
@@ -280,7 +308,8 @@ eval_package() {  # eval_package <source> <seen> <base>
   esac
   used=${hit#=}
   if ! latest_release "$1"; then unverified "$GH_CAUSE"; return 0; fi
-  amont=${GH_OUT#v}
+  tag=$GH_OUT
+  amont=${tag#v}
   at="base $used ($CLONE sur $BRANCH), amont $amont"
   if [ "$used" = "$amont" ]; then
     SIGN='='; TEXT=$at
@@ -289,6 +318,8 @@ eval_package() {  # eval_package <source> <seen> <base>
   else
     SIGN='!'; TEXT="$at, vu ${2:-vide}"
   fi
+  unpublished "$1" "$tag"
+  TEXT="$TEXT$UNPUB"
 }
 
 # undeclared <file> <motifs> <covered, one per line> -> the manifest tokens the
@@ -362,6 +393,7 @@ eval_watch() {  # eval_watch <base>
 evaluate() {  # evaluate <index> -> SIGN, TEXT
   local i=$1
   local src=${SOURCES[$i]} base=${BASES[$i]} seen=${SEEN[$i]} on=${ON[$i]} rest
+  DEADLINE=$((SECONDS + BUDGET))
   if [ "${DOUBLE[$i]}" = 1 ]; then unverified "nom en double"; return 0; fi
   if [ "${IN_PLAN[$i]}" = 1 ]; then
     if [ -z "$base" ]; then unverified "base absente"; return 0; fi
@@ -387,7 +419,10 @@ evaluate() {  # evaluate <index> -> SIGN, TEXT
       return 0 ;;
     release)
       if ! latest_release "$src"; then unverified "$GH_CAUSE"; return 0; fi
-      settle "$seen" "$GH_OUT"
+      rest=$GH_OUT
+      settle "$seen" "$rest"
+      unpublished "$src" "$rest"
+      TEXT="$TEXT$UNPUB"
       return 0 ;;
     branche\ *)
       rest=${base#branche }
@@ -416,6 +451,7 @@ verdict() {
   else
     text="$gaps ecart a trier, $missed non verifie"
   fi
+  if [ "$HAS_TIMEOUT" = 0 ]; then text="$text, budget non garanti (timeout absent)"; fi
   echo "verdict : $text"
 }
 

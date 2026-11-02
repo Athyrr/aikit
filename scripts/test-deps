@@ -76,7 +76,10 @@ gh_dir() {  # gh_dir <args de gh>... -> le dossier de reponse, remis a vide
 }
 gh_repond() { local r=$1 d; shift; d=$(gh_dir "$@"); printf '%s\n' "$r" > "$d/out"; }  # gh_repond <sortie> <args>...
 gh_echoue() { local c=$1 e=$2 d; shift 2; d=$(gh_dir "$@"); printf '%s\n' "$e" > "$d/err"; echo "$c" > "$d/rc"; }  # gh_echoue <code> <stderr> <args>...
-release_de() { gh_repond "$2" api "repos/$1/releases/latest" --jq .tag_name; }  # release_de <owner/repo> <tag>
+release_de() {  # release_de <owner/repo> <tag> : aucun commit apres le tag
+  gh_repond "$2" api "repos/$1/releases/latest" --jq .tag_name
+  gh_repond 0 api "repos/$1/compare/$2...HEAD" --jq .ahead_by
+}
 appels() { cat "$FAUX_GH/appels" 2>/dev/null; }
 oublie_appels() { : > "$FAUX_GH/appels"; }
 
@@ -317,7 +320,7 @@ is "... x, ~ et ? restent" "dependances sz
 x rel  non verifie : gh absent
 ~ fig  fige v1 (motif)
 ? man  manuel, jamais vu, a regarder
-verdict : 0 ecart a trier, 1 non verifie" "$OUT"
+verdict : 0 ecart a trier, 1 non verifie, budget non garanti (timeout absent)" "$OUT"
 
 echo "paquet"
 # clone <nom> <branche> <contenu du manifeste> : une fiche, un depot, un manifeste.
@@ -511,6 +514,52 @@ has "motif a etoile au milieu" "x b  non verifie : base inconnue" "$OUT"
 has "motif a double etoile" "x c  non verifie : base inconnue" "$OUT"
 has "motif hors de l'alphabet" "x d  non verifie : base inconnue" "$OUT"
 hasnt "... aucun faux tout declare" "tout declare" "$OUT"
+
+echo "commits non publies"
+release_de acme/lib v4.4.0
+gh_repond 3 api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+fiche sn "| rel | acme/lib | release |" "| pa | acme/lib | paquet Acme.Lib $L |"
+planmd sn b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |"
+deps sn b
+has "release, N commits non publies, jamais un ecart" "= rel  vu v4.4.0, amont v4.4.0, 3 commits non publies" "$OUT"
+has "paquet, le tag d'origine sert au comptage" "= pa   base 4.4.0 (monclone sur HEAD detachee), amont 4.4.0, 3 commits non publies" "$OUT"
+is "... sortie 0" "0" "$RC"
+gh_repond 0 api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+deps sn b
+hasnt "zero commit : rien a dire" "non publies" "$OUT"
+gh_echoue 1 'gh: Server Error (HTTP 500)' api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+deps sn b
+has "comptage en echec, la ligne reste valide" "= rel  vu v4.4.0, amont v4.4.0, commits non publies : non verifie" "$OUT"
+is "... sortie 0" "0" "$RC"
+fiche sn2 "| br | acme/lib | branche master |"
+oublie_appels
+deps sn2
+hasnt "branche : pas de comptage" "compare" "$(appels)"
+
+echo "budget et timeout"
+d=$(gh_dir api repos/acme/lent/releases/latest --jq .tag_name); echo 3 > "$d/dort"
+fiche sq "| a | acme/lent | release |"
+debut=$SECONDS
+OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps sq 2>&1); RC=$?
+has "delai depasse" "x a  non verifie : delai depasse" "$OUT"
+is "... sortie 0" "0" "$RC"
+[ $((SECONDS - debut)) -lt 3 ] && ok "... le budget coupe gh" || ko "... le budget coupe gh" "< 3 s" "$((SECONDS - debut)) s"
+has "le budget vaut 5 s" 'BUDGET=${AIKIT_DEPS_BUDGET:-5}' "$(cat bin/aikit-deps)"
+
+GHSEUL="$W/ghseul"; mkdir -p "$GHSEUL"; ln -s "$FAUXBIN/gh" "$GHSEUL/gh"
+gh_repond 0 api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+fiche sr2 "| rel | acme/lib | release |"
+planmd sr2 b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |"
+OUT=$(PATH="$NOBIN:$GHSEUL" bin/aikit-deps sr2 b 2>&1); RC=$?
+is "sans timeout : la ligne sort quand meme" "= rel  vu v4.4.0, amont v4.4.0" "$(printf '%s\n' "$OUT" | sed -n 2,2p)"
+has "... et le verdict le dit" "verdict : rien a trier, budget non garanti (timeout absent)" "$OUT"
+is "... sortie 0" "0" "$RC"
+
+WIN="$W/win"; mkdir -p "$WIN"
+printf '#!/usr/bin/env bash\necho "Erreur : syntaxe incorrecte." >&2\nexit 1\n' > "$WIN/timeout"; chmod +x "$WIN/timeout"
+OUT=$(PATH="$WIN:$PATH" bin/aikit-deps sr2 b 2>&1)
+has "un timeout qui ne repond pas a --version ne compte pas" "budget non garanti (timeout absent)" "$OUT"
+has "... et n'est pas appele" "= rel  vu v4.4.0" "$OUT"
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.
