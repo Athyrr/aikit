@@ -229,19 +229,7 @@ claude plugin marketplace add Athyrr/helia
 claude plugin install helia@athyrr-marketplace --scope user
 ```
 
-### Migrating from aiKit
-
-Up to 0.27.0 the plugin was `aikit@aikit-marketplace`. To move an existing install:
-
-```bash
-claude plugin marketplace remove aikit-marketplace
-claude plugin marketplace add Athyrr/helia
-claude plugin install helia@athyrr-marketplace --scope user
-```
-
-Then `/reload-plugins`. Old `AIKIT_*` variables and `~/.config/aikit/` are still read for now.
-
-Register the marketplace over **SSH**, and install in **one scope only** — two
+Install in **one scope only** — two
 scopes means two copies, and an update touches one while the other keeps
 running. `--scope user` makes the method available from any repository on the
 machine: it is a way of working, not vault data. **You do not clone this
@@ -253,8 +241,20 @@ per project, and declare the vault in `~/.config/helia/vaults`.
 tooling parses and the six sections a registry file must hold (an ecosystem carries four).
 
 **[`SETUP.md`](SETUP.md) is the full procedure** — prerequisites (Git for
-Windows is a hard one), why SSH rather than HTTPS, registering a vault,
+Windows is a hard one), registering a vault,
 and the development loop below. That text lives there, once.
+
+### Migrating from aiKit
+
+Up to 0.27.0 the plugin was `aikit@aikit-marketplace`. To move an existing install:
+
+```bash
+claude plugin marketplace remove aikit-marketplace
+claude plugin marketplace add Athyrr/helia
+claude plugin install helia@athyrr-marketplace --scope user
+```
+
+Then `/reload-plugins`. Old `AIKIT_*` variables and `~/.config/aikit/` are still read for now.
 
 ## Iterating on the method
 

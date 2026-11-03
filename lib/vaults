@@ -36,7 +36,11 @@ vaults_migrate_legacy() {
   [ -z "${HELIA_VAULTS:-}" ] && [ -z "${AIKIT_VAULTS:-}" ] && [ -n "${HOME:-}" ] || return 0
   local new="$HOME/.config/helia/vaults" old="$HOME/.config/aikit/vaults"
   [ ! -e "$new" ] && [ -f "$old" ] || return 0
-  mkdir -p "${new%/*}" 2> /dev/null && cp -p "$old" "$new" 2> /dev/null
+  # Copie vers un temporaire puis mv : une copie partielle ne remplace jamais
+  # le fichier. `|| :` : un echec ne doit pas tuer l'hote sous `set -e`.
+  local tmp="$new.tmp.$$"
+  { mkdir -p "${new%/*}" && cp -p "$old" "$tmp" && mv -f "$tmp" "$new"; } 2> /dev/null || :
+  rm -f "$tmp" 2> /dev/null || :
   return 0
 }
 

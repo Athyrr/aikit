@@ -33,9 +33,8 @@ claude plugin marketplace add Athyrr/helia
 claude plugin install helia@athyrr-marketplace --scope user
 ```
 
-Register over **SSH**. The docs state that background refreshes disable
-credential helpers, so a private marketplace registered over HTTPS fails to
-auto-update. Install in **one scope only** — two scopes means two copies and an
+The marketplace is a public `github` source, so no credentials are needed to
+register or update it. Install in **one scope only** — two scopes means two copies and an
 update touches one while the other keeps running.
 
 `--scope user` makes the method available from any repository on the machine:

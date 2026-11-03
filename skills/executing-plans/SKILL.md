@@ -210,11 +210,11 @@ task always stop the loop and go to your human partner
 
 **No other case passes `model` or `effort` at dispatch — the dispatch
 templates included.** Without a signal, the archetype runs at its frontmatter
-values. A domain expert is not an Helia archetype — its frontmatter belongs
+values. A domain expert is not a Helia archetype — its frontmatter belongs
 to its project — which is why its row always passes both.
 
 **Always pass the model explicitly when you dispatch an agent that is
-neither an Helia archetype nor a domain expert.** An omitted model inherits
+neither a Helia archetype nor a domain expert.** An omitted model inherits
 your session's.
 
 **Limits you cannot see from here.** The `effort` dispatch parameter needs a
@@ -258,7 +258,7 @@ explorer). Report: the same fields, with `"event":"report"`, plus `"status":"suc
 `"status":"failure"`, read off the implementer's `STATUS:` line, or `success`
 for a reviewer that returned a verdict (APPROVE or REJECT alike).
 
-Both unset → skip this entirely: no file, no probing for one.
+Both unset or empty → skip this entirely: no file, no probing for one.
 
 ## The Task Sequence
 
@@ -325,7 +325,7 @@ The verdict reaches `vault/<project>/<feature>/plan.md` in either of two equival
 
 Record BASE (`git rev-parse HEAD`) before dispatching — the review diff and
 fix-round diffs need it. If the event log file is set (see Optional event log), append the dispatch
-line (see Optional event log) before sending the prompt.
+line before sending the prompt.
 
 **The dispatch prompt carries four things, and nothing else:**
 
@@ -378,7 +378,7 @@ The implementer returns exactly three lines: `STATUS`, `FILES`, `TEST` (see
 diff, no log, no narrative. Record those three lines verbatim as the task's
 checklist annotation in `vault/<project>/<feature>/plan.md` before doing anything else; that is
 now the only place the attempt's detail lives. If the event log file is set (see Optional event log),
-append the report line (see Optional event log) using the `STATUS` you just
+append the report line using the `STATUS` you just
 recorded.
 
 **`STATUS: SUCCESS` or `STATUS: SUCCESS (concern: ...)`:** First run the

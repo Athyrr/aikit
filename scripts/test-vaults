@@ -1124,6 +1124,18 @@ is "demarrage suivant : la nouvelle config n'est jamais ecrasee" "vault autre $V
 H="$(rhome)"; mkdir -p "$H/.config/aikit"; echo "vault espace $VAULT" > "$H/.config/aikit/vaults"
 env -u AIKIT_VAULTS HOME="$H" HELIA_VAULTS="$CONF" bash hooks/session-start > /dev/null
 [ ! -e "$H/.config/helia" ] && ok "HELIA_VAULTS posee : aucune copie" || ko "HELIA_VAULTS posee : aucune copie" "absent" "present"
+# Copie impossible (nouvelle config = lien pendant) : le hook ne meurt pas.
+H="$(rhome)"; mkdir -p "$H/.config/aikit" "$H/.config/helia"
+printf 'vault espace %s\nroot  espace %s\n' "$VAULT" "$ROOT" > "$H/.config/aikit/vaults"
+cp -p "$H/.config/aikit/vaults" "$RH/avant2"
+ln -s "$H/inexistant" "$H/.config/helia/vaults"
+out="$(hk_copie "$H" 2> /dev/null)" && rc=0 || rc=$?
+is "copie impossible : le hook sort en 0" "0" "$rc"
+case "$(printf '%s' "$out" | json_ctx)" in
+  *"## Vault: espace"*) ok "copie impossible : JSON valide, vault route" ;;
+  *) ko "copie impossible : JSON valide, vault route" "## Vault: espace" "absent" ;;
+esac
+is "copie impossible : l'ancienne config reste intacte" "$(cat "$RH/avant2")" "$(cat "$H/.config/aikit/vaults")"
 H="$(rhome)"
 ctx="$(hk_copie "$H" | json_ctx)"
 has "aucun vault : le message nomme la nouvelle config" "~/.config/helia/vaults" "$ctx"
