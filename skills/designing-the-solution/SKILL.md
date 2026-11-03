@@ -37,7 +37,7 @@ override it:
   Understanding the kind of app is not enough — bounded means the flow
   you are changing is already here to read. If there is no existing
   flow to change, the task is not bounded. Question the design with
-  `aikit:grilling`, present a short design IN CHAT (a few
+  `helia:grilling`, present a short design IN CHAT (a few
   sentences to a few short paragraphs), and STOP. Implementation
   starts only after your human partner says yes to that design — a
   bounded task's approval is as hard a gate as an architectural
@@ -86,7 +86,7 @@ your path and complete them in order.
 
 **Bounded:**
 1. **Explore project context** — check files, docs, recent commits
-2. **Question the design with `aikit:grilling`** — invoke it via the
+2. **Question the design with `helia:grilling`** — invoke it via the
    Skill tool; it works the question tree in passes, asking only
    questions whose prerequisites are already settled, and requires you
    to recommend an answer to every question you ask — never a bare
@@ -98,7 +98,7 @@ your path and complete them in order.
 **Architectural:**
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
-3. **Question the design with `aikit:grilling`** — same as the bounded
+3. **Question the design with `helia:grilling`** — same as the bounded
    path's step 2. Purpose/constraints/success criteria are what the
    tree is settling.
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
@@ -114,13 +114,13 @@ your path and complete them in order.
 digraph designing_the_solution {
     "Classify: feasibility / bounded / architectural" [shape=diamond];
     "Present question + probe (2-3 sentences)" [shape=box];
-    "Question with aikit:grilling (bounded)" [shape=box];
+    "Question with helia:grilling (bounded)" [shape=box];
     "Present short design in chat" [shape=box];
     "Human approves?" [shape=diamond];
     "Investigate; report recommendation" [shape=doublecircle];
     "Implement via normal workflow (no plan doc)" [shape=doublecircle];
     "Explore project context" [shape=box];
-    "Question with aikit:grilling" [shape=box];
+    "Question with helia:grilling" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "Human approves design?" [shape=diamond];
@@ -131,16 +131,16 @@ digraph designing_the_solution {
     "Hidden complexity? Upgrade path" [shape=box];
 
     "Classify: feasibility / bounded / architectural" -> "Present question + probe (2-3 sentences)" [label="feasibility"];
-    "Classify: feasibility / bounded / architectural" -> "Question with aikit:grilling (bounded)" [label="bounded"];
+    "Classify: feasibility / bounded / architectural" -> "Question with helia:grilling (bounded)" [label="bounded"];
     "Classify: feasibility / bounded / architectural" -> "Explore project context" [label="architectural"];
     "Present question + probe (2-3 sentences)" -> "Human approves?";
-    "Question with aikit:grilling (bounded)" -> "Present short design in chat";
+    "Question with helia:grilling (bounded)" -> "Present short design in chat";
     "Present short design in chat" -> "Human approves?";
     "Human approves?" -> "Investigate; report recommendation" [label="feasibility: yes"];
     "Human approves?" -> "Implement via normal workflow (no plan doc)" [label="bounded: yes"];
     "Hidden complexity? Upgrade path" -> "Classify: feasibility / bounded / architectural";
-    "Explore project context" -> "Question with aikit:grilling";
-    "Question with aikit:grilling" -> "Propose 2-3 approaches";
+    "Explore project context" -> "Question with helia:grilling";
+    "Question with helia:grilling" -> "Propose 2-3 approaches";
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "Human approves design?";
     "Human approves design?" -> "Present design sections" [label="no, revise"];
@@ -173,17 +173,17 @@ is the whole process.
   a light look, directly, is fine: `ls`, `git log`, a README skim.
 - **When understanding the request needs analyzing existing code or a
   non-trivial architecture, you are forbidden from reading it massively
-  yourself.** Dispatch `aikit:explorer` with one closed question — "how does
+  yourself.** Dispatch `helia:explorer` with one closed question — "how does
   X work", "where does Y live", "what would Z touch" — never "look into the
   auth system." Its answer back to you is a factual synthesis, 30-50 lines
-  at most, concise bullets, zero raw code blocks — `aikit:budgeting-context`.
+  at most, concise bullets, zero raw code blocks — `helia:budgeting-context`.
   If the first answer surfaces a second question, dispatch it separately
   rather than widening the first.
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help your human partner decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
 - For appropriately-scoped projects, **question the design with
-  `aikit:grilling`** (see Bounded step 2 above).
-- `grilling` relies on `aikit:budgeting-context` for facts, never asking the human partner.
+  `helia:grilling`** (see Bounded step 2 above).
+- `grilling` relies on `helia:budgeting-context` for facts, never asking the human partner.
 - Prefer multiple choice questions when possible, but open-ended is fine too
 - Focus on understanding: purpose, constraints, success criteria
 

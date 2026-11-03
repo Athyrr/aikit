@@ -102,14 +102,15 @@ const URL_HOST = process.env.BRAINSTORM_URL_HOST || (HOST === '127.0.0.1' ? 'loc
 const SESSION_DIR = process.env.BRAINSTORM_DIR || '/tmp/brainstorm';
 const CONTENT_DIR = path.join(SESSION_DIR, 'content');
 const STATE_DIR = path.join(SESSION_DIR, 'state');
-const AIKIT_VERSION = readAikitVersion();
-const AIKIT_BRAND_IMAGE_URL = '';
+const HELIA_VERSION = readHeliaVersion();
+const HELIA_BRAND_IMAGE_URL = '';
 const TELEMETRY_DISABLE_ENV_VARS = [
-  'AIKIT_DISABLE_TELEMETRY',
+  'HELIA_DISABLE_TELEMETRY',
+  'AIKIT_DISABLE_TELEMETRY', // ancien nom, lu jusqu'a la migration de tous les postes
   'DISABLE_TELEMETRY',
   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'
 ];
-const AIKIT_TELEMETRY_DISABLED = true; // aiKit: jamais d'appel reseau
+const HELIA_TELEMETRY_DISABLED = true; // Helia: jamais d'appel reseau
 let ownerPid = process.env.BRAINSTORM_OWNER_PID ? Number(process.env.BRAINSTORM_OWNER_PID) : null;
 
 // Per-session secret key. The companion is reachable by any local browser tab
@@ -205,7 +206,7 @@ const helperInjection = '<script>\n' + helperScript + '\n</script>';
 
 // ========== Helper Functions ==========
 
-function readAikitVersion() {
+function readHeliaVersion() {
   const root = path.join(__dirname, '../../..');
   const manifests = [
     path.join(root, 'package.json'),
@@ -240,8 +241,8 @@ function escapeHtmlText(value) {
 }
 
 function brandMarkup() {
-  const version = escapeHtmlText(AIKIT_VERSION);
-  return '<div class="brand"><span class="brand-copy">aiKit v' + version + '</span></div>';
+  const version = escapeHtmlText(HELIA_VERSION);
+  return '<div class="brand"><span class="brand-copy">Helia v' + version + '</span></div>';
 }
 
 function renderBranding(html) {
