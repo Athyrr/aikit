@@ -4,6 +4,18 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
 ## Unreleased
+- **Dependances amont.** Une `upstream dependency` (`VOCABULARY.md`) est tout ce
+  dont le travail depend et qui peut changer sans nous. Section facultative
+  `## Dépendances` des fiches projet et de `plan.md` (contrat dans
+  `aikit:registering-a-project`). Nouvelle commande `bin/aikit-deps`, en lecture
+  seule, bases `paquet` (nom exact, ou prefixe `*` a version unique), `surveille`,
+  `release`, `branche`, `pr`, `fige`, `manuel`. `aikit:understanding-need` l'appelle
+  a chaque besoin et reprise, l'orchestrateur avant le dispatch d'`aikit:planner`
+  (`aikit:writing-plans`). Nouvelle skill `aikit:checking-dependencies` pour le tri
+  d'un ecart sur un plan avec taches ; ligne dans `aikit:routing-failures`.
+  Suite `scripts/test-deps`, porte 13 de `scripts/doctor` (treize portes).
+  `scripts/test-plan-drift` repasse en `100755` : sans ce mode, la porte 11
+  refusait tout commit.
 - **Effort par archetype.** Chaque archetype declare `model:` et `effort:`
   dans son frontmatter : `aikit:planner` et `aikit:reviewer` sur opus a
   `high` ; `aikit:explorer`, `aikit:implementer`, `aikit:probe` et
