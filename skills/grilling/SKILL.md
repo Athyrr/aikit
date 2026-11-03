@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: Use during phase 2, inside aikit:designing-the-solution - works the question tree in passes, only asking questions whose prerequisites are settled, and recommending an answer to every one
+description: Use during phase 2, inside helia:designing-the-solution - works the question tree in passes, only asking questions whose prerequisites are settled, and recommending an answer to every one
 ---
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.

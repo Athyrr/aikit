@@ -8,7 +8,7 @@ new breakage. It is not a fresh review — the full review already happened.
 that the fix itself broke nothing.
 
 ```
-Subagent (aikit:reviewer):
+Subagent (helia:reviewer):
   description: "Re-review Task N fix attempt K"
   model: [MODEL — omit this line: no row of SKILL.md's escalation table
          changes a reviewer's model]

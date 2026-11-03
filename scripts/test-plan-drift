@@ -39,7 +39,7 @@ commit() {  # commit <message> <fichier>... : cree les fichiers et les commite
   for f in "$@"; do mkdir -p "$REPO/$(dirname "$f")"; echo "$m" >> "$REPO/$f"; done
   G add -A && G commit -q -m "$m"
 }
-pd() {  # pd <args de plan-drift> -> OUT, ERR, RC ; jamais lance depuis la racine d'aikit
+pd() {  # pd <args de plan-drift> -> OUT, ERR, RC ; jamais lance depuis la racine d'helia
   OUT=$(cd "$REPO" && "${PDRUN[@]}" "$PLAN" "$@" 2>"$ERRF"); RC=$?
   ERR=$(cat "$ERRF")
 }

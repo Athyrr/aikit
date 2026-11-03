@@ -12,7 +12,7 @@ Dispatch a code reviewer subagent to catch issues before they cascade. The revie
 ## When to Request Review
 
 **Mandatory:**
-- After each task when executing a plan with `aikit:executing-plans`
+- After each task when executing a plan with `helia:executing-plans`
 - After completing major feature
 - Before merge to main
 
@@ -31,7 +31,7 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 **2. Dispatch code reviewer subagent:**
 
-Dispatch `aikit:reviewer`, filling the template at [code-reviewer.md](code-reviewer.md)
+Dispatch `helia:reviewer`, filling the template at [code-reviewer.md](code-reviewer.md)
 
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built

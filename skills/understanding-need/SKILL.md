@@ -16,7 +16,7 @@ so a delegated understanding is an invented one.
 
 This phase runs **once per distinct need**, not once per message. A need
 already routed stays routed: answering a clarifying question you asked during
-`aikit:designing-the-solution`, confirming the feature slug, narrowing the scope,
+`helia:designing-the-solution`, confirming the feature slug, narrowing the scope,
 approving a spec — all of that is *inside* the same need. Do not re-invoke this
 skill for it. Continue the phase you are in.
 
@@ -63,8 +63,8 @@ is the one a registry would have given you, and phase 6 cannot run without it.
 
 | The request is | Route |
 |---|---|
-| Something is broken / behaves wrong | `aikit:diagnosing` — you are diagnosing, not building |
-| … and the diagnosis needs the live systems | `aikit:delegating-to-a-perimeter` — run it in its own process. Its tools are already in your session; what you are keeping out is its forty tool calls. Never guess at production state from the code. |
+| Something is broken / behaves wrong | `helia:diagnosing` — you are diagnosing, not building |
+| … and the diagnosis needs the live systems | `helia:delegating-to-a-perimeter` — run it in its own process. Its tools are already in your session; what you are keeping out is its forty tool calls. Never guess at production state from the code. |
 | Build, add, change, remove behaviour | Estimate size — see 2a below |
 | "How does X work / where is Y" | Answer it. No feature directory, no spec — unless the answer must survive the session or takes several: then it is an `etude`, next row. |
 | A question whose answer must outlive the session | `type: etude` — open the directory (step 3); the artifact is `etude.md` (question, constats, recommandation), no `plan.md` |
@@ -85,8 +85,8 @@ Before opening a feature directory, make the call:
 | | Fast-Path | Heavy-Path |
 |---|---|---|
 | Criteria | ≤2 files, no API/contract break, no critical dependency | anything bigger, a new component, a refactor, or you are unsure |
-| Route | Dispatch a light implementer directly — no `spec.md`, no `plan.md` | `aikit:designing-the-solution` — continue to phase 2 |
-| Proof | `git diff --name-only` matches the file(s) you named | `aikit:checking-plan-drift` per task |
+| Route | Dispatch a light implementer directly — no `spec.md`, no `plan.md` | `helia:designing-the-solution` — continue to phase 2 |
+| Proof | `git diff --name-only` matches the file(s) you named | `helia:checking-plan-drift` per task |
 
 State the estimate back to the human in the same breath as the route
 confirmation (step 4) — "Fast-Path, touches `foo.py` and its test" — so a
@@ -94,7 +94,7 @@ wrong guess is visible before work starts, not after.
 
 **When in doubt, Heavy-Path.** An estimate that turns out wrong mid-flight is
 not a reason to keep going on the cheap route — stop, name what you found,
-and re-route through `aikit:designing-the-solution`. A Fast-Path task whose diff grows
+and re-route through `helia:designing-the-solution`. A Fast-Path task whose diff grows
 past what was named is exactly the drift the file declaration exists to catch;
 treat it the same way whether the declaration came from a plan task or from
 this estimate.
@@ -106,11 +106,11 @@ prerequisites before it opens.
 
 **Fast-Path dispatch:** the request itself, restated with the exact files
 named, is the brief — there is no plan to extract it from. Dispatch
-`aikit:implementer` at its frontmatter model and effort — pass neither. When it reports done, run
+`helia:implementer` at its frontmatter model and effort — pass neither. When it reports done, run
 `git diff --name-only` yourself against the files you named in step 4 — a
 match is the proof: no reviewer, no `vault/<project>/<feature>/plan.md`, no intermediate
 documentation of any kind. A mismatch is drift — route it with
-`aikit:routing-failures` rather than accepting a "close enough" diff.
+`helia:routing-failures` rather than accepting a "close enough" diff.
 
 ## 3. Open or resume the feature directory (Heavy-Path only)
 
@@ -163,10 +163,10 @@ Phase 2 — nothing specified yet.
 
 The top-level `## Re-enter at` heading is rewritten in place on every cycle
 transition — it always reflects the *current* re-entry point. The `## Cycle N`
-sections `aikit:routing-failures` appends below it are history, not the live
+sections `helia:routing-failures` appends below it are history, not the live
 pointer: after an upward cycle, trust the heading, not the most recent section.
 
-Phase 6 closes it; `aikit:routing-failures` writes to it when a cycle goes up.
+Phase 6 closes it; `helia:routing-failures` writes to it when a cycle goes up.
 Between those, it is the only thing a resumed session can trust.
 
 **A new need in a project that has a trame may be a tranche.** If
@@ -185,16 +185,16 @@ so anything discovered inside it that would otherwise derive — because the
 current cycle needs the answer to continue — goes **up** instead, to the
 parent named in its frontmatter, never sideways into a grandchild. Anything
 that does not block its own progress is a candidate, same as anywhere else
-(`aikit:routing-failures`).
+(`helia:routing-failures`).
 
 A resumed feature whose `vault/<project>/<feature>/plan.md` names an unresolved blocker resumes at
-`aikit:routing-failures`, not at execution.
+`helia:routing-failures`, not at execution.
 
 ## 3a. Upstream dependencies
 
 On every path, Fast-Path included, when the project has a registry file (not for a plain question), before re-entering, starting or dispatching, run
-`aikit-deps <project> <need>; echo "sortie=$?"`, without `<need>` unless its `plan.md` exists. A **!** line
-on a plan with a `### Task N:` heading: `aikit:checking-dependencies`. Otherwise show the lines, no stop.
+`helia-deps <project> <need>; echo "sortie=$?"`, without `<need>` unless its `plan.md` exists. A **!** line
+on a plan with a `### Task N:` heading: `helia:checking-dependencies`. Otherwise show the lines, no stop.
 An `x`, or an exit code other than 0 and 1: tell your human partner in one sentence. A `?` whose `Le` is
 empty, or at your human partner's request: check it with your own tools; your human partner decides if `Le` moves.
 
@@ -221,12 +221,12 @@ changes nothing, continue on the current model.
 **Fast-Path:** state back, in one line: the project and the file(s) you expect
 to touch. Get agreement, then continue.
 
-**Once agreed, record the need.** If `AIKIT_EVENTS_FILE` is set and non-empty,
+**Once agreed, record the need.** If the event log file — `HELIA_EVENTS_FILE`, or `AIKIT_EVENTS_FILE` when the first is unset or empty (former name, read until every machine is migrated) — is set,
 append one JSON line to it (create the file if absent, never a partial line):
 `{"event":"need","type":"<feature|diagnostic|etude|refonte|fast>","project":"<registry name>","feature":"<slug>","session":"<CLAUDE_CODE_SESSION_ID>","ts":"<ISO 8601>"}`.
 Once per need, and again when a need is resumed in a new session (`/clear`
 included: the id changes). On Fast-Path `type` is `fast` and `feature` is
-`null`. `CLAUDE_CODE_SESSION_ID` unset or empty, or `AIKIT_EVENTS_FILE` unset
+`null`. `CLAUDE_CODE_SESSION_ID` unset or empty, or neither variable set
 or empty → write nothing, no probing: whoever reads the log cannot use a line
 without a session.
 

@@ -8,11 +8,11 @@ effort: high
 
 You turn an agreed spec into a plan someone else can execute without you.
 
-Follow `aikit:writing-plans`. This file is the dispatch contract, not the
+Follow `helia:writing-plans`. This file is the dispatch contract, not the
 method — read the skill.
 
 **Model note:** you run at the model and effort your frontmatter declares.
-Your orchestrator may raise your effort on a signal of `aikit:executing-plans`'
+Your orchestrator may raise your effort on a signal of `helia:executing-plans`'
 escalation table; it never changes your model without your human partner. If
 you were dispatched at a higher effort than your frontmatter's, that is why.
 
@@ -28,7 +28,7 @@ this kind of task → that section, with its cost. `example-service/EVENT_FLOWS.
 is 27,400 tokens; the slice you need is rarely above 4,000. Opening the file
 whole spends your context budget on text that has nothing to do with the spec.
 
-**Upstream dependencies are not yours.** `aikit:writing-plans` runs `aikit-deps`
+**Upstream dependencies are not yours.** `helia:writing-plans` runs `helia-deps`
 on the orchestrator's side, before your dispatch: you can neither ask your human
 partner nor dispatch an agent. Skip that section, and keep any `## Dépendances`
 section of `plan.md` above the first task.
@@ -37,7 +37,7 @@ section of `plan.md` above the first task.
 
 - **Every task declares its files** — Create / Modify / Test, exact paths. This
   single declaration does three jobs: it bounds the implementer's scope, it
-  makes `aikit:checking-plan-drift` possible, and disjoint file sets are what
+  makes `helia:checking-plan-drift` possible, and disjoint file sets are what
   make parallel dispatch safe. A task without a Files block is not a task,
   except a `[humain]` one.
 - **Tasks that can run in parallel must have disjoint file sets.** If two tasks
@@ -50,7 +50,7 @@ section of `plan.md` above the first task.
 - **A step the spec reserves for the human is a task**, titled
   `### Task N: [humain] <title>`, placed where the check can happen, with
   checkboxes and no Files block. The rule and the refusal guard are in
-  `aikit:writing-plans`, "Human Tasks".
+  `helia:writing-plans`, "Human Tasks".
 
 ## The task size rule
 

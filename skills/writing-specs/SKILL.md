@@ -10,8 +10,8 @@ later phase argues from.
 
 **Announce:** "Using writing-specs to record the design."
 
-`aikit:designing-the-solution` produces the design through dialogue. This skill governs
-what gets written down. Run `aikit:designing-the-solution` first; do not write a spec from a
+`helia:designing-the-solution` produces the design through dialogue. This skill governs
+what gets written down. Run `helia:designing-the-solution` first; do not write a spec from a
 request you have not explored.
 
 ## Where it goes
@@ -57,7 +57,7 @@ level. Carry it into each task brief too.
 while the work runs, `done` once phase 6 has produced a passing verdict,
 `abandonne` when the human partner drops the need — archived all the same,
 `superseded` when a later spec replaces this one. Nothing else marks a feature
-as finished — `vault/` is an Obsidian vault and `aikit.base` reads exactly this
+as finished — `vault/` is an Obsidian vault and `helia.base` reads exactly this
 field, so a spec left at `agreed` reads as still in flight forever.
 
 `type:` is the need's type from its phase 1 stub — `feature` or `refonte` for a
@@ -73,7 +73,7 @@ directions: the parent's `vault/<project>/<feature>/plan.md` gets `derived: <chi
 the child's `spec.md` and `vault/<project>/<feature>/plan.md` get `derived_from: <parent-slug>`. Depth is
 capped at one — a spec carrying `derived_from:` may never also carry `derived:`.
 If you are about to write both, the problem does not derive again: it goes **up**
-to the parent, via `aikit:routing-failures`.
+to the parent, via `helia:routing-failures`.
 
 The wikilinks cost nothing and make the artifact directory navigable as a vault.
 
@@ -108,8 +108,8 @@ detached document that can drift out of sync.
 
 The expert answers what a document cannot: a judgement on **this** spec. Skip
 phase 3 only where no domain expert is *available* — check both the registry
-and any standing workspace expert (`aikit:understanding-need` names how)
-before concluding none exists. Then continue to `aikit:writing-plans`.
+and any standing workspace expert (`helia:understanding-need` names how)
+before concluding none exists. Then continue to `helia:writing-plans`.
 
 ## Red flags
 

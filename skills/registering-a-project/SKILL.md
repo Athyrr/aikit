@@ -56,7 +56,7 @@ worktrees, no drift check, no rollback).
 routing was right.
 
 **3. Load before working** — the routing table. This is the section that makes
-`aikit:budgeting-context` work:
+`helia:budgeting-context` work:
 
 ```
 | The task touches | Read | ~tok |
@@ -84,7 +84,7 @@ Phase 2 is exactly where projects that do not exist yet are born. A conception
 project is a project: same file, same six sections, three fields it cannot have.
 
 - **Section 1 Identity** states the absence and its cost: no worktree, no
-  `aikit:checking-plan-drift`, no rollback, no diff to review.
+  `helia:checking-plan-drift`, no rollback, no diff to review.
 - **Section 5 Completion criterion** carries no command. The criterion is **the
   spec is agreed**; phase 6 reads as the human's review of `spec.md`. The honest
   verdict is `SPEC ACTEE`, never `PASS`.
@@ -112,7 +112,7 @@ An **ecosystem** is a registry file with `kind: ecosysteme` and no `repo:`. It c
 ## Optional last section — `## Dépendances`
 
 What the project relies on and that can change without it (`VOCABULARY.md`,
-**upstream dependency**). `aikit-deps` reads it; without it, the command prints
+**upstream dependency**). `helia-deps` reads it; without it, the command prints
 `aucune dependance declaree`. One need's own dependency goes in `## Dépendances`
 of its `plan.md`, above the first task, with three more columns: Vu, Le,
 Conclusion.
@@ -167,7 +167,7 @@ present even when empty:
 - `heuristics.md` — header only at first; written at phase 6, never here.
 - `_notes/` — one note per file (`type: note`).
 - `_archive/` — finished or abandoned needs, `<need>/` each.
-- `_reference/` — background documents and an `INDEX.md`; created on request by `aikit:capturing-reference`, **not part of the skeleton**.
+- `_reference/` — background documents and an `INDEX.md`; created on request by `helia:capturing-reference`, **not part of the skeleton**.
 
 The `_` prefix is reserved: no need slug may start with it. git does not track
 empty directories, hence a `.gitkeep` in each. Set `p` and `v`, then run:
@@ -196,8 +196,8 @@ An ecosystem owns the same directory, from the same skeleton (`p=<ecosystem name
 4. Establish the completion criterion by **running it**, not by reading a README.
 5. Check the hook picks it up:
    ```bash
-   AIKIT_VAULTS=~/.config/aikit/vaults CLAUDE_PLUGIN_ROOT=<aikit clone> \
-     bash <aikit clone>/hooks/session-start | python3 -m json.tool | grep <name>
+   HELIA_VAULTS=~/.config/helia/vaults CLAUDE_PLUGIN_ROOT=<helia clone> \
+     bash <helia clone>/hooks/session-start | python3 -m json.tool | grep <name>
    ```
 6. No deploy. The registry is read from source.
 

@@ -1,21 +1,21 @@
 ---
 name: checking-dependencies
-description: Use when aikit-deps reports a change since last seen on a plan that already has tasks, at a resumption or before a re-planning - upstream moved, and work on the need cannot continue until your human partner has ruled on each change
+description: Use when helia-deps reports a change since last seen on a plan that already has tasks, at a resumption or before a re-planning - upstream moved, and work on the need cannot continue until your human partner has ruled on each change
 ---
 
 # Checking Dependencies
 
 An upstream change nobody looked at is ground moving under the plan. This skill
-turns every **!** line of `aikit-deps` into a ruling, in one stop.
+turns every **!** line of `helia-deps` into a ruling, in one stop.
 
 **Announce:** "Using checking-dependencies to triage upstream changes."
 
 It runs on a plan with at least one `### Task N:` heading. Anywhere else, a
-**!** line is a line: `aikit:understanding-need` and `aikit:writing-plans` say so.
+**!** line is a line: `helia:understanding-need` and `helia:writing-plans` say so.
 
 ## 1. One explorer for all the changes
 
-Dispatch a single `aikit:explorer`, whatever the number of **!** lines, and wait
+Dispatch a single `helia:explorer`, whatever the number of **!** lines, and wait
 for its report. Its brief holds, for each **!** line: name, source, base, seen,
 upstream. Then the path of `plan.md`, the path of its findings file
 (`tri-dependances-<YYYY-MM-DD>.md`, next to `plan.md`), and this text, verbatim:
@@ -76,12 +76,12 @@ is what your human partner validated. Source and Base are left as they are: empt
 on a created row, untouched on an existing one.
 
 For a `touche Task N`, rewrite `## Re-enter at` in the same edit: it names the
-task and sends to `aikit:routing-failures`, so the impact survives if the session
+task and sends to `helia:routing-failures`, so the impact survives if the session
 dies.
 
 ## 4. Route
 
-`sans effet`: the work resumes. `touche Task N`: `aikit:routing-failures`.
+`sans effet`: the work resumes. `touche Task N`: `helia:routing-failures`.
 
 Only open tasks are read: a change that invalidates a finished task comes out
 `sans effet` unless it also crosses an open one.

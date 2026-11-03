@@ -5,10 +5,10 @@ Use this template when dispatching a code reviewer subagent.
 **Purpose:** Review completed work against requirements and code quality standards before it cascades into more work.
 
 ```
-Subagent (aikit:reviewer):
+Subagent (helia:reviewer):
   description: "Review code changes"
   effort: [EFFORT — `xhigh` for a final whole-branch review or a security
-          audit your human partner asked for (aikit:executing-plans'
+          audit your human partner asked for (helia:executing-plans'
           escalation table); omit this line otherwise]
   prompt: |
     You are a Senior Code Reviewer with expertise in software architecture,
@@ -142,7 +142,7 @@ Subagent (aikit:reviewer):
 - `[PLAN_OR_REQUIREMENTS]` — what it should do (plan file path, task text, or requirements)
 - `[BASE_SHA]` — starting commit
 - `[HEAD_SHA]` — ending commit
-- `[EFFORT]` — only on a row of aikit:executing-plans' escalation table; no
+- `[EFFORT]` — only on a row of helia:executing-plans' escalation table; no
   `model` line: the reviewer's frontmatter already sets it
 
 **Reviewer returns:** Strengths, Issues (Critical / Important / Minor), Recommendations, Assessment

@@ -1,6 +1,6 @@
 ---
 name: probe
-description: Bounded investigation that answers one specific technical unknown so a blocked task can resume. Returns a finding, never an implementation. Dispatch from aikit:routing-failures when the failure routes downward.
+description: Bounded investigation that answers one specific technical unknown so a blocked task can resume. Returns a finding, never an implementation. Dispatch from helia:routing-failures when the failure routes downward.
 tools: Glob, Grep, Read, Bash, Write, TodoWrite, Skill
 model: sonnet
 effort: medium

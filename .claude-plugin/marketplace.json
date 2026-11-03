@@ -1,8 +1,11 @@
 {
-  "name": "aikit-marketplace",
-  "description": "Marketplace for the aiKit method",
+  "name": "athyrr-marketplace",
+  "description": "Athyrr's Claude Code plugins",
   "owner": {
     "name": "Adam Adhar"
+  },
+  "renames": {
+    "aikit": "helia"
   },
   "allowCrossMarketplaceDependenciesOn": [
     "claude-plugins-official",
@@ -10,8 +13,8 @@
   ],
   "plugins": [
     {
-      "name": "aikit",
-      "description": "aiKit - an agentic method for Claude Code",
+      "name": "helia",
+      "description": "Helia - an agentic method for Claude Code",
       "version": "0.27.0",
       "source": "./",
       "author": {

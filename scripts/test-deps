@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests de bin/aikit-deps. Aucune dependance reseau, aucune fixture versionnee :
+# Tests de bin/helia-deps. Aucune dependance reseau, aucune fixture versionnee :
 # un faux gh dans le PATH rejoue des sorties reelles (mesurees le 2026-11-02,
 # `MERGED` en majuscules, tag `v4.4.0`, `HTTP 404` sur stderr).
 set -uo pipefail
@@ -18,7 +18,7 @@ W="$TMP/Mon Espace"
 VAULT="$W/levault"; ROOT="$W/code"
 mkdir -p "$VAULT/projects" "$ROOT"
 printf 'vault test %s\nroot  test %s\n' "$VAULT" "$ROOT" > "$W/vaults"
-export AIKIT_VAULTS="$W/vaults"
+export HELIA_VAULTS="$W/vaults"
 
 ACCENT=$'## D\xc3\xa9pendances'
 FIN=$'\nfin de section\n\n| hors | section | ignore |'
@@ -47,7 +47,7 @@ planmd() {
   } > "$VAULT/$p/$b/plan.md"
 }
 
-deps() { OUT=$(bin/aikit-deps "$@" 2>&1); RC=$?; }
+deps() { OUT=$(bin/helia-deps "$@" 2>&1); RC=$?; }
 
 # Faux gh : une reponse par ligne de commande. Sans reponse posee, il rend ce que
 # le vrai rend sur un depot sans release : le 404 sur stderr, code 1.
@@ -86,7 +86,7 @@ oublie_appels() { : > "$FAUX_GH/appels"; }
 echo "usage et pannes"
 deps
 is "aucun argument : sortie 2" "2" "$RC"
-has "... et l'usage s'affiche" "usage: aikit-deps" "$OUT"
+has "... et l'usage s'affiche" "usage: helia-deps" "$OUT"
 deps a b c
 is "trois arguments : sortie 2" "2" "$RC"
 deps --aide
@@ -95,12 +95,12 @@ deps p/q
 is "un projet avec un / : sortie 2" "2" "$RC"
 
 PANNE="$TMP/panne"; mkdir -p "$PANNE/bin" "$PANNE/lib"
-cp bin/aikit-deps "$PANNE/bin/aikit-deps"
-OUT=$("$PANNE/bin/aikit-deps" x 2>&1); RC=$?
+cp bin/helia-deps "$PANNE/bin/helia-deps"
+OUT=$("$PANNE/bin/helia-deps" x 2>&1); RC=$?
 is "lib/vaults absente : panne en 2, jamais en 1" "2" "$RC"
 has "... et la panne se dit" "panne interne" "$OUT"
 printf ': "$variable_jamais_definie"\n' > "$PANNE/lib/vaults"
-OUT=$("$PANNE/bin/aikit-deps" x 2>&1); RC=$?
+OUT=$("$PANNE/bin/helia-deps" x 2>&1); RC=$?
 is "variable non definie sous set -u : 2, jamais 1" "2" "$RC"
 
 echo "cas d'entree"
@@ -155,7 +155,7 @@ deps sansaccent
 has "titre sans accent" "x a  non verifie : base inconnue" "$OUT"
 
 fiche accentc "| a | acme/lib | fichier x |"
-OUT=$(LC_ALL=C LANG=C bin/aikit-deps accentc 2>&1)
+OUT=$(LC_ALL=C LANG=C bin/helia-deps accentc 2>&1)
 has "titre accentue sous LC_ALL=C" "x a  non verifie : base inconnue" "$OUT"
 
 fiche crlf "| a | acme/lib | fichier x |"
@@ -201,7 +201,7 @@ avant=$(find "$VAULT" -type f -exec cksum {} + | sort)
 deps fp b
 is "la commande ne modifie rien" "$avant" "$(find "$VAULT" -type f -exec cksum {} + | sort)"
 
-is "bash 3 : aucune construction de bash 4" "" "$(grep -nE 'declare -A|mapfile|readarray|\$\{[A-Za-z_]+(\^|,)' bin/aikit-deps)"
+is "bash 3 : aucune construction de bash 4" "" "$(grep -nE 'declare -A|mapfile|readarray|\$\{[A-Za-z_]+(\^|,)' bin/helia-deps)"
 
 echo "fige et manuel"
 release_de acme/contrat v0.12.0
@@ -319,7 +319,7 @@ has "... les deux comptent" "verdict : 1 ecart a trier, 1 non verifie" "$OUT"
 fiche sz "| rel | acme/lib | release |" "| fig | acme/lib | fige v1 - motif |" "| man | https://exemple.test/p | manuel |"
 NOBIN="$W/nobin"; mkdir -p "$NOBIN"
 for o in awk bash cat cksum cut dirname env find git head mktemp rm sed sleep sort tr; do ln -s "$(command -v "$o")" "$NOBIN/$o"; done
-OUT=$(PATH="$NOBIN" bin/aikit-deps sz 2>&1); RC=$?
+OUT=$(PATH="$NOBIN" bin/helia-deps sz 2>&1); RC=$?
 is "sans gh : sortie 0" "0" "$RC"
 is "... x, ~ et ? restent" "dependances sz
 x rel  non verifie : gh absent
@@ -564,24 +564,24 @@ echo "budget et timeout"
 d=$(gh_dir api repos/acme/lent/releases/latest --jq .tag_name); echo 3 > "$d/dort"
 fiche sq "| a | acme/lent | release |"
 debut=$SECONDS
-OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps sq 2>&1); RC=$?
+OUT=$(HELIA_DEPS_BUDGET=1 bin/helia-deps sq 2>&1); RC=$?
 has "delai depasse" "x a  non verifie : delai depasse" "$OUT"
 is "... sortie 0" "0" "$RC"
 [ $((SECONDS - debut)) -lt 3 ] && ok "... le budget coupe gh" || ko "... le budget coupe gh" "< 3 s" "$((SECONDS - debut)) s"
-has "le budget vaut 5 s" 'BUDGET=${AIKIT_DEPS_BUDGET:-5}' "$(cat bin/aikit-deps)"
+has "le budget vaut 5 s, ancien nom en repli" 'BUDGET=${HELIA_DEPS_BUDGET:-${AIKIT_DEPS_BUDGET:-5}}' "$(cat bin/helia-deps)"
 
 GHSEUL="$W/ghseul"; mkdir -p "$GHSEUL"; ln -s "$FAUXBIN/gh" "$GHSEUL/gh"
 gh_repond 0 api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
 fiche sr2 "| rel | acme/lib | release |"
 planmd sr2 b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |"
-OUT=$(PATH="$NOBIN:$GHSEUL" bin/aikit-deps sr2 b 2>&1); RC=$?
+OUT=$(PATH="$NOBIN:$GHSEUL" bin/helia-deps sr2 b 2>&1); RC=$?
 is "sans timeout : la ligne sort quand meme" "= rel  vu v4.4.0, amont v4.4.0" "$(printf '%s\n' "$OUT" | sed -n 2,2p)"
 has "... et le verdict le dit" "verdict : rien a trier, budget non garanti (timeout absent)" "$OUT"
 is "... sortie 0" "0" "$RC"
 
 WIN="$W/win"; mkdir -p "$WIN"
 printf '#!/usr/bin/env bash\necho "Erreur : syntaxe incorrecte." >&2\nexit 1\n' > "$WIN/timeout"; chmod +x "$WIN/timeout"
-OUT=$(PATH="$WIN:$PATH" bin/aikit-deps sr2 b 2>&1)
+OUT=$(PATH="$WIN:$PATH" bin/helia-deps sr2 b 2>&1)
 has "un timeout qui ne repond pas a --version ne compte pas" "budget non garanti (timeout absent)" "$OUT"
 has "... et n'est pas appele" "= rel  vu v4.4.0" "$OUT"
 
@@ -595,7 +595,7 @@ fiche ss "| a | acme/lent | release |"
 debut=$SECONDS; partis=0; lances=0
 for _ in 1 2 3 4 5 6; do
   oublie_appels
-  OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps ss 2>&1); RC=$?
+  OUT=$(HELIA_DEPS_BUDGET=1 bin/helia-deps ss 2>&1); RC=$?
   case "$(appels)" in *releases/latest*) lances=$((lances + 1)) ;; esac
   case "$(appels)" in *compare*) partis=$((partis + 1)) ;; esac
 done
@@ -604,13 +604,19 @@ is "... le premier appel a eu lieu a chaque passe" "6" "$lances"
 is "... le second ne part jamais" "0" "$partis"
 [ $((SECONDS - debut)) -lt 4 ] && ok "... le total ne depasse pas le budget" || ko "... le total ne depasse pas le budget" "< 2 s" "$((SECONDS - debut)) s"
 for b in 5s 1.5; do
-  OUT=$(AIKIT_DEPS_BUDGET=$b bin/aikit-deps ss 2>&1); RC=$?
+  OUT=$(HELIA_DEPS_BUDGET=$b bin/helia-deps ss 2>&1); RC=$?
   is "budget $b : sortie 2" "2" "$RC"
   has "... panne interne" "panne interne" "$OUT"
 done
-OUT=$(AIKIT_DEPS_BUDGET=08 bin/aikit-deps ss 2>&1); RC=$?
+OUT=$(HELIA_DEPS_BUDGET=08 bin/helia-deps ss 2>&1); RC=$?
 is "budget 08 : lu en base 10, l'ecart reste un ecart" "1" "$RC"
 has "... et le verdict le dit" "verdict : 1 ecart a trier" "$OUT"
+echo "budget : ancien nom lu en repli"
+OUT=$(env -u HELIA_DEPS_BUDGET AIKIT_DEPS_BUDGET=5s bin/helia-deps ss 2>&1); RC=$?
+is "AIKIT_DEPS_BUDGET seule est lue (valeur invalide : sortie 2)" "2" "$RC"
+has "... panne interne" "panne interne" "$OUT"
+OUT=$(HELIA_DEPS_BUDGET=1 AIKIT_DEPS_BUDGET=5s bin/helia-deps ss 2>&1); RC=$?
+hasnt "HELIA_DEPS_BUDGET gagne sur AIKIT_DEPS_BUDGET" "panne interne" "$OUT"
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.

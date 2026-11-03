@@ -17,7 +17,32 @@
 # fonction ne doit tuer l'hote sur une entree malformee ou un argument
 # manquant. Elle rend le vide et sort 0.
 
-vaults_config_path() { printf '%s' "${AIKIT_VAULTS:-$HOME/.config/aikit/vaults}"; }
+# Le nom actuel d'abord, l'ancien ensuite : un poste pas encore migre reste
+# branche et ne dit jamais "No vault registered". L'ancienne config n'est lue
+# que tant que la nouvelle n'existe pas. Le repli se retire dans un cycle
+# ulterieur, une fois tous les postes migres.
+vaults_config_path() {
+  if   [ -n "${HELIA_VAULTS:-}" ]; then printf '%s' "$HELIA_VAULTS"
+  elif [ -n "${AIKIT_VAULTS:-}" ]; then printf '%s' "$AIKIT_VAULTS"
+  elif [ ! -e "${HOME:-}/.config/helia/vaults" ] && [ -f "${HOME:-}/.config/aikit/vaults" ]; then
+       printf '%s' "${HOME:-}/.config/aikit/vaults"
+  else printf '%s' "${HOME:-}/.config/helia/vaults"; fi
+}
+
+# Copie unique de l'ancienne config vers la nouvelle, appelee par
+# hooks/session-start. Ne supprime rien, n'ecrase rien, ne fait rien quand une
+# variable designe la config. Comme tout ce fichier : ne tue jamais l'hote.
+vaults_migrate_legacy() {
+  [ -z "${HELIA_VAULTS:-}" ] && [ -z "${AIKIT_VAULTS:-}" ] && [ -n "${HOME:-}" ] || return 0
+  local new="$HOME/.config/helia/vaults" old="$HOME/.config/aikit/vaults"
+  [ ! -e "$new" ] && [ -f "$old" ] || return 0
+  # Copie vers un temporaire puis mv : une copie partielle ne remplace jamais
+  # le fichier. `|| :` : un echec ne doit pas tuer l'hote sous `set -e`.
+  local tmp="$new.tmp.$$"
+  { mkdir -p "${new%/*}" && cp -p "$old" "$tmp" && mv -f "$tmp" "$new"; } 2> /dev/null || :
+  rm -f "$tmp" 2> /dev/null || :
+  return 0
+}
 
 _vaults_read() {  # _vaults_read <mot-cle> [nom]
   local conf want_kind="$1" want_name="${2:-}" kind name path

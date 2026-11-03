@@ -103,7 +103,7 @@ CONF="$TMP/vaults"
   echo "vault espace $VAULT"
   echo "root  espace $ROOT"
 } > "$CONF"
-export AIKIT_VAULTS="$CONF"
+export HELIA_VAULTS="$CONF"
 
 # --- assertions -------------------------------------------------------------
 echo "vaults_list"
@@ -121,12 +121,12 @@ CONF_DBL="$TMP/vaults-double"
   echo "root  essai $TMP/RA"; echo "root  essai $TMP/RB"; } > "$CONF_DBL"
 is "un nom declare deux fois ne sort qu'une fois, premiere ligne gagnante" \
    "essai	$TMP/A
-autre	$TMP/C" "$(AIKIT_VAULTS="$CONF_DBL" vaults_list)"
+autre	$TMP/C" "$(HELIA_VAULTS="$CONF_DBL" vaults_list)"
 is "vaults_list et vault_path s'accordent sur le doublon" \
-   "$TMP/A" "$(AIKIT_VAULTS="$CONF_DBL" vault_path essai)"
+   "$TMP/A" "$(HELIA_VAULTS="$CONF_DBL" vault_path essai)"
 is "les racines, elles, s'accumulent toujours" \
    "$TMP/RA
-$TMP/RB" "$(AIKIT_VAULTS="$CONF_DBL" vault_roots essai)"
+$TMP/RB" "$(HELIA_VAULTS="$CONF_DBL" vault_roots essai)"
 
 echo "vault_roots"
 is "la racine declaree" "$ROOT" "$(vault_roots espace)"
@@ -210,17 +210,17 @@ printf '%s\n' "---" "name: sale" $'kind: depot \r' $'part_of: b-suite  \r' $'sum
 printf 'vault sale %s\n' "$SALE" > "$TMP/vaults-sale"
 
 echo "resolve_projects : part_of"
-er() { AIKIT_VAULTS="$ECONF" resolve_projects eco | awk -F'\t' -v n="$1" '$1==n {print $2"|"$3"|"$6}'; }
+er() { HELIA_VAULTS="$ECONF" resolve_projects eco | awk -F'\t' -v n="$1" '$1==n {print $2"|"$3"|"$6}'; }
 is "part_of present : derniere colonne"          "depot|present|b-suite"   "$(er membre-b)"
 is "part_of absent : -"                          "depot|present|-"         "$(er solo)"
 is "un ecosysteme : kind lu, part_of -"          "ecosysteme|absent|-"     "$(er b-suite)"
 is "une valeur de kind fausse est rendue telle quelle" "ecosystem|absent|-" "$(er g-faute)"
 is "colonnes 1 a 5 inchangees pour un membre" \
    "membre-b	depot	present	$EROOT/membre-b	membre b" \
-   "$(AIKIT_VAULTS="$ECONF" resolve_projects eco | awk -F'\t' '$1=="membre-b" {print $1"\t"$2"\t"$3"\t"$4"\t"$5}')"
+   "$(HELIA_VAULTS="$ECONF" resolve_projects eco | awk -F'\t' '$1=="membre-b" {print $1"\t"$2"\t"$3"\t"$4"\t"$5}')"
 is "espaces et CR de fin retires de kind, part_of, summary" \
    "depot|resume|b-suite" \
-   "$(AIKIT_VAULTS="$TMP/vaults-sale" resolve_projects sale | awk -F'\t' '{print $2"|"$5"|"$6}')"
+   "$(HELIA_VAULTS="$TMP/vaults-sale" resolve_projects sale | awk -F'\t' '{print $2"|"$5"|"$6}')"
 
 # Une tabulation LITTERALE dans un summary (copier-colle depuis un tableur,
 # par exemple) : non filtree par _fiche_value, elle s'ajoute aux \t qui
@@ -237,9 +237,9 @@ printf 'vault tab %s\n' "$TABVAULT" > "$TMP/vaults-tab"
 
 is "une tabulation interne au summary ne decale pas les colonnes" \
    "6|un texte avec tabulation|suite-tab" \
-   "$(AIKIT_VAULTS="$TMP/vaults-tab" resolve_projects tab | awk -F'\t' -v n="membre-tab" '$1==n {print NF"|"$5"|"$6}')"
+   "$(HELIA_VAULTS="$TMP/vaults-tab" resolve_projects tab | awk -F'\t' -v n="membre-tab" '$1==n {print NF"|"$5"|"$6}')"
 is "et ne declenche donc aucun faux avertissement part_of" "" \
-   "$(AIKIT_VAULTS="$TMP/vaults-tab" resolve_projects tab | project_warnings)"
+   "$(HELIA_VAULTS="$TMP/vaults-tab" resolve_projects tab | project_warnings)"
 
 echo "project_warnings"
 T=$'\t'
@@ -265,11 +265,11 @@ is "vault de fixtures : exactement les trois anomalies attendues, dans l'ordre d
    "e-orphelin	⚠ part_of « inexistant » : aucune fiche
 f-pas-eco	⚠ part_of « solo » : n'est pas un écosystème
 g-faute	⚠ kind « ecosystem » inconnu" \
-   "$(AIKIT_VAULTS="$ECONF" resolve_projects eco | project_warnings)"
+   "$(HELIA_VAULTS="$ECONF" resolve_projects eco | project_warnings)"
 is "stdin vide : rien" "" "$(printf '' | project_warnings)"
 
 echo "render_project_rows"
-eco_rows="$(AIKIT_VAULTS="$ECONF" resolve_projects eco)"
+eco_rows="$(HELIA_VAULTS="$ECONF" resolve_projects eco)"
 eco_warns="$(printf '%s\n' "$eco_rows" | project_warnings)"
 eco_out="$(printf '%s\n' "$eco_rows" | render_project_rows "$eco_warns")"
 is "regroupement, ordre de resolution, membres tries par nom, avertissements, suffixes" \
@@ -339,19 +339,19 @@ is "aucun argument -> silence" "" "$(vault_behind_commits)"
 
 echo "hook"
 # Le hook est un CONSOMMATEUR de lib/vaults : il tourne dans un autre processus,
-# en `set -euo pipefail`, et sa sortie est du JSON lu par le harnais. AIKIT_VAULTS
+# en `set -euo pipefail`, et sa sortie est du JSON lu par le harnais. HELIA_VAULTS
 # est ce qui le rend testable ici.
-out=$(AIKIT_VAULTS="$CONF" bash hooks/session-start)
+out=$(HELIA_VAULTS="$CONF" bash hooks/session-start)
 printf '%s' "$out" | json_valid \
   && ok "le hook emet du JSON valide" \
   || ko "le hook emet du JSON valide" "JSON" "invalide"
 ctx=$(printf '%s' "$out" | json_ctx)
-# Le hook n'emet plus le texte de skills/using-aikit/SKILL.md : son stub est en
+# Le hook n'emet plus le texte de skills/using-helia/SKILL.md : son stub est en
 # dur dans hooks/session-start. `pre` ne figure donc plus dans `ctx` et
 # `${ctx#*"$pre"}` rend `ctx` entier ; on garde l'idiome (il redeviendrait utile
 # si le hook reinjectait le skill). Les assertions ci-dessous portent sur des
 # lignes de table entieres, jamais sur un mot que le stub pourrait aussi porter.
-pre=$(cat skills/using-aikit/SKILL.md)
+pre=$(cat skills/using-helia/SKILL.md)
 reg="${ctx#*"$pre"}"
 case "$reg" in
   *"## Vault: espace"*) ok "la table est etiquetee par vault" ;;
@@ -377,7 +377,7 @@ grep -qi workspace hooks/session-start \
 echo "hook : vault en retard sur son remote"
 CONF_RETARD="$TMP/vaults-retard"
 printf 'vault retard %s\n' "$SYNC_RETARD" > "$CONF_RETARD"
-reg_retard=$(AIKIT_VAULTS="$CONF_RETARD" bash hooks/session-start | json_ctx)
+reg_retard=$(HELIA_VAULTS="$CONF_RETARD" bash hooks/session-start | json_ctx)
 case "$reg_retard" in
   *"retard"*"2 commit"*"git pull"*) ok "le hook signale un vault en retard" ;;
   *) ko "le hook signale un vault en retard" \
@@ -386,7 +386,7 @@ esac
 
 CONF_AJOUR="$TMP/vaults-ajour"
 printf 'vault ajour %s\n' "$SYNC_AJOUR" > "$CONF_AJOUR"
-reg_ajour=$(AIKIT_VAULTS="$CONF_AJOUR" bash hooks/session-start | json_ctx)
+reg_ajour=$(HELIA_VAULTS="$CONF_AJOUR" bash hooks/session-start | json_ctx)
 case "$reg_ajour" in
   *"en retard sur leur remote"*) \
     ko "un vault a jour ne declenche aucun message" \
@@ -436,7 +436,7 @@ is "sous set -euo pipefail, variables absentes : l'hote survit" "survit" \
         bash -c 'set -euo pipefail; . lib/vaults; dispatch_override_warnings; echo survit')"
 
 echo "hook : variables qui ecrasent model/effort"
-hk_eff=$(env -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE CLAUDE_CODE_EFFORT_LEVEL=high AIKIT_VAULTS="$CONF" bash hooks/session-start)
+hk_eff=$(env -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE CLAUDE_CODE_EFFORT_LEVEL=high HELIA_VAULTS="$CONF" bash hooks/session-start)
 printf '%s' "$hk_eff" | json_valid \
   && ok "EFFORT_LEVEL=high : JSON valide" || ko "EFFORT_LEVEL=high : JSON valide" "JSON" "invalide"
 case "$(printf '%s' "$hk_eff" | json_ctx)" in
@@ -444,21 +444,21 @@ case "$(printf '%s' "$hk_eff" | json_ctx)" in
      ok "EFFORT_LEVEL=high : la ligne est injectee" ;;
   *) ko "EFFORT_LEVEL=high : la ligne est injectee" "section + ligne effort" "absente" ;;
 esac
-hk_force=$(env -u CLAUDE_CODE_EFFORT_LEVEL CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 AIKIT_VAULTS="$CONF" bash hooks/session-start)
+hk_force=$(env -u CLAUDE_CODE_EFFORT_LEVEL CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1 HELIA_VAULTS="$CONF" bash hooks/session-start)
 printf '%s' "$hk_force" | json_valid \
   && ok "MODEL_FORCE=1 : JSON valide" || ko "MODEL_FORCE=1 : JSON valide" "JSON" "invalide"
 case "$(printf '%s' "$hk_force" | json_ctx)" in
   *'`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is set'*) ok "MODEL_FORCE=1 : la ligne est injectee" ;;
   *) ko "MODEL_FORCE=1 : la ligne est injectee" "ligne modele" "absente" ;;
 esac
-hk_host=$(env -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE CLAUDE_CODE_EFFORT_LEVEL=$'x"y\nz' AIKIT_VAULTS="$CONF" bash hooks/session-start)
+hk_host=$(env -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE CLAUDE_CODE_EFFORT_LEVEL=$'x"y\nz' HELIA_VAULTS="$CONF" bash hooks/session-start)
 printf '%s' "$hk_host" | json_valid \
   && ok "valeur hostile : JSON valide" || ko "valeur hostile : JSON valide" "JSON" "invalide"
 case "$(printf '%s' "$hk_host" | json_ctx)" in
   *'`x"y z`'*) ok "valeur hostile : injectee sur une ligne" ;;
   *) ko "valeur hostile : injectee sur une ligne" "\`x\"y z\`" "absente" ;;
 esac
-hk_none=$(env -u CLAUDE_CODE_EFFORT_LEVEL -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE AIKIT_VAULTS="$CONF" bash hooks/session-start)
+hk_none=$(env -u CLAUDE_CODE_EFFORT_LEVEL -u CLAUDE_CODE_SUBAGENT_MODEL_FORCE HELIA_VAULTS="$CONF" bash hooks/session-start)
 printf '%s' "$hk_none" | json_valid \
   && ok "sans variable : JSON valide" || ko "sans variable : JSON valide" "JSON" "invalide"
 case "$(printf '%s' "$hk_none" | json_ctx)" in
@@ -473,7 +473,7 @@ echo "hook : vaults declares mais sans fiche"
 # certains resolvent et d'autres non.
 hookreg() {  # hookreg <fichier de vaults> -> le bloc que le hook ajoute
   local out ctx
-  out=$(AIKIT_VAULTS="$1" bash hooks/session-start) || return 1
+  out=$(HELIA_VAULTS="$1" bash hooks/session-start) || return 1
   ctx=$(printf '%s' "$out" | json_ctx) || return 1
   printf '%s' "${ctx#*"$pre"}"
 }
@@ -577,7 +577,7 @@ case "$reg_eco" in
   *) ko "la consigne : un membre mene a la fiche de son ecosysteme" \
         "read the registry file of its ecosystem too" "${reg_eco:-vide}" ;;
 esac
-out_eco=$(AIKIT_VAULTS="$ECONF" bash hooks/session-start)
+out_eco=$(HELIA_VAULTS="$ECONF" bash hooks/session-start)
 printf '%s' "$out_eco" | json_valid \
   && ok "le hook emet du JSON valide avec ⚠ ↳ — é dans le tableau" \
   || ko "le hook emet du JSON valide avec ⚠ ↳ — é dans le tableau" "JSON" "invalide"
@@ -605,7 +605,7 @@ printf '%s\n' "---" "name: controle" "kind: conception" \
 printf '%s\n' "---" "name: retour" "kind: conception" \
   "summary: avant"$'\r'"apres" "---" > "$HOSTILE/projects/retour.md"
 printf 'vault hostile %s\n' "$HOSTILE" > "$TMP/vaults-hostile"
-out_hostile=$(AIKIT_VAULTS="$TMP/vaults-hostile" bash hooks/session-start)
+out_hostile=$(HELIA_VAULTS="$TMP/vaults-hostile" bash hooks/session-start)
 printf '%s' "$out_hostile" | json_valid \
   && ok "un caractere de controle dans un summary : le JSON reste valide" \
   || ko "un caractere de controle dans un summary : le JSON reste valide" \
@@ -639,7 +639,7 @@ q=$'registry+=$\'\\n\\n\'' \
   hooks/session-start > "$FERME/hooks/session-start"
 # Combien de sauts de ligne survivent juste avant la balise fermante : 3 avec la
 # sentinelle (les deux injectes + celui du gabarit), 1 sans elle.
-ctx_ferme=$(AIKIT_VAULTS="$CONF" bash "$FERME/hooks/session-start" | json_ctx)
+ctx_ferme=$(HELIA_VAULTS="$CONF" bash "$FERME/hooks/session-start" | json_ctx)
 queue=$(trailing_newlines_before "$ctx_ferme" '</EXTREMELY_IMPORTANT>')
 is "la sentinelle preserve les sauts de ligne terminaux" "3" "$queue"
 
@@ -676,8 +676,8 @@ printf 'vault bidon %s\n' "$TMP/pas-de-vault-ici" > "$LCONF_BIDON"
 
 has()   { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
 hasnt() { case "$3" in *"$2"*) ko "$1" "ne contient PAS [$2]" "$3" ;; *) ok "$1" ;; esac; }
-lance()    { local c="$1"; shift; AIKIT_VAULTS="$c" bash "$@" 2>/dev/null; }
-lanceerr() { local c="$1"; shift; AIKIT_VAULTS="$c" bash "$@" 2>&1 >/dev/null; }
+lance()    { local c="$1"; shift; HELIA_VAULTS="$c" bash "$@" 2>/dev/null; }
+lanceerr() { local c="$1"; shift; HELIA_VAULTS="$c" bash "$@" 2>&1 >/dev/null; }
 
 is "seuls les projets presents ET porteurs sortent, dans l'ordre des fiches" \
    "claude --add-dir $LROOT/porte-agents --add-dir $LROOT/porte-skills" \
@@ -763,7 +763,7 @@ has "... et le signale comme archive, avec son chemin" \
 # mkdir -p et ecrit le marqueur, celui que --dry-run ne traverse pas.
 FAKEBIN="$TMP/faux-claude"; mkdir -p "$FAKEBIN"
 printf '#!/usr/bin/env bash\necho "claude $*"\n' > "$FAKEBIN/claude"; chmod +x "$FAKEBIN/claude"
-reel="$(PATH="$FAKEBIN:$PATH" AIKIT_VAULTS="$LCONF" bash bin/scoped perim-defaut fini bonjour 2>/dev/null)"
+reel="$(PATH="$FAKEBIN:$PATH" HELIA_VAULTS="$LCONF" bash bin/scoped perim-defaut fini bonjour 2>/dev/null)"
 has "un vrai lancement reprend la session archivee" "--resume sid-archive-0001" "$reel"
 [ -e "$LVAULT/perim-defaut/fini" ] \
   && ko "... sans creer de dossier neuf a cote" "pas de perim-defaut/fini" "dossier cree" \
@@ -853,7 +853,7 @@ ppfiche plan-c "kind: conception" "dir: a/b/c"
 ppfiche fantome-pp
 { echo "vault pp $PPV"; echo "root  pp $PPR"; } > "$PPCONF"
 ln -s "$PPR/a" "$TMP/lien-a"
-pp() { AIKIT_VAULTS="$PPCONF" project_of_path "$1"; }
+pp() { HELIA_VAULTS="$PPCONF" project_of_path "$1"; }
 is "la racine du projet"                   "a"  "$(pp "$PPR/a")"
 is "un sous-dossier sans projet propre"    "a"  "$(pp "$PPR/a/zzz")"
 is "projets imbriques : le plus long gagne" "b" "$(pp "$PPR/a/b")"
@@ -869,10 +869,10 @@ is "le vault lui-meme n'est pas sous une racine : hors registre ici" "" "$(pp "$
 is "hors registre"                         ""   "$(pp "$TMP/hors-registre")"
 is "chemin inexistant"                     ""   "$(pp "$TMP/nexiste-pas")"
 is "argument vide"                         ""   "$(pp "")"
-is "aucun vault declare"                   ""   "$(AIKIT_VAULTS=/nonexistent-vaults-file project_of_path "$PPR/a")"
+is "aucun vault declare"                   ""   "$(HELIA_VAULTS=/nonexistent-vaults-file project_of_path "$PPR/a")"
 is "chemin avec espace (vault de la suite principale)" "vault-lui-meme" "$(project_of_path "$VAULT")"
 
-echo "bin/aikit-statusline"
+echo "bin/helia-statusline"
 REPO="$PWD"
 SLCACHE="$TMP/sl-cache"; SLHOME="$TMP/sl-home"; mkdir -p "$SLHOME"
 git -C "$ROOT/avec-remote" symbolic-ref HEAD refs/heads/trunk
@@ -880,14 +880,14 @@ mkdir -p "$ROOT/sans-git/dedans" "$TMP/hors-registre"
 ESC="$(printf '\033')"
 plain() { sed "s/${ESC}\[[0-9;]*m//g"; }
 # sl <json> [vaults-file] : le rendu brut, sur un HOME et un cache jetables.
-sl() { printf '%s' "$1" | HOME="$SLHOME" XDG_CACHE_HOME="$SLCACHE" AIKIT_VAULTS="${2:-$CONF}" bash "$REPO/bin/aikit-statusline"; }
+sl() { printf '%s' "$1" | HOME="$SLHOME" XDG_CACHE_HOME="$SLCACHE" HELIA_VAULTS="${2:-$CONF}" bash "$REPO/bin/helia-statusline"; }
 slin() {  # slin <dir> <session> <pct-json|null>
   jq -nc --arg d "$1" --arg s "$2" --argjson p "$3" \
     '{model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:$p}}'
 }
 if command -v jq > /dev/null 2>&1; then
   out="$(sl "$(slin "$ROOT/avec-remote" s30 30)")"; rc=$?
-  is "30 % : la ligne complete" "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(printf '%s' "$out" | plain)"
+  is "30 % : la ligne complete" "helia · Opus · avec-remote (trunk) · ctx 30 %" "$(printf '%s' "$out" | plain)"
   is "30 % : code de sortie 0"  "0" "$rc"
   is "30 % : une seule ligne"   "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
   has "30 % : vert"   "${ESC}[32mctx 30 %" "$out"
@@ -897,16 +897,16 @@ if command -v jq > /dev/null 2>&1; then
   has "90 % : rouge"  "${ESC}[31mctx 90 %" "$(sl "$(slin "$ROOT/avec-remote" s90 90)")"
   has "59,6 % : arrondi a 60, jaune" "${ESC}[33mctx 60 %" "$(sl "$(slin "$ROOT/avec-remote" s596 59.6)")"
   out="$(sl "$(slin "$ROOT/avec-remote" snull null)")"; rc=$?
-  is "contexte null : tiret" "aikit · Opus · avec-remote (trunk) · ctx –" "$(printf '%s' "$out" | plain)"
+  is "contexte null : tiret" "helia · Opus · avec-remote (trunk) · ctx –" "$(printf '%s' "$out" | plain)"
   is "contexte null : code de sortie 0" "0" "$rc"
   is "dossier hors git : pas de parentheses" \
-     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git" shg 30)" | plain)"
+     "helia · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git" shg 30)" | plain)"
   is "sous-dossier d'un projet : le projet" \
-     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)" | plain)"
+     "helia · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)" | plain)"
   is "projet hors registre : le nom du dossier" \
-     "aikit · Opus · hors-registre · ctx 30 %" "$(sl "$(slin "$TMP/hors-registre" shr 30)" | plain)"
+     "helia · Opus · hors-registre · ctx 30 %" "$(sl "$(slin "$TMP/hors-registre" shr 30)" | plain)"
   is "aucun vault declare : le nom du dossier" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 %" \
      "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file | plain)"
   # Limites de debit : part du forfait deja consommee, absente quand le JSON n'en porte pas.
   slrl() {  # slrl <session> <pct5|""> <pct7|"">
@@ -917,17 +917,17 @@ if command -v jq > /dev/null 2>&1; then
          + (if $b == "" then {} else {seven_day:{used_percentage:($b|tonumber),resets_at:9999999999}} end))}'
   }
   is "limites : 5h et hebdo, en progression" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 % · hebdo : 32 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 % · hebdo : 32 %" \
      "$(sl "$(slrl rl1 60 32)" | plain)"
   has "limites : 5h a 60 % jaune"    "${ESC}[33m5h : 60 %" "$(sl "$(slrl rl2 60 32)")"
   has "limites : hebdo a 32 % vert"  "${ESC}[32mhebdo : 32 %" "$(sl "$(slrl rl3 60 32)")"
   has "limites : hebdo a 90 % rouge" "${ESC}[31mhebdo : 90 %" "$(sl "$(slrl rl4 10 90)")"
   has "limites : 5h a 10 % vert"     "${ESC}[32m5h : 10 %" "$(sl "$(slrl rl5 10 90)")"
   is "limites : 5h seule, pas de segment hebdo" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : 20 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 20 %" \
      "$(sl "$(slrl rl6 20 "")" | plain)"
   is "limites : 59,6 % arrondi a 60" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 %" \
      "$(sl "$(slrl rl7 59.6 "")" | plain)"
   out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
   is "entree invalide : code de sortie 0" "0" "$rc"
@@ -935,15 +935,15 @@ if command -v jq > /dev/null 2>&1; then
   out="$(sl '')"; rc=$?
   is "entree vide : code de sortie 0" "0" "$rc"
   # Le cache par session : une entree posee a la main est relue telle quelle.
-  mkdir -p "$SLCACHE/aikit"
-  printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$SLCACHE/aikit/project-scache"
+  mkdir -p "$SLCACHE/helia"
+  printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$SLCACHE/helia/project-scache"
   is "le projet vient du cache de la session" \
-     "aikit · Opus · nom-en-cache (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" scache 30)" | plain)"
-  printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$SLCACHE/aikit/project-sperime"
+     "helia · Opus · nom-en-cache (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" scache 30)" | plain)"
+  printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$SLCACHE/helia/project-sperime"
   is "un cache d'un autre dossier est ignore" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" sperime 30)" | plain)"
-  [ -f "$SLCACHE/aikit/project-s30" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/aikit" \
-    || ko "le cache est ecrit sous XDG_CACHE_HOME/aikit" "project-s30 present" "absent"
+     "helia · Opus · avec-remote (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" sperime 30)" | plain)"
+  [ -f "$SLCACHE/helia/project-s30" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/helia" \
+    || ko "le cache est ecrit sous XDG_CACHE_HOME/helia" "project-s30 present" "absent"
 else
   echo "  (jq absent : cas de rendu avec jq ignores)"
 fi
@@ -951,16 +951,16 @@ fi
 # Un script relais, pas un lien : sous Git Bash, ln -s copie git.exe et le prive de ses DLL.
 NOJQ="$TMP/path-sans-jq"; mkdir -p "$NOJQ"
 printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v git)" > "$NOJQ/git"; chmod +x "$NOJQ/git"
-out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"; rc=$?
-is "sans jq : ligne de repli" "aikit · avec-remote (trunk)" "$out"
+out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"; rc=$?
+is "sans jq : ligne de repli" "helia · avec-remote (trunk)" "$out"
 is "sans jq : code de sortie 0" "0" "$rc"
-out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"
-is "sans jq, hors git : pas de parentheses" "aikit · hors-registre" "$out"
+out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"
+is "sans jq, hors git : pas de parentheses" "helia · hors-registre" "$out"
 
 echo "hooks/statusline-install"
 if command -v jq > /dev/null 2>&1; then
-  PLUG="$TMP/Plugin Root/aikit/1.2.3"      # une espace, deliberement
-  WANT="AIKIT_STATUSLINE=1 bash \"$PLUG/bin/aikit-statusline\""
+  PLUG="$TMP/Plugin Root/helia/1.2.3"      # une espace, deliberement
+  WANT="HELIA_STATUSLINE=1 bash \"$PLUG/bin/helia-statusline\""
   # inst <home> : stdout du hook sur stdout, code de sortie en derniere ligne.
   inst() { HOME="$1" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/statusline-install" 2> /dev/null; }
   newhome() { local h; h="$(mktemp -d "$TMP/home.XXXXXX")"; mkdir -p "$h/.claude"; printf '%s' "$h"; }
@@ -984,8 +984,8 @@ if command -v jq > /dev/null 2>&1; then
   H="$(newhome)"
   echo '{"statusLine":{"type":"command","command":"AIKIT_STATUSLINE=1 bash \"/ancien/1.0.0/bin/aikit-statusline\""},"theme":"dark"}' > "$H/.claude/settings.json"
   inst "$H" > /dev/null
-  is "marqueur present : chemin reecrit" "$WANT" "$(getcmd "$H")"
-  is "marqueur present : theme conserve" "dark" "$(jq -r '.theme' "$H/.claude/settings.json")"
+  is "ancien marqueur AIKIT_STATUSLINE=1 : reecrit vers helia" "$WANT" "$(getcmd "$H")"
+  is "ancien marqueur : theme conserve" "dark" "$(jq -r '.theme' "$H/.claude/settings.json")"
 
   H="$(newhome)"
   echo '{"statusLine":{"type":"command","command":"~/mon-script.sh","padding":2}}' > "$H/.claude/settings.json"
@@ -997,14 +997,29 @@ if command -v jq > /dev/null 2>&1; then
   inst "$H" > /dev/null
   is "statusLine qui n'est pas un objet : intacte" '{"statusLine":"une chaine"}' "$(cat "$H/.claude/settings.json")"
 
-  H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"
-  out="$(inst "$H")"; rc=$?
-  [ ! -e "$H/.claude/settings.json" ] && ok "opt-out : settings.json absent n'est pas cree" \
-    || ko "opt-out : settings.json absent n'est pas cree" "absent" "present"
-  is "opt-out : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  H="$(newhome)"
+  echo '{"statusLine":{"type":"command","command":"HELIA_STATUSLINE=1 bash \"/ancien/1.0.0/bin/helia-statusline\""}}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "marqueur HELIA_STATUSLINE=1 : chemin reecrit" "$WANT" "$(getcmd "$H")"
+
+  H="$(newhome)"; echo '{"statusLine":{"type":"command","command":"bash ~/helia-a-moi.sh"}}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "sans marqueur, meme avec le mot helia : intacte" "bash ~/helia-a-moi.sh" "$(getcmd "$H")"
+  is "aucun fichier temporaire laisse" "settings.json" "$(ls -A "$H/.claude")"
+
+  H="$(newhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-statusline"
   echo '{"theme":"dark"}' > "$H/.claude/settings.json"
   inst "$H" > /dev/null
-  is "opt-out : settings.json existant intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+  is "opt-out helia : settings.json intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"
+  out="$(inst "$H")"; rc=$?
+  [ ! -e "$H/.claude/settings.json" ] && ok "opt-out sous l'ancien nom : settings.json absent n'est pas cree" \
+    || ko "opt-out sous l'ancien nom : settings.json absent n'est pas cree" "absent" "present"
+  is "opt-out sous l'ancien nom : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  echo '{"theme":"dark"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "opt-out sous l'ancien nom : settings.json existant intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
 
   H="$(newhome)"; printf '{"theme": "dark",\n' > "$H/.claude/settings.json"
   cp "$H/.claude/settings.json" "$TMP/avant-invalide.json"
@@ -1076,6 +1091,55 @@ if command -v jq > /dev/null 2>&1; then
 else
   echo "  (jq absent : cas de hooks.json ignores)"
 fi
+
+echo "repli des anciens noms (config des vaults)"
+RH="$TMP/repli"; mkdir -p "$RH"
+rhome() { mktemp -d "$RH/home.XXXXXX"; }
+# vcp <home> [VAR=valeur...] : vaults_config_path dans un shell neuf, sans les variables du test.
+vcp() { local h="$1"; shift; env -u HELIA_VAULTS -u AIKIT_VAULTS HOME="$h" "$@" bash -c '. lib/vaults; vaults_config_path'; }
+H="$(rhome)"
+is "rien de declare : chemin helia" "$H/.config/helia/vaults" "$(vcp "$H")"
+mkdir -p "$H/.config/aikit"; echo "vault ancien $VAULT" > "$H/.config/aikit/vaults"
+is "seule l'ancienne config existe : elle est lue" "$H/.config/aikit/vaults" "$(vcp "$H")"
+mkdir -p "$H/.config/helia"; echo "vault nouveau $VAULT" > "$H/.config/helia/vaults"
+is "les deux existent : la nouvelle gagne" "$H/.config/helia/vaults" "$(vcp "$H")"
+is "AIKIT_VAULTS seule est lue" "/x/ancien" "$(vcp "$H" AIKIT_VAULTS=/x/ancien)"
+is "HELIA_VAULTS gagne sur AIKIT_VAULTS" "/x/nouveau" "$(vcp "$H" AIKIT_VAULTS=/x/ancien HELIA_VAULTS=/x/nouveau)"
+
+# hk_copie <home> : le hook dans un HOME jetable, sans variable de config.
+hk_copie() { env -u HELIA_VAULTS -u AIKIT_VAULTS HOME="$1" bash hooks/session-start; }
+H="$(rhome)"; mkdir -p "$H/.config/aikit"
+printf 'vault espace %s\nroot  espace %s\n' "$VAULT" "$ROOT" > "$H/.config/aikit/vaults"
+cp -p "$H/.config/aikit/vaults" "$RH/avant"
+out="$(hk_copie "$H")"
+is "copie unique : nouvelle config identique a l'ancienne" "$(cat "$RH/avant")" "$(cat "$H/.config/helia/vaults" 2>/dev/null)"
+is "copie unique : l'ancienne reste, intacte" "$(cat "$RH/avant")" "$(cat "$H/.config/aikit/vaults")"
+case "$(printf '%s' "$out" | json_ctx)" in
+  *"## Vault: espace"*) ok "copie unique : le vault est route des cette session" ;;
+  *) ko "copie unique : le vault est route des cette session" "## Vault: espace" "absent" ;;
+esac
+echo "vault autre $VAULT" > "$H/.config/helia/vaults"
+hk_copie "$H" > /dev/null
+is "demarrage suivant : la nouvelle config n'est jamais ecrasee" "vault autre $VAULT" "$(cat "$H/.config/helia/vaults")"
+H="$(rhome)"; mkdir -p "$H/.config/aikit"; echo "vault espace $VAULT" > "$H/.config/aikit/vaults"
+env -u AIKIT_VAULTS HOME="$H" HELIA_VAULTS="$CONF" bash hooks/session-start > /dev/null
+[ ! -e "$H/.config/helia" ] && ok "HELIA_VAULTS posee : aucune copie" || ko "HELIA_VAULTS posee : aucune copie" "absent" "present"
+# Copie impossible (nouvelle config = lien pendant) : le hook ne meurt pas.
+H="$(rhome)"; mkdir -p "$H/.config/aikit" "$H/.config/helia"
+printf 'vault espace %s\nroot  espace %s\n' "$VAULT" "$ROOT" > "$H/.config/aikit/vaults"
+cp -p "$H/.config/aikit/vaults" "$RH/avant2"
+ln -s "$H/inexistant" "$H/.config/helia/vaults"
+out="$(hk_copie "$H" 2> /dev/null)" && rc=0 || rc=$?
+is "copie impossible : le hook sort en 0" "0" "$rc"
+case "$(printf '%s' "$out" | json_ctx)" in
+  *"## Vault: espace"*) ok "copie impossible : JSON valide, vault route" ;;
+  *) ko "copie impossible : JSON valide, vault route" "## Vault: espace" "absent" ;;
+esac
+is "copie impossible : l'ancienne config reste intacte" "$(cat "$RH/avant2")" "$(cat "$H/.config/aikit/vaults")"
+H="$(rhome)"
+ctx="$(hk_copie "$H" | json_ctx)"
+has "aucun vault : le message nomme la nouvelle config" "~/.config/helia/vaults" "$ctx"
+[ ! -e "$H/.config/helia" ] && ok "aucun vault : rien n'est cree" || ko "aucun vault : rien n'est cree" "absent" "present"
 
 echo
 echo "$pass passes, $fail echecs"

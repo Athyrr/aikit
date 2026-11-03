@@ -34,7 +34,7 @@ Ask: **if the system changes, does this document become false?**
    header if missing).
 4. `owner: vault`: store the document as is, no digest. `externe` or `depot`:
    a digest of 1 to 2 k tokens; an optional raw copy goes in `raw/`, read on
-   demand by a subagent (`aikit:budgeting-context`). Only when the source is
+   demand by a subagent (`helia:budgeting-context`). Only when the source is
    public or supplied as text.
 
 ```yaml
@@ -70,7 +70,7 @@ skill alone. Template, verbatim:
 ```markdown
 # <level> — references
 
-Une session qui voit une reference contredire le reel le signale a l'humain et ne la corrige pas seule ; la correction passe par `aikit:capturing-reference`, sur demande.
+Une session qui voit une reference contredire le reel le signale a l'humain et ne la corrige pas seule ; la correction passe par `helia:capturing-reference`, sur demande.
 
 | Document | owner | A lire quand | ~tok | Note |
 |---|---|---|---|---|

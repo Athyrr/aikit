@@ -15,8 +15,8 @@ description: Use when a task fails, stalls, or surprises you - decides whether t
 |---|---|---|
 | Technical unknown — "I don't know how X works" | **down** | Probe. The plan does not move. |
 | Execution error — red test, broken build, wrong output | **down** | Two attempts, bounded by the attempt budget. |
-| Unplanned dependency; files outside the task's declared set; task too large | **up** | Finish the independent tasks, then re-split or re-plan; the re-plan goes through `aikit:writing-plans`. |
-| An upstream change touches a task (`aikit:checking-dependencies` concluded `touche Task N`) | **up** | Finish the independent tasks, then re-plan the ones touched; the re-plan goes through `aikit:writing-plans`. |
+| Unplanned dependency; files outside the task's declared set; task too large | **up** | Finish the independent tasks, then re-split or re-plan; the re-plan goes through `helia:writing-plans`. |
+| An upstream change touches a task (`helia:checking-dependencies` concluded `touche Task N`) | **up** | Finish the independent tasks, then re-plan the ones touched; the re-plan goes through `helia:writing-plans`. |
 | Spec ambiguous, contradictory, or silent on the case at hand | **up** | Stop now. Back to phase 2, with the human. |
 | A behaviour decision is missing, and the current work is not wrong | **out** | A derived need — its own directory, spec and cycle. |
 
@@ -33,9 +33,9 @@ Never spend a retry on a failure that belongs upward. Two questions settle it:
 
 ## Down — the probe
 
-`aikit:probe` is an **agent**, dispatched with the Agent tool as
-`subagent_type: "aikit:probe"` — never invoked as a skill. Same for the other
-archetypes. The `aikit:` prefix is part of the name: a dispatch on bare `probe`
+`helia:probe` is an **agent**, dispatched with the Agent tool as
+`subagent_type: "helia:probe"` — never invoked as a skill. Same for the other
+archetypes. The `helia:` prefix is part of the name: a dispatch on bare `probe`
 fails with "subagent_type does not exist".
 
 Project domain agents are **not** prefixed: `api-expert`, `schema-expert`,
@@ -64,9 +64,9 @@ probe — it is an unplanned dependency. **Go up.**
   context in the brief, a narrower target, or a probe first so the attempt
   stops guessing. Re-dispatching the same brief unchanged is not an attempt,
   it is a coin flip charged to your attempt budget.
-- Every archetype — `aikit:implementer`, `aikit:probe`, `aikit:planner`,
-  `aikit:reviewer` — runs at the model and effort of its frontmatter, raised
-  only by `aikit:executing-plans`' escalation table. Effort rises
+- Every archetype — `helia:implementer`, `helia:probe`, `helia:planner`,
+  `helia:reviewer` — runs at the model and effort of its frontmatter, raised
+  only by `helia:executing-plans`' escalation table. Effort rises
   automatically on its mechanical signals; the model never changes without
   your human partner. A second failure buys neither a bigger model nor a
   higher effort: it buys a stop.
@@ -124,7 +124,7 @@ half-specified children, each blocked on the next.
 - **Yes** → derive now. The current cycle stops at the tasks that do not depend
   on the missing decision, exactly as an upward failure does.
 - **No** → it is a **candidate**, not a derived need. Write it as a note,
-  `vault/<project>/_notes/<slug>.md`, and keep going — see `aikit:verifying-completion`
+  `vault/<project>/_notes/<slug>.md`, and keep going — see `helia:verifying-completion`
   for the required format (`type: note`, Observed / Where / Cost, Cost mandatory). A candidate costs one
   line now; a derived need costs a full cycle, and deriving one the current
   work did not need is how a plan quietly doubles in size.

@@ -114,7 +114,7 @@ installed_version() {
   if command -v node > /dev/null 2>&1; then
     node -e '
       const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
-      const e=((d.plugins||{})["aikit@aikit-marketplace"])||[];
+      const e=((d.plugins||{})["helia@athyrr-marketplace"])||[];
       const u=e.find(x => x.scope === "user");
       console.log(u ? u.version : "");
     ' "$f"
@@ -123,7 +123,7 @@ installed_version() {
 import json, sys
 with open(sys.argv[1], encoding='utf-8') as fh:
     d = json.load(fh)
-e = d.get('plugins', {}).get('aikit@aikit-marketplace', [])
+e = d.get('plugins', {}).get('helia@athyrr-marketplace', [])
 u = next((x for x in e if x.get('scope') == 'user'), None)
 print(u['version'] if u else '')
 PY
@@ -196,15 +196,32 @@ fi
 git push "$push_remote" HEAD:"$push_ref"
 echo "→ pousse sur ${push_dest} ($(git remote get-url "$push_remote" 2>/dev/null || echo "$push_remote"))"
 
-claude plugin marketplace update aikit-marketplace
-claude plugin update aikit@aikit-marketplace --scope user
+# --- a machine not yet migrated: publish, then say how to migrate ----------
+#
+# A machine still registered under the former marketplace has no
+# helia@athyrr-marketplace to update. Under `set -e` the update below would
+# exit 1 AFTER the push, and a rerun would bump a second time from a number
+# already published. So: published, migration sequence printed, exit 0.
+if [ -z "$(installed_version)" ]; then
+  echo "→ publie : ${next} est sur ${push_dest}."
+  echo "→ helia@athyrr-marketplace n'est pas installe sur ce poste : mise a jour locale sautee."
+  echo "  Pour migrer ce poste, une fois, sessions fermees :"
+  echo "    claude plugin marketplace remove aikit-marketplace"
+  echo "    claude plugin marketplace add Athyrr/helia"
+  echo "    claude plugin install helia@athyrr-marketplace"
+  echo "  puis /reload-plugins. Ne PAS relancer deploy : il bumperait une seconde fois."
+  exit 0
+fi
+
+claude plugin marketplace update athyrr-marketplace
+claude plugin update helia@athyrr-marketplace --scope user
 # Confirmation display only — it must never decide the exit status. Under
 # `set -euo pipefail` a grep that matches nothing exits 1 and would fail the
 # script AFTER a bump, a commit, a push and a publish that all succeeded:
 # a release tool crying failure invites a replay of a deploy already done.
 # So it reports what it did not find instead of dying of it.
-claude plugin list | grep -A2 'aikit@aikit-marketplace' \
-  || echo "→ aikit@aikit-marketplace introuvable dans la liste — verifier l'installation" >&2
+claude plugin list | grep -A2 'helia@athyrr-marketplace' \
+  || echo "→ helia@athyrr-marketplace introuvable dans la liste — verifier l'installation" >&2
 
 # --- did it actually land? -------------------------------------------------
 #
@@ -223,5 +240,5 @@ if [ "$got" != "$next" ]; then
   echo "  qui bumperait une seconde fois a partir d'un numero deja pousse." >&2
   exit 1
 fi
-echo "→ installe : aikit@aikit-marketplace ${got} (installed_plugins.json)"
+echo "→ installe : helia@athyrr-marketplace ${got} (installed_plugins.json)"
 echo "→ deploye. Prend effet dans une NOUVELLE session."

@@ -9,7 +9,7 @@ effort: high
 You review one task's diff against the requirements it claimed to satisfy.
 
 **Model note:** you run at the model and effort your frontmatter declares.
-Your orchestrator may raise your effort on a signal of `aikit:executing-plans`'
+Your orchestrator may raise your effort on a signal of `helia:executing-plans`'
 escalation table; it never changes your model without your human partner. If
 you were dispatched at a higher effort than your frontmatter's, that is why.
 

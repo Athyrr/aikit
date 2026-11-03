@@ -13,12 +13,12 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** If working in an isolated worktree, it should have been created via the `aikit:isolating-the-workspace` skill at execution time.
+**Context:** If working in an isolated worktree, it should have been created via the `helia:isolating-the-workspace` skill at execution time.
 
 **Save plans to:** `vault/<project>/<feature>/plan.md`. One file for the whole
 feature — it carries the plan, the spec pointer, and the live status; task
 state is tracked with standard GitHub checkboxes (`- [ ]` → `- [x]`), not a
-separate ledger. aiKit writes nothing inside the project repository itself.
+separate ledger. Helia writes nothing inside the project repository itself.
 - (Your human partner's preferences for plan location override this default)
 
 ## Read the heuristics cascade first
@@ -32,23 +32,23 @@ Before drafting tasks, read two files, in this order, if they exist:
 
 Both are short (capped at 50 lines) — reading them in full costs little and
 saves a task from repeating a mistake already paid for once. When a task's
-dispatch (`aikit:executing-plans`) would benefit from one specific line,
+dispatch (`helia:executing-plans`) would benefit from one specific line,
 inject that line alone as the task's one allowed constraint — never the
 whole file, and never a heuristic that doesn't bear on the task at hand.
 
-## Confirm the base — the orchestrator, before dispatching `aikit:planner`
+## Confirm the base — the orchestrator, before dispatching `helia:planner`
 
-`aikit:planner` can neither ask your human partner nor dispatch an agent, so this
+`helia:planner` can neither ask your human partner nor dispatch an agent, so this
 step is the orchestrator's, and a dispatched planner skips it. Run
-`aikit-deps <project> <need>; echo "sortie=$?"`, then:
+`helia-deps <project> <need>; echo "sortie=$?"`, then:
 
 | `plan.md` | On a **!** line |
 |---|---|
 | no `### Task N:` heading | Show the lines. Your human partner confirms the base, no agent. For each **!** line, write Vu, Le and the conclusion `base du plan` in `## Dépendances` (`\| Nom \| Source \| Base \| Vu \| Le \| Conclusion \|`), Source and Base left as they are. |
-| at least one `### Task N:` heading (re-planning) | `aikit:checking-dependencies` |
+| at least one `### Task N:` heading (re-planning) | `helia:checking-dependencies` |
 
 An `x`, or an exit code other than 0 and 1: one sentence to your human partner, no
-stop. `## Dépendances` stays above the first task: `aikit-deps` stops reading at
+stop. `## Dépendances` stays above the first task: `helia-deps` stops reading at
 the first `### Task`.
 
 ## Scope Check
@@ -71,7 +71,7 @@ This structure informs the task decomposition. Each task should produce self-con
 Every task but a `[humain]` one (see Human Tasks) declares the exact files it touches. That single declaration does
 three jobs, and dropping it silently disables all three:
 
-1. `aikit:checking-plan-drift` compares it against `git diff --name-only` after
+1. `helia:checking-plan-drift` compares it against `git diff --name-only` after
    the task — the only mechanical detector of a plan quietly abandoned;
 2. it bounds the implementer's scope, so "I needed one more file" surfaces as a
    report instead of disappearing into a diff;
@@ -107,7 +107,7 @@ independently testable deliverable.
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use aikit:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use helia:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -140,22 +140,22 @@ include this section.]
 what makes a task parallelisable.]
 
 **Agent:** [a domain expert from the project's registry file when the task
-falls in its area — e.g. `api-expert`. Omit for the generic `aikit:implementer`.]
+falls in its area — e.g. `api-expert`. Omit for the generic `helia:implementer`.]
 
 **Model:** [optional — `sonnet` or `opus`; omit for the default, `sonnet`. Only
 annotate `opus` when the task itself demands it — concurrent state or
 distributed locking, a math/crypto algorithm with strict formal invariants,
 or a cross-cutting refactor touching more than 4 modules with no prior
-integration tests. This is a proposal, not a decision: `aikit:executing-plans`
+integration tests. This is a proposal, not a decision: `helia:executing-plans`
 confirms it with the human partner per task before dispatching on opus, and
 it never carries over to the next task.]
 
 **Security:** [optional — `yes`, or omit; absent means `no`. Set it when the
 task meets at least one of: (1) authentication or authorisation; (2) secrets
-or credentials — see `aikit:handling-secrets`; (3) cryptography; (4)
+or credentials — see `helia:handling-secrets`; (3) cryptography; (4)
 untrusted input (parsing, deserialisation); (5) network exposure or
 permissions. It is a property of the task, not a dispatch parameter:
-`aikit:executing-plans` translates it through its escalation table. Your
+`helia:executing-plans` translates it through its escalation table. Your
 human partner may add or remove it when reviewing the plan. A plan never
 carries an `Effort:` line.]
 
@@ -253,7 +253,7 @@ After saving the plan, hand it off. **There is no choice to offer:** one skill
 carries execution, and its subagent mode is the method.
 
 **"Plan complete and saved to `vault/<project>/<feature>/plan.md`.**
-**REQUIRED SUB-SKILL:** `aikit:executing-plans` — a fresh subagent
+**REQUIRED SUB-SKILL:** `helia:executing-plans` — a fresh subagent
 per task, a fresh reviewer per diff, checkboxes tracking state in between.
 Its final section covers the degraded inline mode for a session where
 subagents are unavailable.

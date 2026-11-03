@@ -125,7 +125,7 @@ fi
 
 # A finished need lives under <project>/_archive/<need>/. Resuming it must find
 # it there: a fresh <project>/<need>/ beside it would lose its .session. A live
-# directory wins -- the same order as aikit:understanding-need.
+# directory wins -- the same order as helia:understanding-need.
 if [ ! -d "$vault_dir" ] && [ -d "$archive_dir" ]; then
   vault_dir="$archive_dir"
   echo "scoped: '${feature}' is archived — resuming from ${vault_dir}" >&2

@@ -37,7 +37,7 @@ A `[humain]` task is **exempt**: no BASE, no diff, `plan-drift PLAN_FILE TASK_N`
 
 **EXTRA — touched but not declared.** The task needed something the plan did
 not foresee. That is the definition of an unplanned dependency: an **upward**
-failure. Route with `aikit:routing-failures`. Do not wave it through because
+failure. Route with `helia:routing-failures`. Do not wave it through because
 the code looks right — the code is not the question; the plan's accuracy is.
 
 The honest exception: a file the whole plan needed and no single task owns
@@ -71,7 +71,7 @@ verified on a check that never ran.
 
 ## Why this works at all
 
-Because aiKit writes nothing inside the project repositories. The plan, its
+Because Helia writes nothing inside the project repositories. The plan, its
 status, specs and scratch all live under `vault/`, so **every file in the
 diff is production code by construction**. Method artifacts can never show
 up as false drift.
