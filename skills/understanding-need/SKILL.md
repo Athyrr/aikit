@@ -178,10 +178,10 @@ A resumed feature whose `vault/<project>/<feature>/plan.md` names an unresolved 
 ## 3a. Upstream dependencies
 
 On every path, Fast-Path included, before re-entering, starting or dispatching, run
-`aikit-deps <project> <need>; echo "sortie=$?"`, without `<need>` unless its `plan.md` exists.
-A **!** line on a plan with a `### Task N:` heading: `aikit:checking-dependencies`. Otherwise
-show the lines, no stop. An `x`, or an exit code other than 0 and 1: tell your human partner in
-one sentence. A `?` whose `Le` is empty: check it with your own tools; `Le` moves only when your human partner decides, or at their request.
+`aikit-deps <project> <need>; echo "sortie=$?"`, without `<need>` unless its `plan.md` exists. A **!** line
+on a plan with a `### Task N:` heading: `aikit:checking-dependencies`. Otherwise show the lines, no stop.
+An `x`, or an exit code other than 0 and 1: tell your human partner in one sentence. A `?` whose `Le` is
+empty, or at your human partner's request: check it with your own tools; your human partner decides if `Le` moves.
 
 ## 4. Confirm before moving on
 
