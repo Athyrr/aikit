@@ -79,7 +79,7 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
   une nouvelle session. `aikit:executing-plans` precise que la ligne de rapport
   porte `"event":"report"`.
 
-## 0.18.0
+## 0.17.2
 - **Signature aiKit dans toutes les sessions.** Le stub de demarrage porte la
   regle (trailer `Co-Authored-By: aiKit <noreply@aikit.dev>`, pied de PR
   `Generated with aiKit`) : elle n'existait que dans le `CLAUDE.md` de ce depot,

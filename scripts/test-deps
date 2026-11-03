@@ -257,6 +257,11 @@ is "... lignes = et rien a trier" "dependances sr/b
 = pro  vu e4f5a6b:open, amont e4f5a6b:open
 verdict : rien a trier" "$OUT"
 
+planmd sr b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |" "| br | | | 9c0d1e2 | 2026-11-02 | sans effet |" "| prm | | | \`683da0b:merged\` | 2026-11-02 | sans effet |" "| pro | | | e4f5a6b:open | 2026-11-02 | sans effet |"
+deps sr b
+is "vu entre backticks : sortie 0" "0" "$RC"
+has "... = prm" "= prm  vu 683da0b:merged, amont 683da0b:merged" "$OUT"
+
 release_de acme/lib v4.5.0
 deps sr b
 is "acquitte puis nouvelle release : sortie 1" "1" "$RC"
@@ -355,6 +360,10 @@ release_de acme/lib v4.1.0
 deps sa b
 is "acquitte puis nouvelle release : sortie 1" "1" "$RC"
 has "... ! redonne" "! a  base 4.0.0-rc7 (monclone sur master), amont 4.1.0, vu 4.0.0" "$OUT"
+planmd sa b "| a | | | v4.1.0 | 2026-11-02 | sans effet |"
+deps sa b
+is "vu ecrit avec un v devant la version : sortie 0" "0" "$RC"
+has "... = acquitte" "= a  base 4.0.0-rc7 (monclone sur master), amont 4.1.0, vu v4.1.0 (acquitte)" "$OUT"
 release_de acme/lib v4.4.0
 
 fiche sa "| a | acme/lib | paquet Acme.Sym $L |" "| b | acme/lib | paquet Acme.Sym2 $L |"

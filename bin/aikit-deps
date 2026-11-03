@@ -80,6 +80,7 @@ table_rows() {
         v = (i <= n) ? cell[i] : ""
         gsub(pipe, "|", v)
         gsub(/^[ \t]+|[ \t]+$/, "", v)
+        if (length(v) > 1 && v ~ /^`.*`$/) v = substr(v, 2, length(v) - 2)
         out = out (i > 1 ? sep : "") v
       }
       print out
@@ -326,7 +327,7 @@ eval_package() {  # eval_package <source> <seen> <base>
   at="base $used ($CLONE sur $BRANCH), amont $amont"
   if [ "$used" = "$amont" ]; then
     SIGN='='; TEXT=$at
-  elif [ "$2" = "$amont" ]; then
+  elif [ "${2#v}" = "${amont#v}" ]; then
     SIGN='='; TEXT="$at, vu $2 (acquitte)"
   else
     SIGN='!'; TEXT="$at, vu ${2:-vide}"

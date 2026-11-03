@@ -44,7 +44,7 @@ step is the orchestrator's, and a dispatched planner skips it. Run
 
 | `plan.md` | On a **!** line |
 |---|---|
-| no `### Task N:` heading | Show the lines. Your human partner confirms the base, no agent. For each **!** line, write Vu, Le and the conclusion `base du plan` in `## Dépendances` (`| Nom | Source | Base | Vu | Le | Conclusion |`), Source and Base left as they are. |
+| no `### Task N:` heading | Show the lines. Your human partner confirms the base, no agent. For each **!** line, write Vu, Le and the conclusion `base du plan` in `## Dépendances` (`\| Nom \| Source \| Base \| Vu \| Le \| Conclusion \|`), Source and Base left as they are. |
 | at least one `### Task N:` heading (re-planning) | `aikit:checking-dependencies` |
 
 An `x`, or an exit code other than 0 and 1: one sentence to your human partner, no
