@@ -27,7 +27,7 @@ yields.
   is not a detail to absorb — it is an unplanned dependency. Stop, report it,
   and let the orchestrator route it. Silently widening scope is the drift the
   whole method exists to catch.
-- **Test first** where the project has tests (`aikit:test-driven-development`).
+- **Test first** where the project has tests (`helia:test-driven-development`).
   Write the failing test, watch it fail, then implement. A test written after
   the code tests the code you wrote, not the behaviour you owed.
 - **Never dispatch subagents** — not helpers, not a reviewer. Review comes from

@@ -15,13 +15,13 @@ You write test cases (pressure scenarios with subagents), watch them fail (basel
 
 **Core principle:** If you didn't watch an agent fail without the skill, you don't know if the skill teaches the right thing.
 
-**REQUIRED BACKGROUND:** You MUST understand aikit:test-driven-development before using this skill. That skill defines the fundamental RED-GREEN-REFACTOR cycle. This skill adapts TDD to documentation.
+**REQUIRED BACKGROUND:** You MUST understand helia:test-driven-development before using this skill. That skill defines the fundamental RED-GREEN-REFACTOR cycle. This skill adapts TDD to documentation.
 
 **Official guidance:** For Anthropic's official skill authoring best practices, see anthropic-best-practices.md. This document provides additional patterns and guidelines that complement the TDD-focused approach in this skill.
 
 ## Before you name anything
 
-**Read `VOCABULARY.md`, at aiKit's own repository root (not the project you
+**Read `VOCABULARY.md`, at Helia's own repository root (not the project you
 are working in), before creating or editing any skill.** It is the authority
 on every term the method uses, and it carries the
 four-question naming test. A name that collides with an existing term is not a
@@ -295,8 +295,8 @@ wc -w skills/path/SKILL.md
 **When writing documentation that references other skills:**
 
 Use skill name only, with explicit requirement markers:
-- ✅ Good: `**REQUIRED SUB-SKILL:** Use aikit:test-driven-development`
-- ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand aikit:diagnosing`
+- ✅ Good: `**REQUIRED SUB-SKILL:** Use helia:test-driven-development`
+- ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand helia:diagnosing`
 - ❌ Bad: `See skills/testing/test-driven-development` (unclear if required)
 - ❌ Bad: `@skills/testing/test-driven-development/SKILL.md` (force-loads, burns context)
 
@@ -405,7 +405,7 @@ Edit skill without testing? Same violation.
 - Don't "adapt" while running tests
 - Delete means delete
 
-**REQUIRED BACKGROUND:** The aikit:test-driven-development skill explains why this matters. Same principles apply to documentation.
+**REQUIRED BACKGROUND:** The helia:test-driven-development skill explains why this matters. Same principles apply to documentation.
 
 ## Testing All Skill Types
 

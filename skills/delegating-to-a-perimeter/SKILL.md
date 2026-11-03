@@ -17,7 +17,7 @@ anything a project's MCP servers answer. You cannot answer it from the code.
 
 An Agent-tool subagent runs **inside your session**. It inherits the MCP
 servers your session connected at startup; it cannot connect its own, and it
-cannot re-scope itself to a directory. Dispatching `aikit:explorer` "into" a
+cannot re-scope itself to a directory. Dispatching `helia:explorer` "into" a
 project loads none of that project's skills or agents.
 
 A **process** launched with `cwd = <perimeter>` loads that directory's
@@ -95,7 +95,7 @@ edits code, and a diagnosis writes nothing back to the systems it inspects.
 | Thought | Reality |
 |---|---|
 | "I'll just dispatch a subagent into the perimeter" | Subagents inherit your session. They cannot re-scope, so they get its MCP but never a project's skills. |
-| "I'll dispatch `aikit:explorer`, it has the MCP tools" | It does not. An agent that declares a `tools:` list sees no `mcp__*` tool at all — measured. |
+| "I'll dispatch `helia:explorer`, it has the MCP tools" | It does not. An agent that declares a `tools:` list sees no `mcp__*` tool at all — measured. |
 | "Faster to load the tools here" | Then forty tool calls land in your context and stay there. |
 | "I'll pass the whole conversation as context" | Send the question and the facts. History is not context. |
 | "It's blocked, I'll add --dangerously-skip-permissions" | The block is the registry telling you the perimeter is too narrow. Edit the registry. |

@@ -34,7 +34,7 @@ the spec, and claim `GATES_PASS — human verification required`. Never `PASS`.
 A verdict you cannot establish is worse than no verdict, because it stops
 anyone else from looking.
 
-Dispatch `aikit:verifier` for this when you want the measurement separated from the
+Dispatch `helia:verifier` for this when you want the measurement separated from the
 agent that did the work.
 
 ## The Gate Function
@@ -74,7 +74,7 @@ Phase 6 closes it, before it moves to `traces/`. Before the verdict is reported:
   hides its blind spots is worse than no verdict, because it is believed.
 - Harvested candidates are listed, each with the path of the note written for it.
 
-Phase 1 initialises `vault/<project>/<feature>/plan.md`, `aikit:routing-failures` writes to it
+Phase 1 initialises `vault/<project>/<feature>/plan.md`, `helia:routing-failures` writes to it
 when a cycle goes up, and phase 6 closes it before the file moves to `traces/`. It is
 never absent after a successful run, until the run itself is over.
 
@@ -106,7 +106,7 @@ human partner has verified — or waived, in writing:
 6. Commit the move and the trame together, in the vault.
 
 Never before the human verification: a need under `_archive/` reads as
-finished, and `aikit:understanding-need` resumes one only on the human
+finished, and `helia:understanding-need` resumes one only on the human
 partner's word.
 
 ## Writing to `heuristics.md` — orchestrator only, at close, one bullet
@@ -114,7 +114,7 @@ partner's word.
 `vault/<project>/heuristics.md` is a living, append-only record of empirical
 rules and traps for this project, capped at 50 lines. Two rules govern it:
 
-It exists from registration, header only (`aikit:registering-a-project`): append below the header, never recreate the file.
+It exists from registration, header only (`helia:registering-a-project`): append below the header, never recreate the file.
 
 - **Only the orchestrator writes to it, and only here, at phase 6.** A
   subagent never writes to it — heuristics earn their place by surviving to
@@ -142,7 +142,7 @@ rules.
 
 A **candidate** is a real problem that nothing is waiting on. It is not a
 derived need — a missing decision the current cycle needs in order to continue,
-which routes `out` — see `aikit:routing-failures` — and it is not a review
+which routes `out` — see `helia:routing-failures` — and it is not a review
 finding the human partner ruled acceptable after the attempt budget was spent
 (that is **parked**: not harvested, it stays only in the archived `traces/plan.md`).
 

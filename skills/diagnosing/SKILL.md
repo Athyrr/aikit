@@ -81,7 +81,7 @@ command is a fact the next session inherits; one eliminated in your head is a
 test it will run again.
 
 A diagnostic becomes a feature need only after the root cause is known — see
-`aikit:understanding-need` for why a symptom alone can't found one.
+`helia:understanding-need` for why a symptom alone can't found one.
 
 ## The Four Phases
 
@@ -152,7 +152,7 @@ You MUST complete each phase before proceeding to the next.
    **WHEN the symptom shows in a browser, or the need runs a local UI:** read the live page with the harness's browser tooling — rendered state, console, network requests — before theorizing from the code. Check the project's registry file for its URL and how to start it.
    - State rendered in the UI → read the page.
    - State inside the process (port, crash, logs) → `curl` and the process logs; no browser needed.
-   - Never read cookies, sessions or saved passwords from a browser profile (`aikit:handling-secrets`).
+   - Never read cookies, sessions or saved passwords from a browser profile (`helia:handling-secrets`).
 
 6. **Trace Data Flow**
 
@@ -223,7 +223,7 @@ You MUST complete each phase before proceeding to the next.
    - Automated test if possible
    - One-off test script if no framework
    - MUST have before fixing
-   - Use the `aikit:test-driven-development` skill for writing proper failing tests
+   - Use the `helia:test-driven-development` skill for writing proper failing tests
 
 2. **Implement Single Fix**
    - Address the root cause identified
@@ -235,7 +235,7 @@ You MUST complete each phase before proceeding to the next.
    - Test passes now?
    - No other tests broken?
    - Issue actually resolved?
-   - Use the `aikit:verifying-completion` skill before claiming success
+   - Use the `helia:verifying-completion` skill before claiming success
 
 4. **If Fix Doesn't Work**
    - STOP
@@ -314,11 +314,11 @@ If you catch yourself thinking:
 
 ## Close: keep the trap
 
-Once the fix is verified (Phase 4 done). A fix made outside a feature cycle never reaches phase 6 of `aikit:verifying-completion`, so this is its only chance to leave a trace.
+Once the fix is verified (Phase 4 done). A fix made outside a feature cycle never reaches phase 6 of `helia:verifying-completion`, so this is its only chance to leave a trace.
 
 Was the root cause a trap nothing already written down would have told you, and did it cost real time to find? If yes, append ONE bullet `- <Condition> -> <Action or thing to avoid>` to `vault/<project>/heuristics.md`. If the cause does not depend on the project (machine, OS, shell, or a pattern like one connection per request overloading a shared target), use `vault/_global/heuristics.md` instead. If no, write nothing.
 
-Same rules as `aikit:verifying-completion` "Writing to `heuristics.md`": 50-line cap (replace the oldest rule rather than exceed), append below the header, never recreate the file.
+Same rules as `helia:verifying-completion` "Writing to `heuristics.md`": 50-line cap (replace the oldest rule rather than exceed), append below the header, never recreate the file.
 
 ## When Process Reveals "No Root Cause"
 

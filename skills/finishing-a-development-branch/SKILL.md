@@ -171,7 +171,7 @@ Step 2, from before that directory change.
 
 **If `GIT_DIR == GIT_COMMON`:** Normal repo, no worktree to clean up. Done.
 
-**If `WORKTREE_PATH` is under `.worktrees/` or `worktrees/`:** aiKit
+**If `WORKTREE_PATH` is under `.worktrees/` or `worktrees/`:** Helia
 created this worktree — we own cleanup:
 
 ```bash

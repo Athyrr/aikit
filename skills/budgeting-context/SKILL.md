@@ -30,12 +30,12 @@ it by pre-loading "just in case".**
 | Phase | Context | Loads | Must NOT load |
 |---|---|---|---|
 | 1 Understand | orchestrator | the project's registry file (~500) | code, project docs |
-| 2 Specify | orchestrator + `aikit:explorer` | explorer reads code and docs against one closed question, returns a 30-50 line factual synthesis, no raw code | orchestrator reads nothing itself beyond a light check (`ls`, `git log`) |
+| 2 Specify | orchestrator + `helia:explorer` | explorer reads code and docs against one closed question, returns a 30-50 line factual synthesis, no raw code | orchestrator reads nothing itself beyond a light check (`ls`, `git log`) |
 | 3 Assess | the project's domain expert | its own prompt + the docs of its area | orchestrator receives the `## Impact` section appended to `spec.md`, nothing else |
-| 4 Plan | `aikit:planner` | spec (with its Impact section), the doc **slices** the registry routes to, `_global/heuristics.md` and `<project>/heuristics.md` (both capped at 50 lines) | the whole doc; the orchestrator does not re-read |
-| 5 Execute | one `aikit:implementer` per task (none for a `[humain]` task) | Task N's section in `vault/<project>/<feature>/plan.md`, and only that section | the rest of the plan, other tasks, session history |
-| 5b Review | `aikit:reviewer` | the diff and Task N's section it must satisfy | the conversation |
-| 6 Verify | `aikit:verifier` | the registry's command and its output | anything else |
+| 4 Plan | `helia:planner` | spec (with its Impact section), the doc **slices** the registry routes to, `_global/heuristics.md` and `<project>/heuristics.md` (both capped at 50 lines) | the whole doc; the orchestrator does not re-read |
+| 5 Execute | one `helia:implementer` per task (none for a `[humain]` task) | Task N's section in `vault/<project>/<feature>/plan.md`, and only that section | the rest of the plan, other tasks, session history |
+| 5b Review | `helia:reviewer` | the diff and Task N's section it must satisfy | the conversation |
+| 6 Verify | `helia:verifier` | the registry's command and its output | anything else |
 | Diagnostic | a scoped process | its MCP servers and routing skills | the orchestrator loads none of it |
 
 ## The orchestrator's context budget
@@ -108,4 +108,4 @@ once the feature has merged.
 | "Let me paste the report so I have it" | You have the path. That is having it. |
 | "I'll load everything up front, it's simpler" | It is simpler for one turn and worse for every turn after. |
 | "The subagent should see the whole plan" | It needs its task. The plan is the orchestrator's job. |
-| "I'll check the code myself, it's quicker" | Quicker now, resident forever. Dispatch `aikit:explorer`. |
+| "I'll check the code myself, it's quicker" | Quicker now, resident forever. Dispatch `helia:explorer`. |
