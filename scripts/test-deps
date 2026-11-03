@@ -441,6 +441,15 @@ deps sansclone
 has "release lue sans clone" "! a  vu vide, amont v4.4.0" "$OUT"
 has "seul <clone> exige un clone" "x b  non verifie : clone absent : fantome" "$OUT"
 
+echo "amont vide"
+fiche sy "| g | acme/vide | branche master |" "| i | acme/vide#5 | pr |"
+gh_repond '' api repos/acme/vide/branches/master --jq .commit.sha
+gh_repond '' pr view 5 --repo acme/vide --json headRefOid,state --jq '.headRefOid + ":" + .state'
+deps sy
+has "branche a sortie vide : x, jamais =" "x g  non verifie : branche introuvable" "$OUT"
+has "pr a sortie vide : x" "x i  non verifie : pr introuvable" "$OUT"
+hasnt "... aucun faux =" "= g" "$OUT"
+
 
 echo "surveille"
 release_de acme/lib v4.4.0
@@ -513,6 +522,12 @@ has "motif a etoile en tete" "x a  non verifie : base inconnue" "$OUT"
 has "motif a etoile au milieu" "x b  non verifie : base inconnue" "$OUT"
 has "motif a double etoile" "x c  non verifie : base inconnue" "$OUT"
 has "motif hors de l'alphabet" "x d  non verifie : base inconnue" "$OUT"
+hasnt "... aucun faux tout declare" "tout declare" "$OUT"
+
+clone garde main "$(props Acme.Un 4.4.0 Acme.Pack.Un 4.4.0)"
+fiche sn "| p | acme/lib | paquet * $LW |" "| veille | | surveille Acme.* $LW |"
+deps sn
+has "paquet * rejete ne couvre rien" "x veille  non declares : Acme.Un, Acme.Pack.Un" "$OUT"
 hasnt "... aucun faux tout declare" "tout declare" "$OUT"
 
 echo "commits non publies"

@@ -177,6 +177,7 @@ branch_head() {  # branch_head <owner/repo> <branch>
     if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="branche introuvable"; fi
     return 1
   fi
+  [ -n "$GH_OUT" ] || { GH_CAUSE="branche introuvable"; return 1; }
   GH_OUT=${GH_OUT:0:7}
 }
 
@@ -189,6 +190,10 @@ pr_head() {  # pr_head <owner/repo#N>
     if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="pr introuvable"; fi
     return 1
   fi
+  case "$GH_OUT" in
+    ?*:?*) ;;
+    *) GH_CAUSE="pr introuvable"; return 1 ;;
+  esac
   sha=${GH_OUT%%:*}
   state=$(printf '%s' "${GH_OUT#*:}" | tr '[:upper:]' '[:lower:]')
   GH_OUT="${sha:0:7}:$state"
@@ -280,8 +285,8 @@ manifest_version() {
 
 # group_version <file> <prefix> -> `=<version>` when every package of the prefix
 # carries the same one, `!` when two differ, `=` when one has none, nothing when
-# the prefix matches no package. A token equal to the prefix is prose, not a
-# package: a comment reading `Acme.Lib.*` must not fail the group.
+# the prefix matches no package. A token equal to the prefix and followed by `*`
+# is prose, not a package: a comment reading `Acme.Lib.*` must not fail the group.
 group_version() {
   PREFIX="$2" LC_ALL=C awk "$AWK_VERSION"'
     BEGIN { pre = ENVIRON["PREFIX"] }
@@ -349,7 +354,7 @@ undeclared() {
         p = c[i]
         if (p == "") continue
         if (p == t) return 1
-        if (p ~ /\*$/) { sub(/\*$/, "", p); if (index(t, p) == 1) return 1 }
+        if (p ~ /\*$/) { sub(/\*$/, "", p); if (p == "") continue; if (index(t, p) == 1) return 1 }
       }
       return 0
     }
