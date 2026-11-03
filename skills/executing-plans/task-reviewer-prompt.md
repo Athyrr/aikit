@@ -8,7 +8,7 @@ code quality.
 more, nothing less) and is well-built (clean, tested, maintainable)
 
 ```
-Subagent (aikit:reviewer):
+Subagent (helia:reviewer):
   description: "Review Task N (spec + quality)"
   model: [MODEL — omit this line: no row of SKILL.md's escalation table
          changes a reviewer's model]

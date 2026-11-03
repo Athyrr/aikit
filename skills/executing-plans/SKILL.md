@@ -77,7 +77,7 @@ digraph process {
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [shape=box];
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" [shape=box];
     "Final review clean: leave vault/<project>/<feature>/plan.md for phase 6" [shape=box];
-    "Use aikit:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
+    "Use helia:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Setup: worktree, read/init vault/<project>/<feature>/plan.md, pre-flight review" -> "Dispatch implementer subagent (./implementer-prompt.md)";
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer asks questions?";
@@ -104,14 +104,14 @@ digraph process {
     "More tasks remain?" -> "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [label="no"];
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: leave vault/<project>/<feature>/plan.md for phase 6";
-    "Final review clean: leave vault/<project>/<feature>/plan.md for phase 6" -> "Use aikit:finishing-a-development-branch";
+    "Final review clean: leave vault/<project>/<feature>/plan.md for phase 6" -> "Use helia:finishing-a-development-branch";
 }
 ```
 
 ## Setup
 
 Ensure the work happens in an isolated workspace: use
-aikit:isolating-the-workspace to create one or verify the existing one.
+helia:isolating-the-workspace to create one or verify the existing one.
 Never start implementation on a main/master branch without your human
 partner's explicit consent.
 
@@ -178,7 +178,7 @@ implementation.
 
 **Each archetype runs at the `model` and `effort` its own frontmatter
 declares (`agents/*.md`) — the only place the base values live.**
-`aikit:using-aikit` mirrors them in a table for reading; `scripts/doctor`
+`helia:using-helia` mirrors them in a table for reading; `scripts/doctor`
 keeps the two equal. Dispatching by archetype name gets both without passing
 either.
 
@@ -194,27 +194,27 @@ Two rules, never merged into one:
 
 An effort escalation never buys a third attempt: two failed attempts at one
 task always stop the loop and go to your human partner
-(`aikit:routing-failures`).
+(`helia:routing-failures`).
 
 ### Escalation table
 
 | Mechanical signal | Role | Passed at dispatch |
 |---|---|---|
-| Final review of the whole branch | `aikit:reviewer` | `effort: xhigh` |
-| Task marked `Security: yes` (its task review and every re-review) | `aikit:reviewer` | `effort: xhigh` |
-| A security audit your human partner explicitly asked for | `aikit:reviewer` | `effort: xhigh` |
-| The re-review that follows a task's **second** fix attempt | `aikit:reviewer` | `effort: xhigh` |
-| Your human partner explicitly asks for it | `aikit:planner` | `effort: xhigh` |
-| A task whose `Model: opus` your human partner **confirmed** | `aikit:implementer` (or `aikit:probe`) | `model: opus`, `effort: high` |
+| Final review of the whole branch | `helia:reviewer` | `effort: xhigh` |
+| Task marked `Security: yes` (its task review and every re-review) | `helia:reviewer` | `effort: xhigh` |
+| A security audit your human partner explicitly asked for | `helia:reviewer` | `effort: xhigh` |
+| The re-review that follows a task's **second** fix attempt | `helia:reviewer` | `effort: xhigh` |
+| Your human partner explicitly asks for it | `helia:planner` | `effort: xhigh` |
+| A task whose `Model: opus` your human partner **confirmed** | `helia:implementer` (or `helia:probe`) | `model: opus`, `effort: high` |
 | Every dispatch of a project's domain expert (`Agent:` line) | the expert | `model: opus`, `effort: high` |
 
 **No other case passes `model` or `effort` at dispatch — the dispatch
 templates included.** Without a signal, the archetype runs at its frontmatter
-values. A domain expert is not an aiKit archetype — its frontmatter belongs
+values. A domain expert is not an Helia archetype — its frontmatter belongs
 to its project — which is why its row always passes both.
 
 **Always pass the model explicitly when you dispatch an agent that is
-neither an aiKit archetype nor a domain expert.** An omitted model inherits
+neither an Helia archetype nor a domain expert.** An omitted model inherits
 your session's.
 
 **Limits you cannot see from here.** The `effort` dispatch parameter needs a
@@ -230,16 +230,16 @@ A retry must always change something real:
 
 - more context in the brief (the interfaces, the constraint, the trap it hit);
 - a narrower target (split the task, dispatch the remainder separately);
-- a `aikit:probe` first, so the attempt stops guessing at an unknown.
+- a `helia:probe` first, so the attempt stops guessing at an unknown.
 
 Re-dispatching the same brief at the same model and effort is not an attempt.
 It is a coin flip charged to your attempt budget. **The attempt budget is
 two.** When the second attempt also fails, stop dispatching and ask for
-arbitration — see `aikit:routing-failures`.
+arbitration — see `helia:routing-failures`.
 
 ## Optional event log
 
-If the environment variable `AIKIT_EVENTS_FILE` names a writable file, append
+If the event log file — `HELIA_EVENTS_FILE`, or `AIKIT_EVENTS_FILE` when the first is unset or empty (former name, read until every machine is migrated) — names a writable file, append
 one JSON line to it (create the file if absent) each time you dispatch a
 subagent and again when its report arrives — never otherwise, and never a
 partial line. **Every** subagent counts, not only implementers: task
@@ -252,13 +252,13 @@ Dispatch: `{"event":"dispatch","role":"<archetype or agent name>","project":"<na
 the escalation table): it records the effort requested, not the effort in
 force, and its absence means the frontmatter value. `model` is always
 present — the model passed at dispatch, otherwise the archetype's model in
-`aikit:using-aikit`'s mirror table.
+`helia:using-helia`'s mirror table.
 `task` is `0` for a role that belongs to no task (final reviewer, planner,
 explorer). Report: the same fields, with `"event":"report"`, plus `"status":"success"` or
 `"status":"failure"`, read off the implementer's `STATUS:` line, or `success`
 for a reviewer that returned a verdict (APPROVE or REJECT alike).
 
-`AIKIT_EVENTS_FILE` unset → skip this entirely: no file, no probing for one.
+Both unset → skip this entirely: no file, no probing for one.
 
 ## The Task Sequence
 
@@ -294,7 +294,7 @@ fields under the current task's heading in `vault/<project>/<feature>/plan.md`.
   frontmatter applies. Nothing to confirm.
 - **`Model: opus`** → this is the planner's **proposal**, not a decision. It
   is only a legitimate proposal when the task itself meets one of the
-  criteria in `aikit:writing-plans`' Task Structure (concurrent state or
+  criteria in `helia:writing-plans`' Task Structure (concurrent state or
   distributed locking; a math/crypto algorithm with strict formal
   invariants; a cross-cutting refactor touching more than 4 modules with no
   prior integration tests). Before dispatching **this task** on opus, name
@@ -319,12 +319,12 @@ A task whose title starts with `[humain]` or `[human]` is done by your human par
 
 Keep executing the tasks that do not `Depends on` it. When none is left, hand its checklist to your human partner and wait: that is the sixth stop.
 
-The verdict reaches `vault/<project>/<feature>/plan.md` in either of two equivalent ways: you tick the boxes and add a dated line ("validated by the human, on their word" or "on screenshots"), or the human ticks them by hand. A defect they report goes through `aikit:routing-failures` and reopens the task or adds a corrective one; a box is never unticked in silence.
+The verdict reaches `vault/<project>/<feature>/plan.md` in either of two equivalent ways: you tick the boxes and add a dated line ("validated by the human, on their word" or "on screenshots"), or the human ticks them by hand. A defect they report goes through `helia:routing-failures` and reopens the task or adds a corrective one; a box is never unticked in silence.
 
 ### 1. Dispatch the implementer — minimalist protocol
 
 Record BASE (`git rev-parse HEAD`) before dispatching — the review diff and
-fix-round diffs need it. If `AIKIT_EVENTS_FILE` is set, append the dispatch
+fix-round diffs need it. If the event log file is set (see Optional event log), append the dispatch
 line (see Optional event log) before sending the prompt.
 
 **The dispatch prompt carries four things, and nothing else:**
@@ -336,7 +336,7 @@ line (see Optional event log) before sending the prompt.
 3. the test command that proves the task;
 4. at most one constraint — from Global Constraints or
    `<project>/heuristics.md` — when it bears directly on this task, per
-   `aikit:budgeting-context`'s read cascade.
+   `helia:budgeting-context`'s read cascade.
 
 **Forbidden in the dispatch prompt:** pasted code excerpts, file contents,
 diffs, or a summary of the conversation or of earlier tasks. A task's
@@ -361,12 +361,12 @@ session's dispatch once hit 42k chars, 99% of it pasted history.
   first (see Handle the report, below).
 - **Which agent:** if the task carries an `Agent:` line, dispatch that domain
   expert from the project's registry — it knows conventions the generic
-  archetype does not. Otherwise dispatch `aikit:implementer`. A `Skill:` line
+  archetype does not. Otherwise dispatch `helia:implementer`. A `Skill:` line
   is not copied into the dispatch; the implementer reads it in `plan.md`.
 - Never dispatch multiple implementation subagents in parallel (conflicts).
   **One exception, and it must hold completely:** the tasks declare
   `Depends on: none`, their Files blocks are disjoint, and each runs in its own
-  git worktree (`aikit:isolating-the-workspace`). If any of the three is missing,
+  git worktree (`helia:isolating-the-workspace`). If any of the three is missing,
   sequence them. A shared file beats any dependency block.
 
 Template: [implementer-prompt.md](implementer-prompt.md)
@@ -377,15 +377,15 @@ The implementer returns exactly three lines: `STATUS`, `FILES`, `TEST` (see
 `implementer-prompt.md`). Nothing else reaches your context from it — no
 diff, no log, no narrative. Record those three lines verbatim as the task's
 checklist annotation in `vault/<project>/<feature>/plan.md` before doing anything else; that is
-now the only place the attempt's detail lives. If `AIKIT_EVENTS_FILE` is set,
+now the only place the attempt's detail lives. If the event log file is set (see Optional event log),
 append the report line (see Optional event log) using the `STATUS` you just
 recorded.
 
 **`STATUS: SUCCESS` or `STATUS: SUCCESS (concern: ...)`:** First run the
-drift check — `aikit:checking-plan-drift`, using the BASE you recorded before
+drift check — `helia:checking-plan-drift`, using the BASE you recorded before
 dispatching. It is mechanical and takes seconds, and it is the only thing
 that catches a plan quietly abandoned. Drift is routed with
-`aikit:routing-failures` before any review: reviewing code whose scope
+`helia:routing-failures` before any review: reviewing code whose scope
 already left the plan reviews the wrong question. A concern about
 correctness or scope gets addressed before review; an observational concern
 (e.g. "this file is getting large") is noted in `vault/<project>/<feature>/plan.md` and does
@@ -393,7 +393,7 @@ not block review.
 
 **Task-review exemption:** when the task's tests pass, its diff touches **30
 lines of code or fewer**, and it changes no public API or shared contract,
-you may skip the per-task `aikit:reviewer` dispatch and move straight to the
+you may skip the per-task `helia:reviewer` dispatch and move straight to the
 next task. Record the exemption on the task's checklist line in
 `vault/<project>/<feature>/plan.md` (`- [x] Task N — review skipped: exemption,
 <line count> lines`) so the final whole-branch review can see which tasks it
@@ -415,7 +415,7 @@ a method or project artifact), so it never enters your own context; paste it
 inline only when no scratch file is available. There is no separate review-package
 step — the diff itself is the package.
 
-**`STATUS: FAILURE: <reason>`:** **Route it with `aikit:routing-failures`** —
+**`STATUS: FAILURE: <reason>`:** **Route it with `helia:routing-failures`** —
 the reason names the kind of stop, and the nature of the failure decides
 whether you go down, up, or out. Guessing that wrongly is the most expensive
 mistake available to you:
@@ -425,14 +425,14 @@ mistake available to you:
    hit — resume the same agent — and record the attempt; after 2 recorded
    failures, stop and ask your human partner for arbitration instead of
    dispatching a third
-3. Technical unknown → down: dispatch `aikit:probe` with one written question
+3. Technical unknown → down: dispatch `helia:probe` with one written question
    and a stated bound
 4. Task too large, or files outside its declared set → **up**: finish the
    independent tasks, then re-split
 5. The plan or spec is wrong (the reason states a plan/code contradiction) →
    **up**: stop, write the cycle report, do not re-dispatch
 6. A behaviour decision is missing, current work not wrong → **out**: see
-   `aikit:routing-failures` for the derived-need/candidate discriminant
+   `helia:routing-failures` for the derived-need/candidate discriminant
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 
@@ -577,10 +577,10 @@ The final whole-branch review gets a diff too: get it directly
 from, e.g. `git merge-base main HEAD`) to a scratch file and include that
 path in the final review dispatch, so the final reviewer reads one file
 instead of re-deriving the branch diff with git commands. Log its dispatch
-and report lines (`task` 0, see Optional event log). Dispatch `aikit:reviewer`
+and report lines (`task` 0, see Optional event log). Dispatch `helia:reviewer`
 with `effort: xhigh` — a row of the escalation table; its frontmatter already
 puts it on opus — using
-aikit:requesting-code-review's
+helia:requesting-code-review's
 [code-reviewer.md](../requesting-code-review/code-reviewer.md). Point it at
 `vault/<project>/<feature>/plan.md`'s deferred-minor and parked lines so it can triage which
 must be fixed before merge.
@@ -609,10 +609,10 @@ human partner's behalf reach them — they read it and rework whatever you got
 wrong. A ruling that dies with the file was a decision made in secret.
 
 When the final whole-branch review is clean and its fixes are merged,
-leave `vault/<project>/<feature>/plan.md` in place — `aikit:verifying-completion` moves it to `traces/` at phase 6,
+leave `vault/<project>/<feature>/plan.md` in place — `helia:verifying-completion` moves it to `traces/` at phase 6,
 or deletes `traces/` on `nothing to keep`. Never `rm` it here.
 
-Use aikit:finishing-a-development-branch.
+Use helia:finishing-a-development-branch.
 
 ## Common Rationalizations
 
@@ -643,7 +643,7 @@ Task 1: Hook installation script
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
-You: "User level (~/.config/aikit/hooks/)"
+You: "User level (~/.config/helia/hooks/)"
 
 Implementer: STATUS: SUCCESS
   FILES: bin/install-hook, tests/install-hook.test.js
@@ -684,12 +684,12 @@ Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
 ...
 
 [After all tasks]
-[git diff MERGE_BASE..HEAD -U10; dispatch final aikit:reviewer, effort xhigh]
+[git diff MERGE_BASE..HEAD -U10; dispatch final helia:reviewer, effort xhigh]
 Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
 [Leave vault/<project>/<feature>/plan.md in place — phase 6 moves it to traces/]
 
-Done! Using aikit:finishing-a-development-branch.
+Done! Using helia:finishing-a-development-branch.
 ```
 
 ## Without subagents — the fallback
@@ -700,11 +700,11 @@ is gone, because the context that wrote the code is the context that reviews it.
 Say so in the verdict.
 
 1. **Load and review the plan.** Ensure an isolated workspace
-   (`aikit:isolating-the-workspace`). Read the plan. Review it critically and raise
+   (`helia:isolating-the-workspace`). Read the plan. Review it critically and raise
    concerns with your human partner before starting. Create one todo per task.
 2. **Execute task by task.** Mark in progress, follow each step exactly, run
    every verification the step names, mark complete. Never batch two tasks.
-3. **Finish.** Use `aikit:finishing-a-development-branch`.
+3. **Finish.** Use `helia:finishing-a-development-branch`.
 
 **Stop and ask** on a blocker, a critical gap in the plan, an instruction you do
 not understand, or a verification that fails repeatedly. Return to step 1 when

@@ -5,7 +5,7 @@ itself carries only four things — see SKILL.md's dispatch protocol. Never
 paste code excerpts, file contents, or session history into it.
 
 ```
-Subagent (aikit:implementer):
+Subagent (helia:implementer):
   description: "Implement Task N: [task name]"
   model: [MODEL — omit this line unless a row of SKILL.md's escalation
          table applies (a confirmed `Model: opus`, or a domain expert)]
