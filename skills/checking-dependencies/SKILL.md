@@ -37,12 +37,12 @@ No seen value:  gh api 'repos/<owner/repo>/commits?sha=<branch>&per_page=20' --j
 PR:             gh pr view <N> --repo <owner/repo> --json state,commits
 
 Never read the plan whole. A task is closed if its section carries its own closing line
-`- [x] Task N (`, N being the task's number, optionally followed by a letter
-(`11b`); otherwise it is open, whatever its other boxes. This prints the title and Files block of each open task:
+`- [x] Task N (`, N being the task's own number with its letter if the
+heading has one (`29b`), optionally followed by a letter; otherwise it is open, whatever its other boxes. This prints the title and Files block of each open task:
 
 awk 'function flush() { if (head != "" && !closed) printf "%s", head }
 /^### Task / { flush(); head = $(0) "\n"; closed = 0; files = 0
-  id = $(3); sub(/[^0-9].*/, "", id); next }
+  id = $(3); sub(/[^0-9a-z].*/, "", id); next }
 head == "" { next }
 $(0) ~ "^[ \t]*- \\[x\\] Task " id "[a-z]* \\(" { closed = 1 }
 /^\*\*Files:\*\*/ { files = 1; next }
