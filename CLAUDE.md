@@ -1,12 +1,12 @@
-# Working on aiKit itself
+# Working on Helia itself
 
-This repository *is* the method. Editing it changes how every aiKit session
+This repository *is* the method. Editing it changes how every Helia session
 behaves, including this one.
 
-**aiKit is a plugin, not a harness.** The harness is Claude Code — it owns the
+**Helia is a plugin, not a harness.** The harness is Claude Code — it owns the
 tools, the context window, the model calls, the permission system and the
-hooks. aiKit ships prompts, agent definitions and one hook that the harness
-consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
+hooks. Helia ships prompts, agent definitions and one hook that the harness
+consumes. Anything written here that assumes Helia *is* the runtime is wrong.
 
 ## Règle d'aiguillage d'exécution obligatoire
 
@@ -18,12 +18,12 @@ consumes. Anything written here that assumes aiKit *is* the runtime is wrong.
 - **HEAVY-PATH** (Subagent-Driven Development) — condition : refactorings
   multi-fichiers, nouvelles fonctionnalités, rupture d'API. Action :
   spécification minimale, découpage en micro-tâches, délégation à des
-  sous-agents jetables — la table des phases dans `skills/using-aikit/SKILL.md`.
+  sous-agents jetables — la table des phases dans `skills/using-helia/SKILL.md`.
 
-`aikit:understanding-need` fait cet arbitrage à la phase 1 et le prouve :
-`git diff --name-only` pour le Fast-Path, `aikit:checking-plan-drift` par
+`helia:understanding-need` fait cet arbitrage à la phase 1 et le prouve :
+`git diff --name-only` pour le Fast-Path, `helia:checking-plan-drift` par
 tâche pour le Heavy-Path. C'est la même règle que documentent
-`skills/using-aikit/SKILL.md` et `skills/using-aikit/reference.md` — ce
+`skills/using-helia/SKILL.md` et `skills/using-helia/reference.md` — ce
 bloc en est la formulation impérative, pas une règle séparée.
 
 ## Rules
@@ -32,7 +32,7 @@ bloc en est la formulation impérative, pas une règle séparée.
   real session. Cut before you add.
 - `hooks/session-start` injects a **compact stub** at every session start and
   after every compaction — cardinal rules and the vault registry table, not
-  the method's full text. `skills/using-aikit/SKILL.md` itself loads on
+  the method's full text. `skills/using-helia/SKILL.md` itself loads on
   demand, like any other skill, the first time a session invokes it. Keep the
   stub (the `preamble` string in `hooks/session-start`) small enough to read
   in one screen — it pays on every session and every compaction, unconditionally.
@@ -43,15 +43,15 @@ bloc en est la formulation impérative, pas une règle séparée.
   not even the one its own body tells it to follow. `agents/implementer.md`
   carries **no** `tools:` list, deliberately — that is the only way to reach a
   project's MCP tools — so it inherits everything.
-- Use `aikit:writing-skills` when creating or editing a skill.
+- Use `helia:writing-skills` when creating or editing a skill.
 - **Heavy-Path execution tracks its plan and status in one file,
   `vault/<project>/<feature>/plan.md`** — no separate ledger, no
-  `status.md`, no review-package file. aiKit writes nothing inside the
+  `status.md`, no review-package file. Helia writes nothing inside the
   project repository itself. Task state is standard GitHub checkboxes. A
   task whose second fix attempt still fails review stops the loop and asks
   the human partner for arbitration, instead of escalating rounds or models
   automatically. Effort is the one setting that rises on its own, on the
-  mechanical signals of `aikit:executing-plans`' escalation table, and it
+  mechanical signals of `helia:executing-plans`' escalation table, and it
   never buys a third attempt.
 - **`VOCABULARY.md` is the authority on every term the method uses.** Read it
   before naming anything — a skill, an agent, a phase, an artifact. It is a
@@ -72,7 +72,7 @@ bloc en est la formulation impérative, pas une règle séparée.
   ```
 
 - **A plugin change only takes effect in a new session, and only after it is
-  published**. `aikit-marketplace` is a `github` marketplace: the harness runs
+  published**. `athyrr-marketplace` is a `github` marketplace: the harness runs
   a copy pinned to a version under `~/.claude/plugins/cache/`, never this
   working tree. Editing a file here changes nothing until `scripts/deploy` has
   bumped, committed and pushed.
@@ -105,8 +105,8 @@ naming each gate that fell.
 | 9 | `scripts/test-vaults` — the vault-resolution suite. `lib/vaults` runs at every session start, so its tests belong to the completion criterion rather than beside it |
 | 10 | every skill's directory name equals its frontmatter `name:` — the only detector of a directory-only rename, which leaves a working ghost alias |
 | 11 | `scripts/test-plan-drift` — the plan-drift suite. A drift detector that stopped detecting would pass every form gate and stay silent in a real session |
-| 12 | every archetype's frontmatter `model:` and `effort:` equal its row in the mirror table of `skills/using-aikit/SKILL.md` (`## The archetypes: model and effort`) — only the frontmatter runs, the table is what people read |
-| 13 | `scripts/test-deps` — the suite of `bin/aikit-deps`, against a fake `gh`, without network. A comparator that stopped comparing would pass every form gate and say nothing in a real session |
+| 12 | every archetype's frontmatter `model:` and `effort:` equal its row in the mirror table of `skills/using-helia/SKILL.md` (`## The archetypes: model and effort`) — only the frontmatter runs, the table is what people read |
+| 13 | `scripts/test-deps` — the suite of `bin/helia-deps`, against a fake `gh`, without network. A comparator that stopped comparing would pass every form gate and say nothing in a real session |
 
 Gates 1-4, 10 and 12 check form. Gates 9, 11 and 13 check behaviour: they run a suite. Gates 5-7 check the target rather than the shape: they
 catch what no manifest validation can see. Gate 8 is **local** git config — it
@@ -127,7 +127,7 @@ verdict is `GATES_PASS`, never `PASS`.
 
 ## It will not stay standalone
 
-aiKit will be versioned and published. Do not write as though this repository
+Helia will be versioned and published. Do not write as though this repository
 is private workspace tooling.
 
 **Keep workspace-specific facts out of the method surface.** Skills, agents and
@@ -135,7 +135,7 @@ is private workspace tooling.
 infrastructure belong in the registry — `<vault>/projects/*.md`, which
 is data and lives in a vault, never in this repository.
 
-One deliberate exception: `.claude-plugin/plugin.json` names the plugins aiKit
+One deliberate exception: `.claude-plugin/plugin.json` names the plugins Helia
 depends on (`dependencies`), because that is the only place the harness reads
 prerequisites from. The method itself — skills, agents, `README.md` — still
 names no product.
@@ -148,7 +148,7 @@ stays yours.
 
 ## Agents
 
-- **The dispatch name carries the prefix**: `aikit:planner`, not `planner`.
+- **The dispatch name carries the prefix**: `helia:planner`, not `planner`.
   A bare name fails with "subagent_type does not exist". A project's own domain
   agents are not prefixed — they come from its repository.
 - **Renaming resolves differently for agents and skills.** For an agent, the
@@ -167,9 +167,9 @@ stays yours.
 - The six archetypes are the *product* of this repository, not its experts.
   For questions about harness mechanics — name resolution, install scope, hook
   behaviour — the domain expert is `claude-code-guide`. See the
-  registry file `<vault>/projects/aikit.md`, outside this repository.
+  registry file `<vault>/projects/helia.md`, outside this repository.
 - **An archetype's `model:` and `effort:` live in its frontmatter, and only
-  there do they run.** `skills/using-aikit/SKILL.md` mirrors them for reading:
+  there do they run.** `skills/using-helia/SKILL.md` mirrors them for reading:
   edit both in the same commit — gate 12 of `scripts/doctor` refuses a
   divergence.
 
@@ -184,13 +184,13 @@ lines instead, on every commit and PR made from this repository:
 
 - Git commit trailer:
   ```
-  Co-Authored-By: aiKit <noreply@aikit.dev>
+  Co-Authored-By: Helia
   ```
 - PR description footer:
   ```
-  🤖 Generated with aiKit
+  🤖 Generated with Helia
   ```
 
 No model name, no `anthropic.com` — the signature should stay stable across
-model changes, since aiKit is the thing doing the work, not whichever model
-happens to be running it this session.
+model changes, since Helia is the thing doing the work, not whichever model
+happens to be running it this session. No address either: GitHub then shows no co-author, and that is the intent.

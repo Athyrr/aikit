@@ -1,6 +1,6 @@
-# aiKit — Vocabulary
+# Helia — Vocabulary
 
-One word, one meaning. This file is the authority. `aikit:writing-skills`
+One word, one meaning. This file is the authority. `helia:writing-skills`
 requires a consult before any skill is created or edited.
 
 ## The naming test — four questions, in order
@@ -27,16 +27,16 @@ exists to prevent.
 | **tranche** | a `feature` need listed in its project's trame: an increment delivered end to end, verifiable on its own | a task, a phase, a cycle | its slug is in the `Dossier` column of `<project>/trame.md`; it opens once the tranches its `Attend` cell names are archived with `status: done` |
 | **note** | one idea or finding to study later, one file | a need, a task, a TODO line | `type: note`, in `<project>/_notes/<slug>.md` — or `_notes/<slug>.md` at the vault root when it would be another project |
 | **reference** | a background document kept in the vault, in one place per level, found through an `INDEX.md` | a note (an idea to study), a heuristic (a trap, a Condition -> Action bullet written at phase 6), the documentation of a system | `type: reference` in `<project\|ecosystem\|_global>/_reference/`; test "if the system changes, does this document become false?" (yes = system documentation, `owner: depot` or `externe`, the vault keeps only a pointer; no = `owner: vault`); a heuristic may point to a reference, never the reverse |
-| **upstream dependency** | anything the work relies on that can change without us: a source, a base, a last seen value, declared in `## Dépendances` of a registry file or of `plan.md` | a task's `Depends on`, a `reference` of the vault, `base_sha`, a base branch | something upstream moves on its own; `aikit-deps` compares it, `aikit:checking-dependencies` triages it |
+| **upstream dependency** | anything the work relies on that can change without us: a source, a base, a last seen value, declared in `## Dépendances` of a registry file or of `plan.md` | a task's `Depends on`, a `reference` of the vault, `base_sha`, a base branch | something upstream moves on its own; `helia-deps` compares it, `helia:checking-dependencies` triages it |
 | **archive** | where a finished or abandoned need goes: `<project>/_archive/<need>/` | a deletion, a `done` flag alone | reached only at phase 6, after human verification; `plan.md` moves to its `traces/` |
 | **derived need** | a need opened *from* another because a behaviour decision was missing | a task, a candidate | it carries `derived_from:` and its parent carries `derived:` |
 | **cycle** | one complete pass through the phases for one need | a loop, an iteration, a retry | it starts at phase 1 and ends at a verdict |
 | **phase** | a numbered step of a cycle that ends in a written artifact | a step, a task | if it writes no file, it is not a phase |
 | **task** | the smallest unit with its own test cycle and its own reviewer gate | a step, a phase | one brief, one file set, one commit |
-| **security task** | a task whose header carries `**Security:** yes` because it meets at least one of the five criteria in `aikit:writing-plans` (authentication or authorisation, secrets or credentials, cryptography, untrusted input, network exposure or permissions) | a security audit, an `Effort:` annotation | a property of the task, never a dispatch parameter; absent means `no`; the orchestrator translates it through `aikit:executing-plans`' escalation table |
+| **security task** | a task whose header carries `**Security:** yes` because it meets at least one of the five criteria in `helia:writing-plans` (authentication or authorisation, secrets or credentials, cryptography, untrusted input, network exposure or permissions) | a security audit, an `Effort:` annotation | a property of the task, never a dispatch parameter; absent means `no`; the orchestrator translates it through `helia:executing-plans`' escalation table |
 | **human task** | a task the human partner performs, titled `[humain]` (or `[human]`) in the plan | an approval stop, a review | at least one checkbox and no Files, Agent, Model or Security; the session dispatches nothing for it, and the monitor badges it while it is the first open task |
 | **step** | one action inside a task, 2 to 5 minutes | a pass, a round, a phase | it fits in a checkbox |
-| **pass** | one traversal of the question tree in `aikit:grilling` | a round, a step | it belongs to phase 2 and nothing else |
+| **pass** | one traversal of the question tree in `helia:grilling` | a round, a step | it belongs to phase 2 and nothing else |
 | **attempt budget** | 2 — the cap on attempts at one task before stopping for human arbitration | "the budget" | counted per task, in `vault/<project>/<feature>/plan.md` |
 | **orchestrator** | the session that holds the plan and dispatches | controller, coordinator, driver | it never implements |
 | **human partner** | the person the orchestrator works with | user, client, operator | it is the only party that can approve a spec |
@@ -52,7 +52,7 @@ The word **budget**, unqualified, is retired. Write `attempt budget`. Never
 `loop` as a technical term; write `cycle` or `attempt` and say which.
 
 Write `tranche`. Never `slice` — already taken (a part of a document read in
-`aikit:budgeting-context`) — nor `lot`, `jalon` or `milestone`. Never
+`helia:budgeting-context`) — nor `lot`, `jalon` or `milestone`. Never
 `chantier` for a project.
 
 **A document in another repository is cited `repo#ADR-0001`** — the repository name, `#`, the identifier of the ADR, spec or ticket (`some-repo#ADR-0001`, `some-org/some-repo#105`). One form for all three.

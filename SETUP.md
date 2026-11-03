@@ -1,4 +1,4 @@
-# Setting up aiKit
+# Setting up Helia
 
 Two pipelines, deliberately separate: **using** the method installs a plugin and
 never clones this repository; **developing** the method clones this repository
@@ -12,13 +12,13 @@ other sessions until `scripts/deploy` has published it.
   `python3`; either one alone is enough.
 - `jq` — **required for the status line**: the installer edits `~/.claude/settings.json`
   with it and leaves the file untouched when `jq` is missing; the renderer falls
-  back to a bare `aikit · <folder> (<branch>)` line, where `<folder>` is the shell's
+  back to a bare `helia · <folder> (<branch>)` line, where `<folder>` is the shell's
   folder (the process's current directory), not the session's working folder. Everything else works without it.
 - an SSH key loaded in `ssh-agent`, with `github.com` in `known_hosts`
 - Claude Code ≥ 2.1.193
 - **optional:** an `obsidian` plugin providing the `obsidian:obsidian-markdown`
   and `obsidian:obsidian-bases` skills, if the vault at `<vault>/` is an actual
-  Obsidian vault and you want `aikit.base`'s dashboard to work and wikilinks/
+  Obsidian vault and you want `helia.base`'s dashboard to work and wikilinks/
   callouts/properties written correctly. Without it, agents still write to
   `vault/` — the Obsidian-specific syntax invocations in their prompts just
   have nothing to invoke.
@@ -26,11 +26,11 @@ other sessions until `scripts/deploy` has published it.
 On Windows: **Git for Windows is a hard prerequisite** — without it the hook
 cannot start and now says so in the transcript instead of failing silently.
 
-## 2. Using aiKit — two commands
+## 2. Using Helia — two commands
 
 ```bash
-claude plugin marketplace add git@github.com:Athyrr/aikit.git
-claude plugin install aikit@aikit-marketplace --scope user
+claude plugin marketplace add Athyrr/helia
+claude plugin install helia@athyrr-marketplace --scope user
 ```
 
 Register over **SSH**. The docs state that background refreshes disable
@@ -52,8 +52,8 @@ live, because they are often on different filesystems.
 
 ```bash
 git clone git@github.com:<owner>/<name>-vault.git "<vault path>"
-mkdir -p ~/.config/aikit
-cat >> ~/.config/aikit/vaults <<'EOF'
+mkdir -p ~/.config/helia
+cat >> ~/.config/helia/vaults <<'EOF'
 vault work /path/to/the/vault
 root  work /path/to/where/its/projects/are
 EOF
@@ -68,14 +68,14 @@ mounted foreign filesystem does not finish in 4 seconds.
 
 No deploy: the registry is read from disk.
 
-`aikit:registering-a-project` carries the frontmatter contract the tooling
+`helia:registering-a-project` carries the frontmatter contract the tooling
 parses and the six sections a registry file must hold (an ecosystem carries four).
 
-## 4. Developing aiKit
+## 4. Developing Helia
 
 ```bash
-git clone git@github.com:Athyrr/aikit.git ~/<space>/aikit
-cd ~/<space>/aikit
+git clone git@github.com:Athyrr/helia.git ~/<space>/helia
+cd ~/<space>/helia
 git config core.hooksPath .githooks     # arms the pre-commit gate — per clone,
                                         # never versioned; scripts/doctor gate 8
                                         # is what makes its absence visible
@@ -99,8 +99,8 @@ separation is native to the montage, not built on top of it.
 ## 5. The two directories that matter
 
 `bin/` is added to the Bash tool's `PATH` while the plugin is enabled — it holds
-execution commands (`ezy`, `scoped`, `aikit-deps`) and the status line renderer
-(`aikit-statusline`, prefixed so it cannot collide with a bare command name).
+execution commands (`ezy`, `scoped`, `helia-deps`) and the status line renderer
+(`helia-statusline`, prefixed so it cannot collide with a bare command name).
 
 `scripts/` is **not** on the `PATH` and holds repository maintenance (`deploy`,
 `doctor`, and their test scripts).
@@ -120,7 +120,7 @@ a git-hook name.
 By default, every machine with the plugin installed shows one line, with no manual setting:
 
 ```
-aikit · <model> · <project> (<branch>) · ctx <N> %
+helia · <model> · <project> (<branch>) · ctx <N> %
 ```
 
 `<project>` is the registered project whose working folder contains the current
@@ -131,7 +131,7 @@ How it gets there: a plugin cannot declare `statusLine`, so a `SessionStart` hoo
 (matcher `startup`) writes the key into `~/.claude/settings.json`, with a path
 already resolved to the current plugin version, and rewrites it at every startup.
 It writes nothing when the value is already right, and it never touches a
-`statusLine` that does not carry the marker `AIKIT_STATUSLINE=1` — your own
+`statusLine` that does not carry the marker `HELIA_STATUSLINE=1` — your own
 status line stays yours.
 
 **Opt out:** create the flag file, the hook then neither reads nor writes anything.
@@ -139,7 +139,7 @@ The flag only stops future writes: to remove a bar already installed, also delet
 the `statusLine` key from `~/.claude/settings.json`.
 
 ```bash
-mkdir -p ~/.config/aikit && touch ~/.config/aikit/no-statusline
+mkdir -p ~/.config/helia && touch ~/.config/helia/no-statusline
 ```
 
 Known limits:

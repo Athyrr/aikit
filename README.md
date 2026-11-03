@@ -1,11 +1,11 @@
-# aiKit
+# Helia
 
 An agentic method for Claude Code: a plugin that turns a request into a spec, a
 plan, reviewed tasks and a verified result — without the orchestrating session
 ever filling up.
 
-**aiKit is not a harness.** The harness is Claude Code — it owns the tools, the
-context window, the model calls and the permission system. aiKit ships prompts,
+**Helia is not a harness.** The harness is Claude Code — it owns the tools, the
+context window, the model calls and the permission system. Helia ships prompts,
 agent definitions and one hook that the harness consumes.
 
 Derived from [superpowers](https://github.com/obra/superpowers) (MIT, Jesse
@@ -22,7 +22,7 @@ compaction**, two things:
 2. a table of every registered vault's projects, built from `<vault>/projects/*.md`
    for each vault declared on this machine — the router.
 
-The full method (`skills/using-aikit/SKILL.md`) loads on demand, like any
+The full method (`skills/using-helia/SKILL.md`) loads on demand, like any
 other skill, the first time a session actually needs it — the compaction
 matcher on the stub is what survives context loss without re-paying for the
 whole method every time. Outside a vault that carries a registry, only the
@@ -42,36 +42,36 @@ in full.
 
 | # | Phase | Skill | Produces |
 |---|---|---|---|
-| 1 | Understand | `aikit:understanding-need` | the feature directory, `vault/<project>/<feature>/plan.md` initialised |
-| 2 | Design | `aikit:designing-the-solution` → `aikit:writing-specs` | `spec.md` |
+| 1 | Understand | `helia:understanding-need` | the feature directory, `vault/<project>/<feature>/plan.md` initialised |
+| 2 | Design | `helia:designing-the-solution` → `helia:writing-specs` | `spec.md` |
 | 3 | Assess | the project's domain expert, consultatively | an `## Impact` section appended to `spec.md` |
-| 4 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md`, split into tasks that each declare their files |
-| 5 | Execute | `aikit:executing-plans` | code, one task at a time, `vault/<project>/<feature>/plan.md`'s checkboxes ticked |
-| 6 | Verify | `aikit:verifying-completion` | the registry's completion criterion, met; `vault/<project>/<feature>/plan.md` closed |
+| 4 | Plan | `helia:writing-plans` | `vault/<project>/<feature>/plan.md`, split into tasks that each declare their files |
+| 5 | Execute | `helia:executing-plans` | code, one task at a time, `vault/<project>/<feature>/plan.md`'s checkboxes ticked |
+| 6 | Verify | `helia:verifying-completion` | the registry's completion criterion, met; `vault/<project>/<feature>/plan.md` closed |
 
-Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
-`aikit:checking-plan-drift` after every task, `aikit:checking-dependencies` when
-`aikit-deps` prints a `!` line on a plan that has tasks, `aikit:routing-failures` whenever
-something fails, `aikit:handling-secrets` before writing config or committing
-anything that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs a
-project's own tools, `aikit:receiving-code-review` when incorporating feedback
+Cross-cutting: `helia:budgeting-context` before any dispatch or large read,
+`helia:checking-plan-drift` after every task, `helia:checking-dependencies` when
+`helia-deps` prints a `!` line on a plan that has tasks, `helia:routing-failures` whenever
+something fails, `helia:handling-secrets` before writing config or committing
+anything that touches credentials, `helia:delegating-to-a-perimeter` when a question needs a
+project's own tools, `helia:receiving-code-review` when incorporating feedback
 from outside the method's own review loop.
 
 ## Model selection
 
 Each archetype declares its model and effort in its own frontmatter
-(`agents/*.md`); `aikit:using-aikit` mirrors them in one table, which
+(`agents/*.md`); `helia:using-helia` mirrors them in one table, which
 `scripts/doctor` keeps equal to the frontmatter. Two rules govern any change.
 **Effort rises automatically** on a mechanical signal — a final whole-branch
 review, a task marked `Security: yes`, a re-review after a second fix —
 passed at dispatch and recorded in the event log. **The model never changes
 without the human partner**: only a task's `Model: opus`, confirmed for that
-task, does it. A project's domain expert is not an aiKit archetype and is
+task, does it. A project's domain expert is not a Helia archetype and is
 always dispatched on opus at effort `high`. When a task's second attempt also
-fails, `aikit:routing-failures` stops the loop and asks the human partner for
+fails, `helia:routing-failures` stops the loop and asks the human partner for
 arbitration instead of trying a third time, whatever the model or effort.
 
-A **diagnostic** does not run these phases. `aikit:diagnosing` opens
+A **diagnostic** does not run these phases. `helia:diagnosing` opens
 `diagnosis.md` before investigating and updates it after every hypothesis —
 what's ruled out, what's still open, the root cause once known — so
 eliminations survive a reset instead of being re-tested. It becomes a feature
@@ -111,7 +111,7 @@ stops and asks the human partner to rule, rather than escalating rounds or
 models on its own.
 
 **Drift is checked mechanically.** After each task, the files the task declared
-are confronted with `git diff --name-only`. This works *because* aiKit writes no
+are confronted with `git diff --name-only`. This works *because* Helia writes no
 artifact inside a repository: every file in a diff is production code by
 construction.
 
@@ -157,7 +157,7 @@ gets discarded.
 **Phases 1 and 2 are never delegated.** A subagent cannot ask a question, and a
 delegated spec is an invented spec.
 
-**Phase 2's interview works one frontier at a time.** `aikit:grilling` asks
+**Phase 2's interview works one frontier at a time.** `helia:grilling` asks
 every question whose prerequisites are already settled, recommends an answer
 to each, and waits — a question that depends on one still open belongs to a
 later pass, not this one.
@@ -169,14 +169,14 @@ must be reported explicitly, not corrected silently.
 
 ## The archetypes
 
-`aikit:explorer`, `aikit:planner`, `aikit:implementer`, `aikit:reviewer`,
-`aikit:verifier`, `aikit:probe` — roles in the process, each with its own
+`helia:explorer`, `helia:planner`, `helia:implementer`, `helia:reviewer`,
+`helia:verifier`, `helia:probe` — roles in the process, each with its own
 model and effort (see Model selection above). Effort rises automatically on
 a mechanical signal; the model changes only by the human partner's hand. Two
 failed attempts at a task stop the loop and hand the decision to the human
-partner instead of buying a bigger model; see `aikit:routing-failures`. A
+partner instead of buying a bigger model; see `helia:routing-failures`. A
 project's domain agents are the other axis: when a plan task names one, it is
-dispatched instead of the generic `aikit:implementer`. The registry says which
+dispatched instead of the generic `helia:implementer`. The registry says which
 exist.
 
 ## Where things live
@@ -186,15 +186,15 @@ registry are not — they belong to the vault that uses the method, never to
 the method itself.
 
 ```
-<anywhere>/aikit/             a clone of the method — the SOURCE, not the plugin
+<anywhere>/helia/             a clone of the method — the SOURCE, not the plugin
   hooks/                      the SessionStart injection
   skills/                     the skills
   agents/                     the six archetypes
   VOCABULARY.md               one word, one meaning — read before naming anything
   scripts/                    doctor, deploy and their test suites — NOT on the Bash tool's PATH
-  bin/                        ezy, scoped and aikit-deps — these ARE on it
+  bin/                        ezy, scoped and helia-deps — these ARE on it
 
-~/.config/aikit/vaults         which vaults this machine knows, and where
+~/.config/helia/vaults         which vaults this machine knows, and where
 <vault>/                      a clone of a vault (an Obsidian vault)
   projects/                   the registry: one file per project
   _global/heuristics.md       cross-project environment, OS and shell rules
@@ -203,20 +203,20 @@ the method itself.
   <project>/trame.md          how the project splits into tranches, if it does — VOCABULARY.md, The trame
   <project>/_notes/           one note per file — real problems nothing is waiting on, ideas to study later
   <project>/_archive/<need>/  finished or abandoned needs: spec.md, traces/
-  <project>/_reference/       reference documents kept on request (aikit:capturing-reference), routed by an INDEX.md
+  <project>/_reference/       reference documents kept on request (helia:capturing-reference), routed by an INDEX.md
   _global/_reference/         references common to several projects, no ecosystem
   <project>/<need>/           the need in flight: spec.md, plan.md, diagnosis.md, etude.md — spec carries its own Impact section
 <anywhere>/                   the project repositories, found by scanning
 
-~/.claude/plugins/cache/aikit-marketplace/aikit/<version>/   ← WHAT ACTUALLY RUNS
+~/.claude/plugins/cache/athyrr-marketplace/helia/<version>/   ← WHAT ACTUALLY RUNS
 ```
 
 The hook resolves projects from the vaults declared in
-`~/.config/aikit/vaults` and a scan of their declared roots. So the method
+`~/.config/helia/vaults` and a scan of their declared roots. So the method
 travels everywhere while a registry stays bound to one vault — and the two
 never live in the same repository.
 
-**aiKit writes nothing inside the project repositories** except the code
+**Helia writes nothing inside the project repositories** except the code
 changes themselves. No specs, no plan, no ledger, no scratch. `git status`
 in a project never shows a method artifact.
 
@@ -225,9 +225,21 @@ in a project never shows a method artifact.
 On any machine, once, at user scope:
 
 ```bash
-claude plugin marketplace add git@github.com:Athyrr/aikit.git
-claude plugin install aikit@aikit-marketplace --scope user
+claude plugin marketplace add Athyrr/helia
+claude plugin install helia@athyrr-marketplace --scope user
 ```
+
+### Migrating from aiKit
+
+Up to 0.27.0 the plugin was `aikit@aikit-marketplace`. To move an existing install:
+
+```bash
+claude plugin marketplace remove aikit-marketplace
+claude plugin marketplace add Athyrr/helia
+claude plugin install helia@athyrr-marketplace --scope user
+```
+
+Then `/reload-plugins`. Old `AIKIT_*` variables and `~/.config/aikit/` are still read for now.
 
 Register the marketplace over **SSH**, and install in **one scope only** — two
 scopes means two copies, and an update touches one while the other keeps
@@ -236,8 +248,8 @@ machine: it is a way of working, not vault data. **You do not clone this
 repository to use the method.**
 
 To make a vault routable, give it a registry — `<vault>/projects/<name>.md`
-per project, and declare the vault in `~/.config/aikit/vaults`.
-`aikit:registering-a-project` carries the frontmatter contract the
+per project, and declare the vault in `~/.config/helia/vaults`.
+`helia:registering-a-project` carries the frontmatter contract the
 tooling parses and the six sections a registry file must hold (an ecosystem carries four).
 
 **[`SETUP.md`](SETUP.md) is the full procedure** — prerequisites (Git for
@@ -267,7 +279,7 @@ session with no deploy.
 
 ## Differences from superpowers
 
-- renamed throughout (`aikit:` prefix), single harness (Claude Code only)
+- renamed throughout (`helia:` prefix), single harness (Claude Code only)
 - artifacts moved out of the repositories into `vault/`; plan, status and
   ledger consolidated into one file, `vault/<project>/<feature>/plan.md`,
   instead of three
