@@ -98,7 +98,12 @@ human partner has verified — or waived, in writing:
    ```bash
    git -C <vault> mv <project>/<feature> <project>/_archive/<feature>
    ```
-5. Commit the move in the vault.
+5. If the need is a tranche, set its `État` in `<project>/trame.md`, in the
+   table and in its sub-heading, to `archivée le <date>` (or
+   `abandonnée le <date>`), and the trame's `updated:`. When no row is left
+   `à ouvrir` or `en cours`, set the trame's `status: done` and tell your
+   human partner.
+6. Commit the move and the trame together, in the vault.
 
 Never before the human verification: a need under `_archive/` reads as
 finished, and `aikit:understanding-need` resumes one only on the human
