@@ -3,7 +3,21 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
-## Unreleased
+## 0.26.0
+- **Dependances amont.** Une `upstream dependency` (`VOCABULARY.md`) est tout ce
+  dont le travail depend et qui peut changer sans nous. Section facultative
+  `## Dépendances` des fiches projet et de `plan.md` (contrat dans
+  `aikit:registering-a-project`). Nouvelle commande `bin/aikit-deps`, en lecture
+  seule, bases `paquet` (nom exact, ou prefixe `*` a version unique), `surveille`,
+  `release`, `branche`, `pr`, `fige`, `manuel`. `aikit:understanding-need` l'appelle
+  a chaque besoin et reprise, l'orchestrateur avant le dispatch d'`aikit:planner`
+  (`aikit:writing-plans`). Nouvelle skill `aikit:checking-dependencies` pour le tri
+  d'un ecart sur un plan avec taches ; ligne dans `aikit:routing-failures`.
+  Suite `scripts/test-deps`, porte 13 de `scripts/doctor` (treize portes).
+  `scripts/test-plan-drift` repasse en `100755` : sans ce mode, la porte 11
+  refusait tout commit.
+
+## 0.25.0
 - **Effort par archetype.** Chaque archetype declare `model:` et `effort:`
   dans son frontmatter : `aikit:planner` et `aikit:reviewer` sur opus a
   `high` ; `aikit:explorer`, `aikit:implementer`, `aikit:probe` et
@@ -30,12 +44,16 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
   Suppression du prompt orphelin
   `plan-document-reviewer-prompt.md` : la relecture du plan reste
   l'auto-relecture, le scan pre-flight et la validation humaine.
+
+## 0.20.0
 - **References.** Nouveau dossier `_reference/` par projet, ecosysteme et
   `_global` (documents de fond, un `INDEX.md` par dossier) ; nouvelle skill
   `aikit:capturing-reference` (creer ou mettre a jour, sur demande seulement) ;
   `reference` ajoute a `VOCABULARY.md` et `_reference/` aux prefixes reserves ;
   `aikit:registering-a-project` : la fiche ne pointe que vers l'INDEX, le
   squelette est inchange.
+
+## 0.19.0
 - **Ecosystemes et `part_of`.** `kind` connait trois valeurs (`depot`,
   `conception`, `ecosysteme`) et une valeur inconnue se voit au demarrage (`⚠`).
   Une fiche peut declarer `part_of: <ecosysteme>` ; le tableau de session
@@ -46,16 +64,22 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
   `aikit:registering-a-project` : critere de partage et fiche d'ecosysteme (quatre
   sections) ; `aikit:understanding-need` : un membre mene a la fiche de son
   ecosysteme. Convention de citation `repo#ADR-0001` (`VOCABULARY.md`).
+
+## 0.18.3
 - **Ligne `Skill:` optionnelle dans l'en-tete de tache.** `aikit:writing-plans`
   nomme le skill a invoquer pour une tache d'UI (ex. `frontend-design`) ;
   l'implementeur le lit dans `plan.md` et l'invoque s'il est disponible,
   sinon l'ignore.
+
+## 0.18.2
 - **Evenement `need` dans le journal optionnel.** Apres confirmation de la
   route (`aikit:understanding-need` §4), l'orchestrateur ajoute une ligne
   `{"event":"need",...}` a `AIKIT_EVENTS_FILE` (type, projet, feature, session,
   ts), meme garde que le reste du journal ; re-emise a la reprise d'un need dans
   une nouvelle session. `aikit:executing-plans` precise que la ligne de rapport
   porte `"event":"report"`.
+
+## 0.17.2
 - **Signature aiKit dans toutes les sessions.** Le stub de demarrage porte la
   regle (trailer `Co-Authored-By: aiKit <noreply@aikit.dev>`, pied de PR
   `Generated with aiKit`) : elle n'existait que dans le `CLAUDE.md` de ce depot,

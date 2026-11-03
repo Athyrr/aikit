@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The method's completion criterion, twelve gates, no deploy, no network state.
+# The method's completion criterion, thirteen gates, no deploy, no network state.
 #
 # `claude plugin validate .` checks the marketplace manifest ONLY — it reads no
 # SKILL.md and no agents/*.md. The two --strict invocations are what gate the
@@ -16,9 +16,11 @@
 # that stopped detecting would pass every form gate and stay silent in a session.
 # Gate 12 checks each agent's frontmatter model/effort against the mirror table
 # in using-aikit; it prints one short line per divergence, so it needs no cap.
+# Gate 13 runs the suite of bin/aikit-deps against a fake gh, without network: a
+# comparator that stopped comparing would pass every form gate and say nothing.
 #
-# A failing gate prints its own output, capped: `run` at 25 lines, the two
-# suites (9 and 11) their already-filtered failure block at 30 — all name how
+# A failing gate prints its own output, capped: `run` at 25 lines, the three
+# suites (9, 11 and 13) their already-filtered failure block at 30 — all name how
 # many lines they cut and what to rerun directly for the rest. A session reading
 # this output is not the same as a person scrolling a terminal; an uncapped gate
 # used to be able to spend hundreds of lines on one failure.
@@ -94,11 +96,11 @@ gate_empty() {
   fi
 }
 
-# A behaviour suite (gates 9 and 11). Silent when green, and when red ONLY the
+# A behaviour suite (gates 9, 11 and 13). Silent when green, and when red ONLY the
 # failures and the count — captured from ONE run, so what gets printed is the
 # run that actually failed. Such a suite prints ~80 lines when it falls, of
 # which ~60 are green ticks: the gates whose red used to demand scrolling.
-# Both suites share one output format (✓/✗ lines, attendu:/obtenu:, a closing
+# The three suites share one output format (✓/✗ lines, attendu:/obtenu:, a closing
 # "N passes, M echecs"), which is what lets one filter serve them.
 suite() {
   local label=$1 script=$2
@@ -235,8 +237,12 @@ while IFS=$'\t' read -r a _; do
 done < <(printf '%s\n' "$mirror")
 if [ "$g12" != 0 ]; then echo "  ✗ FAILED"; fail=1; fi
 
+# Gate 13 is a behaviour test like gates 9 and 11: it drives bin/aikit-deps against
+# throwaway vaults and a fake gh, so it needs neither network nor authentication.
+suite "13 upstream dependency tests" scripts/test-deps
+
 if [ "$fail" = 0 ]; then
-  echo "✓ twelve gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
+  echo "✓ thirteen gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
 else
   echo "✗ one or more gates failed"
 fi

@@ -15,7 +15,8 @@ description: Use when a task fails, stalls, or surprises you - decides whether t
 |---|---|---|
 | Technical unknown — "I don't know how X works" | **down** | Probe. The plan does not move. |
 | Execution error — red test, broken build, wrong output | **down** | Two attempts, bounded by the attempt budget. |
-| Unplanned dependency; files outside the task's declared set; task too large | **up** | Finish the independent tasks, then re-split or re-plan. |
+| Unplanned dependency; files outside the task's declared set; task too large | **up** | Finish the independent tasks, then re-split or re-plan; the re-plan goes through `aikit:writing-plans`. |
+| An upstream change touches a task (`aikit:checking-dependencies` concluded `touche Task N`) | **up** | Finish the independent tasks, then re-plan the ones touched; the re-plan goes through `aikit:writing-plans`. |
 | Spec ambiguous, contradictory, or silent on the case at hand | **up** | Stop now. Back to phase 2, with the human. |
 | A behaviour decision is missing, and the current work is not wrong | **out** | A derived need — its own directory, spec and cycle. |
 

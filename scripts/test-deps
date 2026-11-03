@@ -1,0 +1,617 @@
+#!/usr/bin/env bash
+# Tests de bin/aikit-deps. Aucune dependance reseau, aucune fixture versionnee :
+# un faux gh dans le PATH rejoue des sorties reelles (mesurees le 2026-11-02,
+# `MERGED` en majuscules, tag `v4.4.0`, `HTTP 404` sur stderr).
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+
+pass=0; fail=0
+ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
+ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
+is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
+has() { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
+hasnt() { case "$3" in *"$2"*) ko "$1" "ne contient pas [$2]" "$3" ;; *) ok "$1" ;; esac; }
+
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+# Une espace dans le chemin, DELIBEREMENT : c'est le cas reel.
+W="$TMP/Mon Espace"
+VAULT="$W/levault"; ROOT="$W/code"
+mkdir -p "$VAULT/projects" "$ROOT"
+printf 'vault test %s\nroot  test %s\n' "$VAULT" "$ROOT" > "$W/vaults"
+export AIKIT_VAULTS="$W/vaults"
+
+ACCENT=$'## D\xc3\xa9pendances'
+FIN=$'\nfin de section\n\n| hors | section | ignore |'
+
+# fiche_titre <titre> <projet> <ligne de tableau>...
+fiche_titre() {
+  local titre=$1 p=$2 l; shift 2
+  {
+    printf -- '---\nname: %s\nkind: conception\nsummary: x\n---\n\n# %s\n\n' "$p" "$p"
+    printf '%s\n\n| Nom | Source | Base |\n|---|---|---|\n' "$titre"
+    for l in "$@"; do printf '%s\n' "$l"; done
+    printf '%s\n' "$FIN"
+  } > "$VAULT/projects/$p.md"
+}
+fiche() { fiche_titre "$ACCENT" "$@"; }
+
+# planmd <projet> <besoin> <ligne de tableau>...
+planmd() {
+  local p=$1 b=$2 l; shift 2
+  mkdir -p "$VAULT/$p/$b"
+  {
+    printf -- '---\nproject: %s\n---\n\n## Re-enter at\nici\n\n' "$p"
+    printf '%s\n\n| Nom | Source | Base | Vu | Le | Conclusion |\n|---|---|---|---|---|---|\n' "$ACCENT"
+    for l in "$@"; do printf '%s\n' "$l"; done
+    printf '\n## Global Constraints\n\n### Task 1: x\n\n```markdown\n%s\n\n| Nom | Source | Base |\n|---|---|---|\n| leurre | a/b | release |\n```\n' "$ACCENT"
+  } > "$VAULT/$p/$b/plan.md"
+}
+
+deps() { OUT=$(bin/aikit-deps "$@" 2>&1); RC=$?; }
+
+# Faux gh : une reponse par ligne de commande. Sans reponse posee, il rend ce que
+# le vrai rend sur un depot sans release : le 404 sur stderr, code 1.
+FAUXBIN="$W/fauxbin"; export FAUX_GH="$W/fauxgh"
+mkdir -p "$FAUXBIN" "$FAUX_GH"
+cat > "$FAUXBIN/gh" <<'FAUX'
+#!/usr/bin/env bash
+echo "$*" >> "$FAUX_GH/appels"
+d="$FAUX_GH/$(printf '%s' "$*" | cksum | cut -d' ' -f1)"
+if [ ! -d "$d" ]; then echo 'gh: Not Found (HTTP 404)' >&2; exit 1; fi
+if [ -s "$d/dort" ]; then sleep "$(cat "$d/dort")" > /dev/null 2>&1; fi
+cat "$d/err" >&2
+cat "$d/out"
+exit "$(cat "$d/rc")"
+FAUX
+chmod +x "$FAUXBIN/gh"
+export PATH="$FAUXBIN:$PATH"
+
+gh_dir() {  # gh_dir <args de gh>... -> le dossier de reponse, remis a vide
+  local d
+  d="$FAUX_GH/$(printf '%s' "$*" | cksum | cut -d' ' -f1)"
+  mkdir -p "$d"
+  : > "$d/out"; : > "$d/err"; : > "$d/dort"
+  echo 0 > "$d/rc"
+  printf '%s' "$d"
+}
+gh_repond() { local r=$1 d; shift; d=$(gh_dir "$@"); printf '%s\n' "$r" > "$d/out"; }  # gh_repond <sortie> <args>...
+gh_echoue() { local c=$1 e=$2 d; shift 2; d=$(gh_dir "$@"); printf '%s\n' "$e" > "$d/err"; echo "$c" > "$d/rc"; }  # gh_echoue <code> <stderr> <args>...
+release_de() {  # release_de <owner/repo> <tag> : aucun commit apres le tag
+  gh_repond "$2" api "repos/$1/releases/latest" --jq .tag_name
+  gh_repond 0 api "repos/$1/compare/$2...HEAD" --jq .ahead_by
+}
+appels() { cat "$FAUX_GH/appels" 2>/dev/null; }
+oublie_appels() { : > "$FAUX_GH/appels"; }
+
+echo "usage et pannes"
+deps
+is "aucun argument : sortie 2" "2" "$RC"
+has "... et l'usage s'affiche" "usage: aikit-deps" "$OUT"
+deps a b c
+is "trois arguments : sortie 2" "2" "$RC"
+deps --aide
+is "une option inconnue : sortie 2" "2" "$RC"
+deps p/q
+is "un projet avec un / : sortie 2" "2" "$RC"
+
+PANNE="$TMP/panne"; mkdir -p "$PANNE/bin" "$PANNE/lib"
+cp bin/aikit-deps "$PANNE/bin/aikit-deps"
+OUT=$("$PANNE/bin/aikit-deps" x 2>&1); RC=$?
+is "lib/vaults absente : panne en 2, jamais en 1" "2" "$RC"
+has "... et la panne se dit" "panne interne" "$OUT"
+printf ': "$variable_jamais_definie"\n' > "$PANNE/lib/vaults"
+OUT=$("$PANNE/bin/aikit-deps" x 2>&1); RC=$?
+is "variable non definie sous set -u : 2, jamais 1" "2" "$RC"
+
+echo "cas d'entree"
+deps inconnu
+is "projet inconnu : sortie 0" "0" "$RC"
+has "... x projet inconnu" "x projet inconnu : inconnu" "$OUT"
+has "... compte dans le verdict" "verdict : 0 ecart a trier, 1 non verifie" "$OUT"
+
+printf -- '---\nname: nue\nkind: conception\nsummary: x\n---\n\n# nue\n' > "$VAULT/projects/nue.md"
+deps nue
+is "fiche sans section : sortie 0" "0" "$RC"
+is "... aucune dependance declaree" "dependances nue
+aucune dependance declaree
+verdict : rien a trier" "$OUT"
+hasnt "... jamais a jour" "a jour" "$OUT"
+
+deps nue absent
+has "plan introuvable : la ligne le dit" "x plan introuvable : $VAULT/nue/absent/plan.md" "$OUT"
+has "... et le verdict le compte" "verdict : 0 ecart a trier, 1 non verifie" "$OUT"
+
+fiche base "| a | acme/lib | fichier x@y |" "| b | acme/lib | |"
+deps base
+is "base inconnue ou vide : sortie 0" "0" "$RC"
+is "... ligne, alignement et verdict" "dependances base
+x a  non verifie : base inconnue
+x b  non verifie : base inconnue
+verdict : 0 ecart a trier, 2 non verifie" "$OUT"
+
+echo "lecture des tableaux"
+fiche double "| a | acme/lib | fichier x |" "| a | acme/lib | fichier y |"
+deps double
+is "nom en double dans la fiche : une seule ligne" "x a  non verifie : nom en double" "$(printf '%s\n' "$OUT" | sed -n 2,2p)"
+has "... et un seul non verifie" "0 ecart a trier, 1 non verifie" "$OUT"
+
+fiche dbl2 "| a | acme/lib | fichier x |"
+planmd dbl2 b "| a | | | 1 | 2026-11-01 | |" "| a | | | 2 | 2026-11-02 | |"
+deps dbl2 b
+has "nom en double dans le plan" "x a  non verifie : nom en double" "$OUT"
+
+planmd dbl2 c "| a | | | 1 | 2026-11-01 | |"
+deps dbl2 c
+hasnt "un nom dans la fiche ET dans le plan n'est pas un double" "nom en double" "$OUT"
+
+fiche fp
+planmd fp b "| seul | | release | | | |" "| autre | acme/lib | | | | |"
+deps fp b
+has "ligne de plan sans Source, base qui en exige une" "x seul   non verifie : source absente" "$OUT"
+has "ligne de plan sans Base" "x autre  non verifie : base absente" "$OUT"
+
+fiche_titre "## Dependances" sansaccent "| a | acme/lib | fichier x |"
+deps sansaccent
+has "titre sans accent" "x a  non verifie : base inconnue" "$OUT"
+
+fiche accentc "| a | acme/lib | fichier x |"
+OUT=$(LC_ALL=C LANG=C bin/aikit-deps accentc 2>&1)
+has "titre accentue sous LC_ALL=C" "x a  non verifie : base inconnue" "$OUT"
+
+fiche crlf "| a | acme/lib | fichier x |"
+sed -i 's/$/\r/' "$VAULT/projects/crlf.md"
+deps crlf
+has "fiche en CRLF" "x a  non verifie : base inconnue" "$OUT"
+hasnt "... sans \\r dans la sortie" $'\r' "$OUT"
+
+fiche pipe '| a\|b | acme/lib | fichier x |'
+deps pipe
+has '\| dans une cellule' "x a|b  non verifie : base inconnue" "$OUT"
+
+printf -- '---\nname: entre\nkind: conception\nsummary: x\n---\n\n%s\n\nDu texte avant le tableau.\n\n| Nom | Source | Base |\n|---|---|---|\n| a | acme/lib | release |\n' "$ACCENT" > "$VAULT/projects/entre.md"
+deps entre
+has "la section finit a la premiere ligne hors tableau" "aucune dependance declaree" "$OUT"
+
+fiche leurre
+planmd leurre b
+deps leurre b
+has "un titre cite dans une tache n'est pas la section" "aucune dependance declaree" "$OUT"
+
+fiche nosec
+mkdir -p "$VAULT/nosec/b"
+printf -- '---\nproject: nosec\n---\n\n## Re-enter at\nici\n\n### Task 1: x\n\n```markdown\n%s\n\n| Nom | Source | Base |\n|---|---|---|\n| leurre | a/b | release |\n```\n' "$ACCENT" > "$VAULT/nosec/b/plan.md"
+deps nosec b
+has "plan sans section : seul un titre cite dans une tache" "aucune dependance declaree" "$OUT"
+
+if [ "$(id -u)" != 0 ]; then
+  fiche illisible "| a | acme/lib | fichier x |"
+  chmod 000 "$VAULT/projects/illisible.md"
+  deps illisible
+  is "fiche illisible : sortie 2, jamais 0 ni 1" "2" "$RC"
+  chmod 644 "$VAULT/projects/illisible.md"
+  fiche illplan "| a | acme/lib | fichier x |"
+  planmd illplan b "| a | | | 1 | 2026-11-01 | |"
+  chmod 000 "$VAULT/illplan/b/plan.md"
+  deps illplan b
+  is "plan illisible : sortie 2, jamais 0 ni 1" "2" "$RC"
+  chmod 644 "$VAULT/illplan/b/plan.md"
+fi
+
+avant=$(find "$VAULT" -type f -exec cksum {} + | sort)
+deps fp b
+is "la commande ne modifie rien" "$avant" "$(find "$VAULT" -type f -exec cksum {} + | sort)"
+
+is "bash 3 : aucune construction de bash 4" "" "$(grep -nE 'declare -A|mapfile|readarray|\$\{[A-Za-z_]+(\^|,)' bin/aikit-deps)"
+
+echo "fige et manuel"
+release_de acme/contrat v0.12.0
+fiche sg "| contrat | acme/contrat | fige v0.9.0 - gele jusqu'a la fin |" "| url | https://exemple.test/p | fige v1 - motif |" "| cadrage | https://exemple.test/p | manuel |"
+oublie_appels
+deps sg
+is "~ et ? seuls : sortie 0" "0" "$RC"
+is "... lignes et verdict" "dependances sg
+~ contrat  fige v0.9.0 (gele jusqu'a la fin), amont v0.12.0
+~ url      fige v1 (motif)
+? cadrage  manuel, jamais vu, a regarder
+verdict : rien a trier" "$OUT"
+is "... manuel et une source URL n'appellent pas gh" "api repos/acme/contrat/releases/latest --jq .tag_name" "$(appels)"
+
+planmd sg b "| cadrage | | | | 2026-10-12 | |"
+deps sg b
+has "? affiche la date Le" "? cadrage  manuel, vu 2026-10-12, a regarder" "$OUT"
+
+fiche sg2 "| contrat | acme/sansrelease | fige v0.9.0 - gele |"
+deps sg2
+is "~ sans amont lisible reste ~" "~ contrat  fige v0.9.0 (gele)" "$(printf '%s\n' "$OUT" | sed -n 2,2p)"
+has "... et ne compte pas" "verdict : rien a trier" "$OUT"
+
+DASH=$'\xe2\x80\x94'
+fiche sg3 "| a | acme/x | fige v0.9.0 |" "| b | acme/x | fige v0.9.0 $DASH tiret long |" "| c | acme/x | fige |"
+deps sg3
+has "fige sans motif" 'x a  non verifie : fige sans motif (separateur : " - ")' "$OUT"
+has "fige avec un tiret long" 'x b  non verifie : fige sans motif (separateur : " - ")' "$OUT"
+has "fige seul" 'x c  non verifie : fige sans motif (separateur : " - ")' "$OUT"
+
+echo "release, branche, pr"
+release_de acme/lib v4.4.0
+gh_repond 9c0d1e2a3b4c5d6e7f8091a2b3c4d5e6f7a8b9c0 api repos/acme/lib/branches/master --jq .commit.sha
+gh_repond '683da0b0f44d4e9417e944e9f1ec8daf959317cf:MERGED' pr view 107 --repo acme/contrat --json headRefOid,state --jq '.headRefOid + ":" + .state'
+gh_repond 'e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3:OPEN' pr view 108 --repo acme/contrat --json headRefOid,state --jq '.headRefOid + ":" + .state'
+fiche sr "| rel | acme/lib | release |" "| br | acme/lib | branche master |" "| prm | acme/contrat#107 | pr |" "| pro | acme/contrat#108 | pr |"
+deps sr
+is "vu vide : sortie 1" "1" "$RC"
+is "... chaque empreinte, l'etat en minuscules" "dependances sr
+! rel  vu vide, amont v4.4.0
+! br   vu vide, amont 9c0d1e2
+! prm  vu vide, amont 683da0b:merged
+! pro  vu vide, amont e4f5a6b:open
+verdict : 4 ecart a trier, 0 non verifie" "$OUT"
+
+planmd sr b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |" "| br | | | 9c0d1e2 | 2026-11-02 | sans effet |" "| prm | | | 683da0b:merged | 2026-11-02 | sans effet |" "| pro | | | e4f5a6b:open | 2026-11-02 | sans effet |"
+deps sr b
+is "tout acquitte : sortie 0" "0" "$RC"
+is "... lignes = et rien a trier" "dependances sr/b
+= rel  vu v4.4.0, amont v4.4.0
+= br   vu 9c0d1e2, amont 9c0d1e2
+= prm  vu 683da0b:merged, amont 683da0b:merged
+= pro  vu e4f5a6b:open, amont e4f5a6b:open
+verdict : rien a trier" "$OUT"
+
+planmd sr b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |" "| br | | | 9c0d1e2 | 2026-11-02 | sans effet |" "| prm | | | \`683da0b:merged\` | 2026-11-02 | sans effet |" "| pro | | | e4f5a6b:open | 2026-11-02 | sans effet |"
+deps sr b
+is "vu entre backticks : sortie 0" "0" "$RC"
+has "... = prm" "= prm  vu 683da0b:merged, amont 683da0b:merged" "$OUT"
+
+release_de acme/lib v4.5.0
+deps sr b
+is "acquitte puis nouvelle release : sortie 1" "1" "$RC"
+has "... ! redonne" "! rel  vu v4.4.0, amont v4.5.0" "$OUT"
+release_de acme/lib v4.4.0
+
+planmd sr c
+sed -i '/^## D/,/^$/d' "$VAULT/sr/c/plan.md"
+deps sr c
+has "plan sans section : valide, vus vides" "! rel  vu vide, amont v4.4.0" "$OUT"
+
+fiche sp "| remp | acme/autre | release |"
+planmd sp b "| propre | acme/lib | release | v4.4.0 | 2026-11-02 | sans effet |"
+planmd sp c "| remp | acme/lib | | v4.4.0 | 2026-11-02 | sans effet |"
+deps sp b
+has "ligne propre au chantier" "= propre  vu v4.4.0, amont v4.4.0" "$OUT"
+deps sp c
+has "cellule Source du plan prioritaire" "= remp  vu v4.4.0, amont v4.4.0" "$OUT"
+fiche sp "| remp | acme/lib | branche master |"
+planmd sp d "| remp | | release | v4.4.0 | 2026-11-02 | sans effet |"
+deps sp d
+has "cellule Base du plan prioritaire, Source reprise de la fiche" "= remp  vu v4.4.0, amont v4.4.0" "$OUT"
+
+echo "amont illisible"
+fiche sx "| a | acme/absent | release |" "| b | acme/lib | branche absente |" "| c | acme/contrat#9 | pr |" "| d | pas-un-depot | release |" "| e | acme/contrat | pr |" "| f | acme/lib | branche a b |"
+gh_echoue 1 'GraphQL: Could not resolve to a PullRequest with the number of 9. (repository.pullRequest)' pr view 9 --repo acme/contrat --json headRefOid,state --jq '.headRefOid + ":" + .state'
+deps sx
+is "que des x : sortie 0" "0" "$RC"
+has "depot sans release" "x a  non verifie : depot sans release" "$OUT"
+has "branche introuvable" "x b  non verifie : branche introuvable" "$OUT"
+has "pr introuvable" "x c  non verifie : pr introuvable" "$OUT"
+has "source invalide, release" "x d  non verifie : source invalide" "$OUT"
+has "source invalide, pr sans numero" "x e  non verifie : source invalide" "$OUT"
+has "branche a deux mots" "x f  non verifie : base inconnue" "$OUT"
+
+planmd sx v "| a | | | v1 | 2026-11-02 | sans effet |"
+deps sx v
+has "un x ne regarde pas le vu" "x a  non verifie : depot sans release" "$OUT"
+
+fiche sy "| a | acme/auth | release |" "| b | acme/jeton | release |" "| c | acme/res | release |"
+gh_echoue 4 $'To get started with GitHub CLI, please run:  gh auth login\nAlternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.' api repos/acme/auth/releases/latest --jq .tag_name
+gh_echoue 1 'gh: Bad credentials (HTTP 401)' api repos/acme/jeton/releases/latest --jq .tag_name
+gh_echoue 1 'Get "https://api.github.com/repos/acme/res/releases/latest": dial tcp: connect: connection refused' api repos/acme/res/releases/latest --jq .tag_name
+deps sy
+has "gh non authentifie, code 4" "x a  non verifie : gh non authentifie" "$OUT"
+has "gh non authentifie, HTTP 401" "x b  non verifie : gh non authentifie" "$OUT"
+has "reseau" "x c  non verifie : reseau" "$OUT"
+is "... sortie 0" "0" "$RC"
+
+fiche sm "| rel | acme/lib | release |" "| mal | acme/absent | release |"
+deps sm
+is "un ! et un x : sortie 1" "1" "$RC"
+has "... les deux comptent" "verdict : 1 ecart a trier, 1 non verifie" "$OUT"
+
+fiche sz "| rel | acme/lib | release |" "| fig | acme/lib | fige v1 - motif |" "| man | https://exemple.test/p | manuel |"
+NOBIN="$W/nobin"; mkdir -p "$NOBIN"
+for o in awk bash cat cksum cut dirname env find git head mktemp rm sed sleep sort tr; do ln -s "$(command -v "$o")" "$NOBIN/$o"; done
+OUT=$(PATH="$NOBIN" bin/aikit-deps sz 2>&1); RC=$?
+is "sans gh : sortie 0" "0" "$RC"
+is "... x, ~ et ? restent" "dependances sz
+x rel  non verifie : gh absent
+~ fig  fige v1 (motif)
+? man  manuel, jamais vu, a regarder
+verdict : 0 ecart a trier, 1 non verifie, budget non garanti (timeout absent)" "$OUT"
+
+echo "paquet"
+# clone <nom> <branche> <contenu du manifeste> : une fiche, un depot, un manifeste.
+clone() {
+  printf -- '---\nname: %s\nsummary: x\n---\n\n# %s\n' "$1" "$1" > "$VAULT/projects/$1.md"
+  mkdir -p "$ROOT/$1"
+  git -C "$ROOT/$1" init -q
+  git -C "$ROOT/$1" symbolic-ref HEAD "refs/heads/$2"
+  printf '%s\n' "$3" > "$ROOT/$1/Directory.Packages.props"
+}
+props() { while [ $# -gt 0 ]; do printf '<PackageVersion Include="%s" Version="%s" />\n' "$1" "$2"; shift 2; done; }  # props <nom> <version>...
+
+release_de acme/lib v4.4.0
+clone monclone master "$(props Acme.Lib 4.4.0 Acme.Rc 4.0.0-rc7 Acme.Sym '$(Foo)' Acme.Sym2 '$(Foo.1.2)')"
+L="dans monclone:Directory.Packages.props"
+fiche sa "| a | acme/lib | paquet Acme.Lib $L |"
+deps sa
+is "tag v4.4.0 contre manifeste 4.4.0, vu vide : sortie 0" "0" "$RC"
+has "... = avec clone et branche lus" "= a  base 4.4.0 (monclone sur master), amont 4.4.0" "$OUT"
+
+release_de acme/lib v4.0.0
+fiche sa "| a | acme/lib | paquet Acme.Rc $L |"
+deps sa
+is "base 4.0.0-rc7 contre amont 4.0.0 : sortie 1" "1" "$RC"
+has "... le suffixe compte" "! a  base 4.0.0-rc7 (monclone sur master), amont 4.0.0, vu vide" "$OUT"
+
+planmd sa b "| a | | | 4.0.0 | 2026-11-02 | sans effet |"
+deps sa b
+is "ecart acquitte : sortie 0" "0" "$RC"
+has "... le vu s'affiche" "= a  base 4.0.0-rc7 (monclone sur master), amont 4.0.0, vu 4.0.0 (acquitte)" "$OUT"
+release_de acme/lib v4.1.0
+deps sa b
+is "acquitte puis nouvelle release : sortie 1" "1" "$RC"
+has "... ! redonne" "! a  base 4.0.0-rc7 (monclone sur master), amont 4.1.0, vu 4.0.0" "$OUT"
+planmd sa b "| a | | | v4.1.0 | 2026-11-02 | sans effet |"
+deps sa b
+is "vu ecrit avec un v devant la version : sortie 0" "0" "$RC"
+has "... = acquitte" "= a  base 4.0.0-rc7 (monclone sur master), amont 4.1.0, vu v4.1.0 (acquitte)" "$OUT"
+release_de acme/lib v4.4.0
+
+fiche sa "| a | acme/lib | paquet Acme.Sym $L |" "| b | acme/lib | paquet Acme.Sym2 $L |"
+deps sa
+has "valeur symbolique" "x a  non verifie : version introuvable : Acme.Sym" "$OUT"
+has "valeur symbolique a chiffres" "x b  non verifie : version introuvable : Acme.Sym2" "$OUT"
+
+clone prefixe main "$(props Acme.Nats.Connectors 1.0.0 Acme.Nats 2.0.0)"
+L2="dans prefixe:Directory.Packages.props"
+release_de acme/nats v2.0.0
+fiche sb "| a | acme/nats | paquet Acme.Nats $L2 |"
+deps sb
+has "nom prefixe d'un autre : nom entier" "= a  base 2.0.0 (prefixe sur main), amont 2.0.0" "$OUT"
+
+fiche sc "| a | acme/lib | paquet Acme.Absent $L |" "| b | acme/lib | paquet Acme.Lib dans fantome:x |" "| c | acme/lib | paquet Acme.Lib dans monclone:absent.props |" "| d | acme/lib | paquet Acme.Lib |" "| e | acme/lib | paquet * $L |"
+oublie_appels
+deps sc
+is "causes de la regle 6 : sortie 0" "0" "$RC"
+has "nom introuvable" "x a  non verifie : paquet introuvable : Acme.Absent" "$OUT"
+has "clone absent" "x b  non verifie : clone absent : fantome" "$OUT"
+has "manifeste introuvable" "x c  non verifie : manifeste introuvable : absent.props" "$OUT"
+has "forme invalide" "x d  non verifie : base inconnue" "$OUT"
+has "motif seul" "x e  non verifie : base inconnue" "$OUT"
+is "... aucun appel gh avant la lecture du manifeste" "" "$(appels)"
+
+planmd sc v1 "| b | | | 4.4.0 | 2026-11-02 | sans effet |"
+deps sc v1
+has "clone absent, vu egal a l'amont" "x b  non verifie : clone absent : fantome" "$OUT"
+planmd sc v2 "| b | | | 3.0.0 | 2026-11-02 | sans effet |"
+deps sc v2
+has "clone absent, vu different de l'amont" "x b  non verifie : clone absent : fantome" "$OUT"
+
+fiche sd "| a | acme/absent | paquet Acme.Lib $L |"
+deps sd
+has "regle 7 apres la lecture du manifeste" "x a  non verifie : depot sans release" "$OUT"
+
+fiche se "| a | acme/lib | paquet Acme.Lib $L |"
+git -C "$ROOT/monclone" add -A > /dev/null
+git -C "$ROOT/monclone" -c user.name=t -c user.email=t@t commit -q -m x
+git -C "$ROOT/monclone" checkout -q --detach
+deps se
+has "HEAD detachee se voit" "(monclone sur HEAD detachee)" "$OUT"
+
+echo "paquet par prefixe"
+clone groupe main "<!-- Acme.Pack.* bougent ensemble -->
+$(props Acme.Pack.Un 4.4.0 Acme.Pack.Deux 4.4.0 Acme.Packet 9.9.9)"
+LG="dans groupe:Directory.Packages.props"
+fiche sf "| g | acme/lib | paquet Acme.Pack.* $LG |"
+deps sf
+has "versions egales, le commentaire n'est pas un paquet" "= g  base 4.4.0 (groupe sur main), amont 4.4.0" "$OUT"
+clone groupe main "$(props Acme.Pack.Un 4.4.0 Acme.Pack.Deux 4.3.0)"
+deps sf
+has "versions differentes" "x g  non verifie : versions differentes" "$OUT"
+is "... sortie 0" "0" "$RC"
+clone groupe main "$(props Acme.Pack.Un 4.4.0 Acme.Pack.Deux '$(Foo)')"
+deps sf
+has "une version symbolique dans le groupe" "x g  non verifie : version introuvable : Acme.Pack.*" "$OUT"
+clone groupe main "$(props Autre.Un 1.0.0)"
+deps sf
+has "aucun paquet du prefixe" "x g  non verifie : paquet introuvable : Acme.Pack.*" "$OUT"
+clone groupe main "$(props NUnit 3.0.0 NUnit.Analyzers 4.4.0 NUnit3TestAdapter 4.4.0)"
+fiche sf "| g | acme/lib | paquet NUnit* $LG |"
+deps sf
+has "un paquet egal au prefixe compte" "x g  non verifie : versions differentes" "$OUT"
+clone groupe main "$(props NUnit 4.4.0)"
+deps sf
+has "... seul, il est trouve" "= g  base 4.4.0 (groupe sur main), amont 4.4.0" "$OUT"
+clone groupe main "$(props Acme.P.Un 4.4.0 Acme.P.Un 3.0.0 Acme.P.Deux 4.4.0)"
+fiche sf "| g | acme/lib | paquet Acme.P.* $LG |"
+deps sf
+has "un paquet repete a une autre version" "x g  non verifie : versions differentes" "$OUT"
+if [ "$(id -u)" != 0 ]; then
+  clone groupe main "$(props Acme.Pack.Un 4.4.0)"
+  chmod 000 "$ROOT/groupe/Directory.Packages.props"
+  fiche sf "| g | acme/lib | paquet Acme.Pack.* $LG |"
+  deps sf
+  chmod 644 "$ROOT/groupe/Directory.Packages.props"
+  has "manifeste illisible" "x g  non verifie : manifeste introuvable : Directory.Packages.props" "$OUT"
+fi
+
+echo "fiche conception sans clone"
+printf -- '---\nname: sansclone\nkind: conception\nsummary: x\n---\n\n%s\n\n| Nom | Source | Base |\n|---|---|---|\n| a | acme/lib | release |\n| b | acme/lib | paquet Acme.Lib dans fantome:x |\n' "$ACCENT" > "$VAULT/projects/sansclone.md"
+deps sansclone
+has "release lue sans clone" "! a  vu vide, amont v4.4.0" "$OUT"
+has "seul <clone> exige un clone" "x b  non verifie : clone absent : fantome" "$OUT"
+
+echo "amont vide"
+fiche sy "| g | acme/vide | branche master |" "| i | acme/vide#5 | pr |"
+gh_repond '' api repos/acme/vide/branches/master --jq .commit.sha
+gh_repond '' pr view 5 --repo acme/vide --json headRefOid,state --jq '.headRefOid + ":" + .state'
+deps sy
+has "branche a sortie vide : x, jamais =" "x g  non verifie : branche introuvable" "$OUT"
+has "pr a sortie vide : x" "x i  non verifie : pr introuvable" "$OUT"
+hasnt "... aucun faux =" "= g" "$OUT"
+
+
+echo "surveille"
+release_de acme/lib v4.4.0
+clone garde main "$(props Acme.Un 4.4.0 Acme.Pack.Un 4.4.0 Acme.Pack.Deux 4.4.0 Autre.Tiers 1.0.0 Hors.Sujet 2.0.0 acme.minuscule 3.0.0)"
+LW="dans garde:Directory.Packages.props"
+fiche sw "| un | acme/lib | paquet Acme.Un $LW |" "| pack | acme/lib | paquet Acme.Pack.* $LW |" "| veille | | surveille Acme.* $LW |"
+oublie_appels
+deps sw
+has "tout couvert, par nom exact et par prefixe" "= veille  tout declare (garde sur main)" "$OUT"
+is "... sortie 0" "0" "$RC"
+is "... seules les deux lignes paquet appellent gh" "2" "$(appels | grep -c 'releases/latest')"
+
+fiche sw "| un | acme/lib | paquet Acme.Un $LW |" "| veille | | surveille Acme.* $LW |"
+deps sw
+has "paquets non declares, tous nommes" "x veille  non declares : Acme.Pack.Un, Acme.Pack.Deux" "$OUT"
+has "... compte en non verifie" "0 ecart a trier, 1 non verifie" "$OUT"
+is "... ne bloque pas : sortie 0" "0" "$RC"
+
+fiche sw "| veille | | surveille Acme.*,Autre.* $LW |"
+oublie_appels
+deps sw
+has "plusieurs motifs" "x veille  non declares : Acme.Un, Acme.Pack.Un, Acme.Pack.Deux, Autre.Tiers" "$OUT"
+hasnt "... rien hors des motifs" "Hors.Sujet" "$OUT"
+hasnt "... sensible a la casse" "acme.minuscule" "$OUT"
+is "... aucun appel gh" "" "$(appels)"
+
+clone autre main "$(props Acme.Un 4.4.0)"
+fiche sw "| un | acme/lib | paquet Acme.Un dans autre:Directory.Packages.props |" "| veille | | surveille Acme.* $LW |"
+deps sw
+has "une ligne paquet d'un autre clone ne couvre pas" "Acme.Un" "$(printf '%s\n' "$OUT" | grep '^x veille')"
+
+cat > "$ROOT/garde/package.json" <<'JSON'
+{
+  "dependencies": {
+    "@acme/un": "^1.2.3",
+    "@acme/deux": "2.0.0",
+    "tiers": "1.0.0"
+  }
+}
+JSON
+LJ="dans garde:package.json"
+fiche sj "| un | acme/lib | paquet @acme/un $LJ |" "| veille | | surveille @acme/* $LJ |"
+deps sj
+has "manifeste JSON" "x veille  non declares : @acme/deux" "$OUT"
+
+planmd sj b "| plan | acme/lib | paquet @acme/deux $LJ | | | |"
+deps sj b
+has "une ligne paquet du plan couvre aussi" "= veille  tout declare (garde sur main)" "$OUT"
+
+fiche sk "| veille | | surveille Acme.* dans fantome:x |" "| m | | surveille Acme.* dans garde:absent |" "| f | | surveille Acme dans garde:package.json |" "| v | | surveille Acme.*, Autre.* dans garde:package.json |" "| n | | surveille Acme.* |"
+oublie_appels
+deps sk
+has "surveille, clone absent" "x veille  non verifie : clone absent : fantome" "$OUT"
+has "surveille, manifeste absent" "x m       non verifie : manifeste introuvable : absent" "$OUT"
+has "motif sans etoile" "x f       non verifie : base inconnue" "$OUT"
+has "motifs separes par une espace" "x v       non verifie : base inconnue" "$OUT"
+has "forme invalide" "x n       non verifie : base inconnue" "$OUT"
+is "... aucun appel gh" "" "$(appels)"
+
+fiche sl
+planmd sl b "| veille | | surveille Acme.* $LW | | | |"
+deps sl b
+hasnt "ligne de plan surveille sans Source : pas de source absente" "source absente" "$OUT"
+
+clone garde main "$(props Acme.Un 4.4.0 Acme.Pack.Un 4.4.0 Zed.Acme.Un 1.0.0)"
+fiche sm "| a | | surveille *Acme* $LW |" "| b | | surveille Acme.*.Un* $LW |" "| c | | surveille Acme.** $LW |" "| d | | surveille Acme:* $LW |"
+oublie_appels
+deps sm
+has "motif a etoile en tete" "x a  non verifie : base inconnue" "$OUT"
+has "motif a etoile au milieu" "x b  non verifie : base inconnue" "$OUT"
+has "motif a double etoile" "x c  non verifie : base inconnue" "$OUT"
+has "motif hors de l'alphabet" "x d  non verifie : base inconnue" "$OUT"
+hasnt "... aucun faux tout declare" "tout declare" "$OUT"
+
+clone garde main "$(props Acme.Un 4.4.0 Acme.Pack.Un 4.4.0)"
+fiche sn "| p | acme/lib | paquet * $LW |" "| veille | | surveille Acme.* $LW |"
+deps sn
+has "paquet * rejete ne couvre rien" "x veille  non declares : Acme.Un, Acme.Pack.Un" "$OUT"
+hasnt "... aucun faux tout declare" "tout declare" "$OUT"
+
+echo "commits non publies"
+release_de acme/lib v4.4.0
+gh_repond 3 api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+fiche sn "| rel | acme/lib | release |" "| pa | acme/lib | paquet Acme.Lib $L |"
+planmd sn b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |"
+deps sn b
+has "release, N commits non publies, jamais un ecart" "= rel  vu v4.4.0, amont v4.4.0, 3 commits non publies" "$OUT"
+has "paquet, le tag d'origine sert au comptage" "= pa   base 4.4.0 (monclone sur HEAD detachee), amont 4.4.0, 3 commits non publies" "$OUT"
+is "... sortie 0" "0" "$RC"
+gh_repond 0 api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+deps sn b
+hasnt "zero commit : rien a dire" "non publies" "$OUT"
+gh_echoue 1 'gh: Server Error (HTTP 500)' api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+deps sn b
+has "comptage en echec, la ligne reste valide" "= rel  vu v4.4.0, amont v4.4.0, commits non publies : non verifie" "$OUT"
+is "... sortie 0" "0" "$RC"
+fiche sn2 "| br | acme/lib | branche master |"
+oublie_appels
+deps sn2
+hasnt "branche : pas de comptage" "compare" "$(appels)"
+
+echo "budget et timeout"
+d=$(gh_dir api repos/acme/lent/releases/latest --jq .tag_name); echo 3 > "$d/dort"
+fiche sq "| a | acme/lent | release |"
+debut=$SECONDS
+OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps sq 2>&1); RC=$?
+has "delai depasse" "x a  non verifie : delai depasse" "$OUT"
+is "... sortie 0" "0" "$RC"
+[ $((SECONDS - debut)) -lt 3 ] && ok "... le budget coupe gh" || ko "... le budget coupe gh" "< 3 s" "$((SECONDS - debut)) s"
+has "le budget vaut 5 s" 'BUDGET=${AIKIT_DEPS_BUDGET:-5}' "$(cat bin/aikit-deps)"
+
+GHSEUL="$W/ghseul"; mkdir -p "$GHSEUL"; ln -s "$FAUXBIN/gh" "$GHSEUL/gh"
+gh_repond 0 api 'repos/acme/lib/compare/v4.4.0...HEAD' --jq .ahead_by
+fiche sr2 "| rel | acme/lib | release |"
+planmd sr2 b "| rel | | | v4.4.0 | 2026-11-02 | sans effet |"
+OUT=$(PATH="$NOBIN:$GHSEUL" bin/aikit-deps sr2 b 2>&1); RC=$?
+is "sans timeout : la ligne sort quand meme" "= rel  vu v4.4.0, amont v4.4.0" "$(printf '%s\n' "$OUT" | sed -n 2,2p)"
+has "... et le verdict le dit" "verdict : rien a trier, budget non garanti (timeout absent)" "$OUT"
+is "... sortie 0" "0" "$RC"
+
+WIN="$W/win"; mkdir -p "$WIN"
+printf '#!/usr/bin/env bash\necho "Erreur : syntaxe incorrecte." >&2\nexit 1\n' > "$WIN/timeout"; chmod +x "$WIN/timeout"
+OUT=$(PATH="$WIN:$PATH" bin/aikit-deps sr2 b 2>&1)
+has "un timeout qui ne repond pas a --version ne compte pas" "budget non garanti (timeout absent)" "$OUT"
+has "... et n'est pas appele" "= rel  vu v4.4.0" "$OUT"
+
+echo "budget : un seul total par dependance"
+gh_repond v4.4.0 api repos/acme/lent/releases/latest --jq .tag_name
+d=$(gh_dir api repos/acme/lent/releases/latest --jq .tag_name); echo v4.4.0 > "$d/out"; echo 0.05 > "$d/dort"
+d=$(gh_dir api repos/acme/lent/compare/v4.4.0...HEAD --jq .ahead_by); echo 5 > "$d/dort"
+fiche ss "| a | acme/lent | release |"
+# Le tic de SECONDS du script n'est pas maitrisable : plusieurs passes, pour que
+# la variante sans retenue d'une seconde ne passe jamais au travers.
+debut=$SECONDS; partis=0; lances=0
+for _ in 1 2 3 4 5 6; do
+  oublie_appels
+  OUT=$(AIKIT_DEPS_BUDGET=1 bin/aikit-deps ss 2>&1); RC=$?
+  case "$(appels)" in *releases/latest*) lances=$((lances + 1)) ;; esac
+  case "$(appels)" in *compare*) partis=$((partis + 1)) ;; esac
+done
+has "premier appel lent, second sans budget : non verifie" "commits non publies : non verifie" "$OUT"
+is "... le premier appel a eu lieu a chaque passe" "6" "$lances"
+is "... le second ne part jamais" "0" "$partis"
+[ $((SECONDS - debut)) -lt 4 ] && ok "... le total ne depasse pas le budget" || ko "... le total ne depasse pas le budget" "< 2 s" "$((SECONDS - debut)) s"
+for b in 5s 1.5; do
+  OUT=$(AIKIT_DEPS_BUDGET=$b bin/aikit-deps ss 2>&1); RC=$?
+  is "budget $b : sortie 2" "2" "$RC"
+  has "... panne interne" "panne interne" "$OUT"
+done
+OUT=$(AIKIT_DEPS_BUDGET=08 bin/aikit-deps ss 2>&1); RC=$?
+is "budget 08 : lu en base 10, l'ecart reste un ecart" "1" "$RC"
+has "... et le verdict le dit" "verdict : 1 ecart a trier" "$OUT"
+echo
+echo "$pass passes, $fail echecs"
+# `exit`, jamais un test en derniere ligne : voir scripts/test-vaults.
+exit $(( fail != 0 ))

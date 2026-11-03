@@ -1,0 +1,530 @@
+#!/usr/bin/env bash
+# Where do a project's upstream dependencies stand, and those of one of its needs?
+#
+# Reads the `## Dependances` section of the registry file and, when a need is
+# named, of its plan.md, then compares each line to what upstream says today.
+# Writes nothing: acknowledging a change is the orchestrator's job, once its
+# human partner validated it (aikit:checking-dependencies).
+#
+# One line per dependency, then a verdict:
+#   x  not verified, the cause is on the line; never blocks
+#   ~  frozen     ?  manual     =  nothing to look at     !  changed since seen
+#
+# Usage: aikit-deps <project> [<need>]
+# Exit:  1 at least one `!`; 0 otherwise, `x` included; 2 usage or internal failure.
+set -euo pipefail
+
+# `set -e` and `set -u` die with 1, which a caller would read as a `!`.
+finished=0
+trap 'rc=$?; rm -f "${ERRFILE:-}"; [ "$finished" = 1 ] || { echo "aikit-deps: panne interne (code $rc)" >&2; exit 2; }' EXIT
+
+LIB="$(cd "$(dirname "$0")/.." && pwd)/lib/vaults"
+. "$LIB"
+
+usage() {
+  echo "usage: aikit-deps <project> [<need>]" >&2
+  finished=1
+  exit 2
+}
+
+[ $# -ge 1 ] && [ $# -le 2 ] || usage
+project=$1; need=${2:-}
+case "$project" in ''|-*|*/*) usage ;; esac
+case "$need" in -*|*/*) usage ;; esac
+
+# Seconds per dependency. The variable exists for scripts/test-deps alone.
+BUDGET=${AIKIT_DEPS_BUDGET:-5}
+case "$BUDGET" in
+  ''|*[!0-9]*) echo "aikit-deps: panne interne (AIKIT_DEPS_BUDGET : entier attendu)" >&2; finished=1; exit 2 ;;
+esac
+# Base 10: bash reads 08 as an invalid octal and 010 as 8.
+BUDGET=$((10#$BUDGET))
+# `timeout --version`, never `command -v timeout`: on Windows that finds
+# System32\timeout.exe, whose syntax is another one.
+HAS_TIMEOUT=0
+if timeout --version > /dev/null 2>&1 < /dev/null; then HAS_TIMEOUT=1; fi
+# Cells travel joined by US, not by a tab: `read` collapses consecutive tabs,
+# and an empty cell is the normal case in a plan.md row.
+SEP=$'\037'
+# The accented title as bytes: this file stays ASCII and awk compares bytes under
+# LC_ALL=C, so the locale of the session cannot change what matches.
+TITLE_ACCENT=$'## D\303\251pendances'
+TITLE_ASCII='## Dependances'
+
+# table_rows <file> -> one line per data row of the section, six cells each.
+# Stops at the first `### Task` heading: the section sits above the first task,
+# and a task's body may quote the title in a code block. A blank line is allowed
+# between the title and the table; the first other line outside the table ends it.
+table_rows() {
+  T1="$TITLE_ACCENT" T2="$TITLE_ASCII" LC_ALL=C awk '
+    BEGIN { sep = sprintf("%c", 31); pipe = sprintf("%c", 30) }
+    {
+      line = $0
+      sub(/\r$/, "", line); sub(/[ \t]+$/, "", line)
+    }
+    !insec {
+      if (line ~ /^###[ \t]+Task[ \t]/) exit
+      if (line == ENVIRON["T1"] || line == ENVIRON["T2"]) insec = 1
+      next
+    }
+    line == "" && !rows { next }
+    line !~ /^[ \t]*\|/ { exit }
+    {
+      rows++
+      if (rows == 1 || line ~ /^[-:| \t]+$/) next
+      gsub(/\\\|/, pipe, line)
+      sub(/^[ \t]*\|/, "", line); sub(/\|$/, "", line)
+      n = split(line, cell, "|")
+      out = ""
+      for (i = 1; i <= 6; i++) {
+        v = (i <= n) ? cell[i] : ""
+        gsub(pipe, "|", v)
+        gsub(/^[ \t]+|[ \t]+$/, "", v)
+        if (length(v) > 1 && v ~ /^`.*`$/) v = substr(v, 2, length(v) - 2)
+        out = out (i > 1 ? sep : "") v
+      }
+      print out
+    }' "$1"
+}
+
+count=0
+index_of() {  # index_of <name> -> its index, or -1
+  local i=0
+  while [ "$i" -lt "$count" ]; do
+    if [ "${NAMES[$i]}" = "$1" ]; then printf '%s' "$i"; return 0; fi
+    i=$((i + 1))
+  done
+  printf '%s' -1
+}
+
+# read_table <file> <fiche|plan>: a plan cell filled in wins, an empty one keeps
+# the fiche's. Two rows of one name are a fault of THAT table only.
+read_table() {
+  local file=$1 origin=$2 name src base seen on _rest i met="$SEP" rows
+  # Captured first: a process substitution loses the status, `set -e` sees this one.
+  rows=$(table_rows "$file")
+  [ -n "$rows" ] || return 0
+  while IFS=$SEP read -r name src base seen on _rest; do
+    [ -n "$name" ] || name="(sans nom)"
+    i=$(index_of "$name")
+    if [ "$i" = -1 ]; then
+      i=$count
+      NAMES[$i]=$name; SOURCES[$i]=""; BASES[$i]=""; SEEN[$i]=""; ON[$i]=""
+      IN_PLAN[$i]=0; DOUBLE[$i]=0
+      count=$((count + 1))
+    fi
+    case "$met" in *"$SEP$name$SEP"*) DOUBLE[$i]=1; continue ;; esac
+    met="$met$name$SEP"
+    [ -z "$src" ] || SOURCES[$i]=$src
+    [ -z "$base" ] || BASES[$i]=$base
+    if [ "$origin" = plan ]; then
+      SEEN[$i]=$seen; ON[$i]=$on; IN_PLAN[$i]=1
+    fi
+  done <<EOF
+$rows
+EOF
+}
+
+unverified() { SIGN=x; TEXT="non verifie : $1"; }
+
+# call_gh <gh args...> -> 0 and GH_OUT, or 1 and GH_CAUSE. stdin closed: gh must
+# never read the caller's input.
+call_gh() {
+  local rc=0 err left
+  GH_OUT=""; GH_CAUSE=""
+  if ! command -v gh > /dev/null 2>&1; then GH_CAUSE="gh absent"; return 1; fi
+  # SECONDS ticks whole seconds: once a call has run, one second is withheld so
+  # a dependency never exceeds BUDGET.
+  left=$((DEADLINE - SECONDS - CALLED))
+  CALLED=1
+  if [ "$left" -le 0 ]; then GH_CAUSE="delai depasse"; return 1; fi
+  if [ "$HAS_TIMEOUT" = 1 ]; then
+    GH_OUT=$(timeout "$left" gh "$@" 2> "$ERRFILE" < /dev/null) || rc=$?
+  else
+    GH_OUT=$(gh "$@" 2> "$ERRFILE" < /dev/null) || rc=$?
+  fi
+  if [ "$rc" = 0 ]; then return 0; fi
+  err=$(cat "$ERRFILE")
+  case "$rc:$err" in
+    124:*) GH_CAUSE="delai depasse" ;;
+    4:*|*"HTTP 401"*|*"gh auth login"*) GH_CAUSE="gh non authentifie" ;;
+    *"HTTP 404"*|*"Could not resolve"*) GH_CAUSE="introuvable" ;;
+    *) GH_CAUSE="reseau" ;;
+  esac
+  return 1
+}
+
+is_repo() {  # is_repo <source>: owner/repo, nothing else
+  case "$1" in
+    */*/*|/*|*/|*[!A-Za-z0-9._/-]*) return 1 ;;
+    */*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Each reader -> 0 and GH_OUT = the fingerprint, or 1 and GH_CAUSE.
+latest_release() {  # latest_release <owner/repo>
+  if ! is_repo "$1"; then GH_CAUSE="source invalide"; return 1; fi
+  if ! call_gh api "repos/$1/releases/latest" --jq .tag_name; then
+    if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="depot sans release"; fi
+    return 1
+  fi
+  if [ -z "$GH_OUT" ]; then GH_CAUSE="depot sans release"; return 1; fi
+}
+
+branch_head() {  # branch_head <owner/repo> <branch>
+  if ! is_repo "$1"; then GH_CAUSE="source invalide"; return 1; fi
+  if ! call_gh api "repos/$1/branches/$2" --jq .commit.sha; then
+    if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="branche introuvable"; fi
+    return 1
+  fi
+  [ -n "$GH_OUT" ] || { GH_CAUSE="branche introuvable"; return 1; }
+  GH_OUT=${GH_OUT:0:7}
+}
+
+pr_head() {  # pr_head <owner/repo#N>
+  local repo=${1%%#*} number=${1##*#} sha state
+  case "$number" in ''|*[!0-9]*) GH_CAUSE="source invalide"; return 1 ;; esac
+  if ! is_repo "$repo"; then GH_CAUSE="source invalide"; return 1; fi
+  if ! call_gh pr view "$number" --repo "$repo" --json headRefOid,state \
+      --jq '.headRefOid + ":" + .state'; then
+    if [ "$GH_CAUSE" = introuvable ]; then GH_CAUSE="pr introuvable"; fi
+    return 1
+  fi
+  case "$GH_OUT" in
+    ?*:?*) ;;
+    *) GH_CAUSE="pr introuvable"; return 1 ;;
+  esac
+  sha=${GH_OUT%%:*}
+  state=$(printf '%s' "${GH_OUT#*:}" | tr '[:upper:]' '[:lower:]')
+  GH_OUT="${sha:0:7}:$state"
+}
+
+# unpublished <owner/repo> <tag> -> UNPUB, the text to append to the line. Never
+# a gap: a failed count stays on the line and changes nothing else.
+unpublished() {
+  UNPUB=""
+  if ! call_gh api "repos/$1/compare/$2...HEAD" --jq .ahead_by; then
+    UNPUB=", commits non publies : non verifie"
+    return 0
+  fi
+  case "$GH_OUT" in
+    0) ;;
+    ''|*[!0-9]*) UNPUB=", commits non publies : non verifie" ;;
+    *) UNPUB=", $GH_OUT commits non publies" ;;
+  esac
+}
+
+settle() {  # settle <seen> <upstream>: rules 8 and 9, the bases without a manifest
+  if [ "$1" = "$2" ]; then
+    SIGN='='; TEXT="vu $1, amont $2"
+  else
+    SIGN='!'; TEXT="vu ${1:-vide}, amont $2"
+  fi
+}
+
+# parse_location "<what> dans <clone>:<file>" -> WHAT, CLONE, FILE, or 1.
+parse_location() {
+  case "$1" in ?*' dans '?*:?*) ;; *) return 1 ;; esac
+  WHAT=${1%% dans *}
+  CLONE=${1#* dans }
+  FILE=${CLONE#*:}
+  CLONE=${CLONE%%:*}
+  [ -n "$CLONE" ] && [ -n "$FILE" ]
+}
+
+clone_path() {  # clone_path <registry name> -> its clone on this machine, or nothing
+  local vname name state where
+  while IFS=$'\t' read -r vname _; do
+    while IFS=$'\t' read -r name _ state where _; do
+      if [ "$name" = "$1" ] && [ "$state" = present ]; then
+        printf '%s' "$where"
+        return 0
+      fi
+    done < <(resolve_projects "$vname")
+  done < <(vaults_list)
+}
+
+# open_manifest -> MANIFEST, BRANCH, or 1 with SIGN and TEXT already set.
+open_manifest() {
+  local root
+  root=$(clone_path "$CLONE")
+  if [ -z "$root" ]; then unverified "clone absent : $CLONE"; return 1; fi
+  MANIFEST="$root/$FILE"
+  if [ ! -f "$MANIFEST" ] || [ ! -r "$MANIFEST" ]; then unverified "manifeste introuvable : $FILE"; return 1; fi
+  BRANCH=$(git -C "$root" symbolic-ref --short -q HEAD 2>/dev/null) || BRANCH="HEAD detachee"
+}
+
+# The version after a name, on the rest of its line. A symbolic value gives none.
+AWK_VERSION='
+  function version_after(rest,    v) {
+    if (!match(rest, /[0-9]+(\.[0-9]+)+([-+][0-9A-Za-z.+-]*)?/)) return ""
+    v = substr(rest, RSTART, RLENGTH)
+    if (index(substr(rest, 1, RSTART - 1), "$(") > 0) return ""
+    return v
+  }'
+
+# manifest_version <file> <name> -> `=<version>` from the first line naming it
+# whole, `=` when that line has no version, nothing when no line names it.
+manifest_version() {
+  PKG="$2" LC_ALL=C awk "$AWK_VERSION"'
+    BEGIN { pkg = ENVIRON["PKG"]; len = length(pkg); name = "[A-Za-z0-9._-]" }
+    {
+      off = 0
+      while ((p = index(substr($0, off + 1), pkg)) > 0) {
+        start = off + p
+        before = (start > 1) ? substr($0, start - 1, 1) : ""
+        after = substr($0, start + len, 1)
+        if (before !~ name && after !~ name) {
+          print "=" version_after(substr($0, start + len))
+          exit
+        }
+        off = start
+      }
+    }' "$1"
+}
+
+# group_version <file> <prefix> -> `=<version>` when every package of the prefix
+# carries the same one, `!` when two differ, `=` when one has none, nothing when
+# the prefix matches no package. A token equal to the prefix and followed by `*`
+# is prose, not a package: a comment reading `Acme.Lib.*` must not fail the group.
+group_version() {
+  PREFIX="$2" LC_ALL=C awk "$AWK_VERSION"'
+    BEGIN { pre = ENVIRON["PREFIX"] }
+    {
+      line = $0
+      while (match(line, /[A-Za-z0-9._\/@-]+/)) {
+        t = substr(line, RSTART, RLENGTH)
+        line = substr(line, RSTART + RLENGTH)
+        if (index(t, pre) != 1 || (length(t) == length(pre) && substr(line, 1, 1) == "*")) continue
+        v = version_after(line)
+        if (v == "") { print "="; bad = 1; exit }
+        if (first == "") first = v
+        else if (v != first) { print "!"; bad = 1; exit }
+      }
+    }
+    END { if (!bad && first != "") print "=" first }' "$1"
+}
+
+eval_package() {  # eval_package <source> <seen> <base>
+  local hit used at amont tag
+  if ! parse_location "${3#paquet }"; then unverified "base inconnue"; return 0; fi
+  case "$WHAT" in *' '*|'*') unverified "base inconnue"; return 0 ;; esac
+  open_manifest || return 0
+  case "$WHAT" in
+    *\*) hit=$(group_version "$MANIFEST" "${WHAT%\*}") ;;
+    *)   hit=$(manifest_version "$MANIFEST" "$WHAT") ;;
+  esac
+  case "$hit" in
+    '')  unverified "paquet introuvable : $WHAT"; return 0 ;;
+    '!') unverified "versions differentes"; return 0 ;;
+    '=') unverified "version introuvable : $WHAT"; return 0 ;;
+  esac
+  used=${hit#=}
+  if ! latest_release "$1"; then unverified "$GH_CAUSE"; return 0; fi
+  tag=$GH_OUT
+  amont=${tag#v}
+  at="base $used ($CLONE sur $BRANCH), amont $amont"
+  if [ "$used" = "$amont" ]; then
+    SIGN='='; TEXT=$at
+  elif [ "${2#v}" = "${amont#v}" ]; then
+    SIGN='='; TEXT="$at, vu $2 (acquitte)"
+  else
+    SIGN='!'; TEXT="$at, vu ${2:-vide}"
+  fi
+  unpublished "$1" "$tag"
+  TEXT="$TEXT$UNPUB"
+}
+
+# undeclared <file> <motifs> <covered, one per line> -> the manifest tokens the
+# motifs aim at and no `paquet` covers, one per line, first seen first. No reader
+# per language: a token is whatever looks like a package name.
+undeclared() {
+  MOTIFS="$2" COVERED="$3" LC_ALL=C awk '
+    BEGIN {
+      nm = split(ENVIRON["MOTIFS"], m, ",")
+      for (i = 1; i <= nm; i++) sub(/\*$/, "", m[i])
+      nc = split(ENVIRON["COVERED"], c, "\n")
+    }
+    function aimed(t,    i) {
+      for (i = 1; i <= nm; i++) if (index(t, m[i]) == 1) return 1
+      return 0
+    }
+    function covered(t,    i, p) {
+      for (i = 1; i <= nc; i++) {
+        p = c[i]
+        if (p == "") continue
+        if (p == t) return 1
+        if (p ~ /\*$/) { sub(/\*$/, "", p); if (p == "") continue; if (index(t, p) == 1) return 1 }
+      }
+      return 0
+    }
+    {
+      line = $0
+      while (match(line, /[A-Za-z0-9._\/@-]+/)) {
+        t = substr(line, RSTART, RLENGTH)
+        line = substr(line, RSTART + RLENGTH)
+        if (t in met) continue
+        met[t] = 1
+        if (aimed(t) && !covered(t)) print t
+      }
+    }' "$1"
+}
+
+eval_watch() {  # eval_watch <base>
+  local rest motif covered="" j=0 name other found
+  if ! parse_location "${1#surveille }"; then unverified "base inconnue"; return 0; fi
+  rest="$WHAT,"
+  while [ -n "$rest" ]; do
+    motif=${rest%%,*}; rest=${rest#*,}
+    case "$motif" in
+      ?*\*) case "${motif%\*}" in
+          ''|*[!A-Za-z0-9._/@-]*) unverified "base inconnue"; return 0 ;;
+        esac ;;
+      *) unverified "base inconnue"; return 0 ;;
+    esac
+  done
+  while [ "$j" -lt "$count" ]; do
+    case "${BASES[$j]}" in
+      paquet\ *' dans '*)
+        rest=${BASES[$j]#paquet }
+        name=${rest%% dans *}
+        other=${rest#* dans }
+        if [ "${other%%:*}" = "$CLONE" ]; then covered="$covered$name"$'\n'; fi
+        ;;
+    esac
+    j=$((j + 1))
+  done
+  open_manifest || return 0
+  found=$(undeclared "$MANIFEST" "$WHAT" "$covered")
+  if [ -n "$found" ]; then
+    SIGN=x; TEXT="non declares : ${found//$'\n'/, }"
+  else
+    SIGN='='; TEXT="tout declare ($CLONE sur $BRANCH)"
+  fi
+}
+
+evaluate() {  # evaluate <index> -> SIGN, TEXT
+  local i=$1
+  local src=${SOURCES[$i]} base=${BASES[$i]} seen=${SEEN[$i]} on=${ON[$i]} rest
+  DEADLINE=$((SECONDS + BUDGET)); CALLED=0
+  if [ "${DOUBLE[$i]}" = 1 ]; then unverified "nom en double"; return 0; fi
+  if [ "${IN_PLAN[$i]}" = 1 ]; then
+    if [ -z "$base" ]; then unverified "base absente"; return 0; fi
+    if [ -z "$src" ]; then
+      case "$base" in
+        paquet\ *|release|branche\ *|pr) unverified "source absente"; return 0 ;;
+      esac
+    fi
+  fi
+  case "$base" in
+    fige|fige\ *)
+      rest=${base#fige}; rest=${rest# }
+      case "$rest" in
+        ?*' - '?*) ;;
+        *) unverified 'fige sans motif (separateur : " - ")'; return 0 ;;
+      esac
+      SIGN='~'; TEXT="fige ${rest%% - *} (${rest#* - })"
+      if latest_release "$src"; then TEXT="$TEXT, amont $GH_OUT"; fi
+      return 0 ;;
+    manuel)
+      SIGN='?'
+      if [ -n "$on" ]; then TEXT="manuel, vu $on, a regarder"; else TEXT="manuel, jamais vu, a regarder"; fi
+      return 0 ;;
+    release)
+      if ! latest_release "$src"; then unverified "$GH_CAUSE"; return 0; fi
+      rest=$GH_OUT
+      settle "$seen" "$rest"
+      unpublished "$src" "$rest"
+      TEXT="$TEXT$UNPUB"
+      return 0 ;;
+    branche\ *)
+      rest=${base#branche }
+      case "$rest" in *' '*) unverified "base inconnue"; return 0 ;; esac
+      if ! branch_head "$src" "$rest"; then unverified "$GH_CAUSE"; return 0; fi
+      settle "$seen" "$GH_OUT"
+      return 0 ;;
+    pr)
+      if ! pr_head "$src"; then unverified "$GH_CAUSE"; return 0; fi
+      settle "$seen" "$GH_OUT"
+      return 0 ;;
+    paquet\ *)
+      eval_package "$src" "$seen" "$base"
+      return 0 ;;
+    surveille\ *)
+      eval_watch "$base"
+      return 0 ;;
+    *) unverified "base inconnue"; return 0 ;;
+  esac
+}
+
+verdict() {
+  local text
+  if [ "$gaps" = 0 ] && [ "$missed" = 0 ]; then
+    text="rien a trier"
+  else
+    text="$gaps ecart a trier, $missed non verifie"
+  fi
+  if [ "$HAS_TIMEOUT" = 0 ]; then text="$text, budget non garanti (timeout absent)"; fi
+  echo "verdict : $text"
+}
+
+finish() {
+  verdict
+  finished=1
+  if [ "$gaps" -gt 0 ]; then exit 1; fi
+  exit 0
+}
+
+ERRFILE=$(mktemp)
+gaps=0; missed=0
+echo "dependances $project${need:+/$need}"
+
+fiche=""; vault=""
+while IFS=$'\t' read -r _ vpath; do
+  if [ -f "$vpath/projects/$project.md" ]; then
+    fiche="$vpath/projects/$project.md"; vault=$vpath
+    break
+  fi
+done < <(vaults_list)
+
+if [ -z "$fiche" ]; then
+  echo "x projet inconnu : $project"
+  missed=1
+  finish
+fi
+
+read_table "$fiche" fiche
+if [ -n "$need" ]; then
+  plan="$vault/$project/$need/plan.md"
+  if [ -f "$plan" ]; then
+    read_table "$plan" plan
+  else
+    echo "x plan introuvable : $plan"
+    missed=$((missed + 1))
+  fi
+fi
+
+if [ "$count" = 0 ]; then
+  echo "aucune dependance declaree"
+  finish
+fi
+
+width=0; i=0
+while [ "$i" -lt "$count" ]; do
+  if [ "${#NAMES[$i]}" -gt "$width" ]; then width=${#NAMES[$i]}; fi
+  i=$((i + 1))
+done
+
+i=0
+while [ "$i" -lt "$count" ]; do
+  evaluate "$i"
+  printf '%s %-*s  %s\n' "$SIGN" "$width" "${NAMES[$i]}" "$TEXT"
+  case "$SIGN" in
+    '!') gaps=$((gaps + 1)) ;;
+    x)   missed=$((missed + 1)) ;;
+  esac
+  i=$((i + 1))
+done
+
+finish

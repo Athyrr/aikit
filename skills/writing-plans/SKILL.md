@@ -36,6 +36,21 @@ dispatch (`aikit:executing-plans`) would benefit from one specific line,
 inject that line alone as the task's one allowed constraint — never the
 whole file, and never a heuristic that doesn't bear on the task at hand.
 
+## Confirm the base — the orchestrator, before dispatching `aikit:planner`
+
+`aikit:planner` can neither ask your human partner nor dispatch an agent, so this
+step is the orchestrator's, and a dispatched planner skips it. Run
+`aikit-deps <project> <need>; echo "sortie=$?"`, then:
+
+| `plan.md` | On a **!** line |
+|---|---|
+| no `### Task N:` heading | Show the lines. Your human partner confirms the base, no agent. For each **!** line, write Vu, Le and the conclusion `base du plan` in `## Dépendances` (`\| Nom \| Source \| Base \| Vu \| Le \| Conclusion \|`), Source and Base left as they are. |
+| at least one `### Task N:` heading (re-planning) | `aikit:checking-dependencies` |
+
+An `x`, or an exit code other than 0 and 1: one sentence to your human partner, no
+stop. `## Dépendances` stays above the first task: `aikit-deps` stops reading at
+the first `### Task`.
+
 ## Scope Check
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs while designing the solution. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.

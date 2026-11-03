@@ -83,13 +83,13 @@ bloc en est la formulation impérative, pas une règle séparée.
 
 ## Completion criterion
 
-One command, from the repository root, carrying **twelve gates** — the two behaviour suites (9 and 11) are gates of it, not a test suite beside it:
+One command, from the repository root, carrying **thirteen gates** — the three behaviour suites (9, 11 and 13) are gates of it, not a test suite beside it:
 
 ```bash
 scripts/doctor
 ```
 
-It prints `GATES_PASS` and exits 0 when all twelve pass; it exits 1 otherwise,
+It prints `GATES_PASS` and exits 0 when all thirteen pass; it exits 1 otherwise,
 naming each gate that fell.
 
 | # | Gate |
@@ -106,8 +106,9 @@ naming each gate that fell.
 | 10 | every skill's directory name equals its frontmatter `name:` — the only detector of a directory-only rename, which leaves a working ghost alias |
 | 11 | `scripts/test-plan-drift` — the plan-drift suite. A drift detector that stopped detecting would pass every form gate and stay silent in a real session |
 | 12 | every archetype's frontmatter `model:` and `effort:` equal its row in the mirror table of `skills/using-aikit/SKILL.md` (`## The archetypes: model and effort`) — only the frontmatter runs, the table is what people read |
+| 13 | `scripts/test-deps` — the suite of `bin/aikit-deps`, against a fake `gh`, without network. A comparator that stopped comparing would pass every form gate and say nothing in a real session |
 
-Gates 1-4, 10 and 12 check form. Gates 9 and 11 check behaviour: they run a suite. Gates 5-7 check the target rather than the shape: they
+Gates 1-4, 10 and 12 check form. Gates 9, 11 and 13 check behaviour: they run a suite. Gates 5-7 check the target rather than the shape: they
 catch what no manifest validation can see. Gate 8 is **local** git config — it
 does not clone, push or inherit, so a fresh clone must arm it once:
 
@@ -116,7 +117,7 @@ git config core.hooksPath .githooks
 ```
 
 That is the whole point of gate 8, making the arming visible instead of assumed.
-Once armed, `.githooks/pre-commit` runs all twelve before every commit, and a red
+Once armed, `.githooks/pre-commit` runs all thirteen before every commit, and a red
 gate refuses it.
 
 **What it does not prove, and says so itself** — `A NEW session is still

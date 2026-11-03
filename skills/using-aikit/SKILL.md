@@ -58,8 +58,10 @@ per task. Tables: `reference.md`.
 | 6 | Verify | `aikit:verifying-completion` | the verdict, `vault/<project>/<feature>/plan.md` closed, candidates harvested |
 
 Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
-`aikit:checking-plan-drift` after every task, `aikit:routing-failures` on any
-failure, `aikit:handling-secrets` before writing config or committing anything
+`aikit:checking-plan-drift` after every task, `aikit:checking-dependencies` when
+`aikit-deps`, run in phase 1 and by the orchestrator before dispatching
+`aikit:planner` (`aikit:writing-plans`), reports a change on a plan with tasks,
+`aikit:routing-failures` on any failure, `aikit:handling-secrets` before writing config or committing anything
 that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
 a project's own MCP servers, `aikit:receiving-code-review` when incorporating
 feedback from outside the method's own review loop. `aikit:writing-notes` only when the human partner explicitly asks to

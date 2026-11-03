@@ -50,7 +50,8 @@ in full.
 | 6 | Verify | `aikit:verifying-completion` | the registry's completion criterion, met; `vault/<project>/<feature>/plan.md` closed |
 
 Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
-`aikit:checking-plan-drift` after every task, `aikit:routing-failures` whenever
+`aikit:checking-plan-drift` after every task, `aikit:checking-dependencies` when
+`aikit-deps` prints a `!` line on a plan that has tasks, `aikit:routing-failures` whenever
 something fails, `aikit:handling-secrets` before writing config or committing
 anything that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs a
 project's own tools, `aikit:receiving-code-review` when incorporating feedback
@@ -191,7 +192,7 @@ the method itself.
   agents/                     the six archetypes
   VOCABULARY.md               one word, one meaning — read before naming anything
   scripts/                    doctor, deploy and their test suites — NOT on the Bash tool's PATH
-  bin/                        ezy and scoped — these ARE on it
+  bin/                        ezy, scoped and aikit-deps — these ARE on it
 
 ~/.config/aikit/vaults         which vaults this machine knows, and where
 <vault>/                      a clone of a vault (an Obsidian vault)
