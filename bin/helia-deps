@@ -4,25 +4,25 @@
 # Reads the `## Dependances` section of the registry file and, when a need is
 # named, of its plan.md, then compares each line to what upstream says today.
 # Writes nothing: acknowledging a change is the orchestrator's job, once its
-# human partner validated it (aikit:checking-dependencies).
+# human partner validated it (helia:checking-dependencies).
 #
 # One line per dependency, then a verdict:
 #   x  not verified, the cause is on the line; never blocks
 #   ~  frozen     ?  manual     =  nothing to look at     !  changed since seen
 #
-# Usage: aikit-deps <project> [<need>]
+# Usage: helia-deps <project> [<need>]
 # Exit:  1 at least one `!`; 0 otherwise, `x` included; 2 usage or internal failure.
 set -euo pipefail
 
 # `set -e` and `set -u` die with 1, which a caller would read as a `!`.
 finished=0
-trap 'rc=$?; rm -f "${ERRFILE:-}"; [ "$finished" = 1 ] || { echo "aikit-deps: panne interne (code $rc)" >&2; exit 2; }' EXIT
+trap 'rc=$?; rm -f "${ERRFILE:-}"; [ "$finished" = 1 ] || { echo "helia-deps: panne interne (code $rc)" >&2; exit 2; }' EXIT
 
 LIB="$(cd "$(dirname "$0")/.." && pwd)/lib/vaults"
 . "$LIB"
 
 usage() {
-  echo "usage: aikit-deps <project> [<need>]" >&2
+  echo "usage: helia-deps <project> [<need>]" >&2
   finished=1
   exit 2
 }
@@ -32,10 +32,11 @@ project=$1; need=${2:-}
 case "$project" in ''|-*|*/*) usage ;; esac
 case "$need" in -*|*/*) usage ;; esac
 
-# Seconds per dependency. The variable exists for scripts/test-deps alone.
-BUDGET=${AIKIT_DEPS_BUDGET:-5}
+# Seconds per dependency. The variable exists for scripts/test-deps alone; its
+# former name is still read until every machine is migrated.
+BUDGET=${HELIA_DEPS_BUDGET:-${AIKIT_DEPS_BUDGET:-5}}
 case "$BUDGET" in
-  ''|*[!0-9]*) echo "aikit-deps: panne interne (AIKIT_DEPS_BUDGET : entier attendu)" >&2; finished=1; exit 2 ;;
+  ''|*[!0-9]*) echo "helia-deps: panne interne (HELIA_DEPS_BUDGET : entier attendu)" >&2; finished=1; exit 2 ;;
 esac
 # Base 10: bash reads 08 as an invalid octal and 010 as 8.
 BUDGET=$((10#$BUDGET))
