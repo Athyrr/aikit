@@ -200,6 +200,7 @@ the method itself.
   _global/heuristics.md       cross-project environment, OS and shell rules
   _notes/                     notes whose idea would be another project
   <project>/heuristics.md     empirical rules and traps for this project — orchestrator-written, at /finish only
+  <project>/trame.md          how the project splits into tranches, if it does — VOCABULARY.md, The trame
   <project>/_notes/           one note per file — real problems nothing is waiting on, ideas to study later
   <project>/_archive/<need>/  finished or abandoned needs: spec.md, traces/
   <project>/_reference/       reference documents kept on request (aikit:capturing-reference), routed by an INDEX.md
