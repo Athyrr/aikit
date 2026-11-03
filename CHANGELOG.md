@@ -3,6 +3,20 @@
 All notable changes to the aiKit method. Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.27.0
+- **Trame et tranches.** Une `trame` (`VOCABULARY.md`, *The trame*) porte le
+  decoupage d'un gros projet en tranches : `<projet>/trame.md`, `type: trame`,
+  titres obligatoires But du projet, Graphe, Vue d'ensemble, Les tranches,
+  Historique du decoupage. Une `tranche` est un need `feature` dont le slug
+  figure dans la colonne `Dossier` de la trame. `aikit:understanding-need`
+  verifie a l'ouverture d'une tranche que celles de sa cellule `Attend` sont
+  archivees avec `status: done`, liste les prerequis hors tranche, s'arrete
+  s'il en manque un, puis ecrit `en cours (ouverte le <date>)` ;
+  `aikit:verifying-completion` ecrit `archivée le <date>` (ou
+  `abandonnée le <date>`) a l'archivage et passe la trame en `status: done`
+  apres sa derniere tranche. Nouvelle section « Levels of work » ; `slice`,
+  `lot`, `jalon`, `milestone` et `chantier` retires.
+
 ## 0.26.0
 - **Dependances amont.** Une `upstream dependency` (`VOCABULARY.md`) est tout ce
   dont le travail depend et qui peut changer sans nous. Section facultative
