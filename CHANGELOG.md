@@ -1,7 +1,23 @@
 # Changelog
 
-All notable changes to the aiKit method. Versions follow the plugin manifests
+All notable changes to the Helia method (named aiKit up to 0.27.0). Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
+
+## 0.28.0
+- **aiKit devient Helia.** Plugin `helia`, marketplace `athyrr-marketplace`
+  (identifiant `helia@athyrr-marketplace`), prefixe de dispatch `helia:`, skill
+  d'entree `helia:using-helia`, commandes `bin/helia-deps` et
+  `bin/helia-statusline` (texte `helia ·`, marqueur `HELIA_STATUSLINE=1`),
+  variables `HELIA_*`, config `~/.config/helia/`, cache `XDG_CACHE_HOME/helia`,
+  brainstorm `.helia/`. `marketplace.json` porte `"renames": {"aikit": "helia"}`.
+  Signature `Co-Authored-By: Helia` et `🤖 Generated with Helia`, sans adresse.
+  Lecture de repli des anciens noms jusqu'a la migration de tous les postes :
+  `AIKIT_VAULTS`, `AIKIT_EVENTS_FILE`, `AIKIT_DEPS_BUDGET`,
+  `AIKIT_DISABLE_TELEMETRY`, `~/.config/aikit/no-statusline`, marqueur
+  `AIKIT_STATUSLINE=1` ; `~/.config/aikit/vaults` est lu, et copie une fois vers
+  `~/.config/helia/vaults` sans rien supprimer. `scripts/deploy` publie et sort
+  en 0 sur un poste ou `helia@athyrr-marketplace` n'est pas encore installe, en
+  affichant la sequence de migration. Comportement de la methode inchange.
 
 ## 0.27.0
 - **Trame et tranches.** Une `trame` (`VOCABULARY.md`, *The trame*) porte le
