@@ -1,6 +1,6 @@
 {
-  "name": "aikit",
-  "description": "aiKit - an agentic method for Claude Code: understand, design, assess, plan, execute, verify - with a per-vault project registry and a failure-direction rule",
+  "name": "helia",
+  "description": "Helia - an agentic method for Claude Code: understand, design, assess, plan, execute, verify - with a per-vault project registry and a failure-direction rule",
   "version": "0.27.0",
   "author": {
     "name": "Adam Adhar"
