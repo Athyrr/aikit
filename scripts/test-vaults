@@ -872,7 +872,7 @@ is "argument vide"                         ""   "$(pp "")"
 is "aucun vault declare"                   ""   "$(HELIA_VAULTS=/nonexistent-vaults-file project_of_path "$PPR/a")"
 is "chemin avec espace (vault de la suite principale)" "vault-lui-meme" "$(project_of_path "$VAULT")"
 
-echo "bin/aikit-statusline"
+echo "bin/helia-statusline"
 REPO="$PWD"
 SLCACHE="$TMP/sl-cache"; SLHOME="$TMP/sl-home"; mkdir -p "$SLHOME"
 git -C "$ROOT/avec-remote" symbolic-ref HEAD refs/heads/trunk
@@ -880,14 +880,14 @@ mkdir -p "$ROOT/sans-git/dedans" "$TMP/hors-registre"
 ESC="$(printf '\033')"
 plain() { sed "s/${ESC}\[[0-9;]*m//g"; }
 # sl <json> [vaults-file] : le rendu brut, sur un HOME et un cache jetables.
-sl() { printf '%s' "$1" | HOME="$SLHOME" XDG_CACHE_HOME="$SLCACHE" HELIA_VAULTS="${2:-$CONF}" bash "$REPO/bin/aikit-statusline"; }
+sl() { printf '%s' "$1" | HOME="$SLHOME" XDG_CACHE_HOME="$SLCACHE" HELIA_VAULTS="${2:-$CONF}" bash "$REPO/bin/helia-statusline"; }
 slin() {  # slin <dir> <session> <pct-json|null>
   jq -nc --arg d "$1" --arg s "$2" --argjson p "$3" \
     '{model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:$p}}'
 }
 if command -v jq > /dev/null 2>&1; then
   out="$(sl "$(slin "$ROOT/avec-remote" s30 30)")"; rc=$?
-  is "30 % : la ligne complete" "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(printf '%s' "$out" | plain)"
+  is "30 % : la ligne complete" "helia · Opus · avec-remote (trunk) · ctx 30 %" "$(printf '%s' "$out" | plain)"
   is "30 % : code de sortie 0"  "0" "$rc"
   is "30 % : une seule ligne"   "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
   has "30 % : vert"   "${ESC}[32mctx 30 %" "$out"
@@ -897,16 +897,16 @@ if command -v jq > /dev/null 2>&1; then
   has "90 % : rouge"  "${ESC}[31mctx 90 %" "$(sl "$(slin "$ROOT/avec-remote" s90 90)")"
   has "59,6 % : arrondi a 60, jaune" "${ESC}[33mctx 60 %" "$(sl "$(slin "$ROOT/avec-remote" s596 59.6)")"
   out="$(sl "$(slin "$ROOT/avec-remote" snull null)")"; rc=$?
-  is "contexte null : tiret" "aikit · Opus · avec-remote (trunk) · ctx –" "$(printf '%s' "$out" | plain)"
+  is "contexte null : tiret" "helia · Opus · avec-remote (trunk) · ctx –" "$(printf '%s' "$out" | plain)"
   is "contexte null : code de sortie 0" "0" "$rc"
   is "dossier hors git : pas de parentheses" \
-     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git" shg 30)" | plain)"
+     "helia · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git" shg 30)" | plain)"
   is "sous-dossier d'un projet : le projet" \
-     "aikit · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)" | plain)"
+     "helia · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)" | plain)"
   is "projet hors registre : le nom du dossier" \
-     "aikit · Opus · hors-registre · ctx 30 %" "$(sl "$(slin "$TMP/hors-registre" shr 30)" | plain)"
+     "helia · Opus · hors-registre · ctx 30 %" "$(sl "$(slin "$TMP/hors-registre" shr 30)" | plain)"
   is "aucun vault declare : le nom du dossier" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 %" \
      "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file | plain)"
   # Limites de debit : part du forfait deja consommee, absente quand le JSON n'en porte pas.
   slrl() {  # slrl <session> <pct5|""> <pct7|"">
@@ -917,17 +917,17 @@ if command -v jq > /dev/null 2>&1; then
          + (if $b == "" then {} else {seven_day:{used_percentage:($b|tonumber),resets_at:9999999999}} end))}'
   }
   is "limites : 5h et hebdo, en progression" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 % · hebdo : 32 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 % · hebdo : 32 %" \
      "$(sl "$(slrl rl1 60 32)" | plain)"
   has "limites : 5h a 60 % jaune"    "${ESC}[33m5h : 60 %" "$(sl "$(slrl rl2 60 32)")"
   has "limites : hebdo a 32 % vert"  "${ESC}[32mhebdo : 32 %" "$(sl "$(slrl rl3 60 32)")"
   has "limites : hebdo a 90 % rouge" "${ESC}[31mhebdo : 90 %" "$(sl "$(slrl rl4 10 90)")"
   has "limites : 5h a 10 % vert"     "${ESC}[32m5h : 10 %" "$(sl "$(slrl rl5 10 90)")"
   is "limites : 5h seule, pas de segment hebdo" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : 20 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 20 %" \
      "$(sl "$(slrl rl6 20 "")" | plain)"
   is "limites : 59,6 % arrondi a 60" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 %" \
+     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 %" \
      "$(sl "$(slrl rl7 59.6 "")" | plain)"
   out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
   is "entree invalide : code de sortie 0" "0" "$rc"
@@ -935,15 +935,15 @@ if command -v jq > /dev/null 2>&1; then
   out="$(sl '')"; rc=$?
   is "entree vide : code de sortie 0" "0" "$rc"
   # Le cache par session : une entree posee a la main est relue telle quelle.
-  mkdir -p "$SLCACHE/aikit"
-  printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$SLCACHE/aikit/project-scache"
+  mkdir -p "$SLCACHE/helia"
+  printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$SLCACHE/helia/project-scache"
   is "le projet vient du cache de la session" \
-     "aikit · Opus · nom-en-cache (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" scache 30)" | plain)"
-  printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$SLCACHE/aikit/project-sperime"
+     "helia · Opus · nom-en-cache (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" scache 30)" | plain)"
+  printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$SLCACHE/helia/project-sperime"
   is "un cache d'un autre dossier est ignore" \
-     "aikit · Opus · avec-remote (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" sperime 30)" | plain)"
-  [ -f "$SLCACHE/aikit/project-s30" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/aikit" \
-    || ko "le cache est ecrit sous XDG_CACHE_HOME/aikit" "project-s30 present" "absent"
+     "helia · Opus · avec-remote (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" sperime 30)" | plain)"
+  [ -f "$SLCACHE/helia/project-s30" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/helia" \
+    || ko "le cache est ecrit sous XDG_CACHE_HOME/helia" "project-s30 present" "absent"
 else
   echo "  (jq absent : cas de rendu avec jq ignores)"
 fi
@@ -951,16 +951,16 @@ fi
 # Un script relais, pas un lien : sous Git Bash, ln -s copie git.exe et le prive de ses DLL.
 NOJQ="$TMP/path-sans-jq"; mkdir -p "$NOJQ"
 printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v git)" > "$NOJQ/git"; chmod +x "$NOJQ/git"
-out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"; rc=$?
-is "sans jq : ligne de repli" "aikit · avec-remote (trunk)" "$out"
+out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"; rc=$?
+is "sans jq : ligne de repli" "helia · avec-remote (trunk)" "$out"
 is "sans jq : code de sortie 0" "0" "$rc"
-out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/aikit-statusline" <<< '{}')"
-is "sans jq, hors git : pas de parentheses" "aikit · hors-registre" "$out"
+out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"
+is "sans jq, hors git : pas de parentheses" "helia · hors-registre" "$out"
 
 echo "hooks/statusline-install"
 if command -v jq > /dev/null 2>&1; then
-  PLUG="$TMP/Plugin Root/aikit/1.2.3"      # une espace, deliberement
-  WANT="AIKIT_STATUSLINE=1 bash \"$PLUG/bin/aikit-statusline\""
+  PLUG="$TMP/Plugin Root/helia/1.2.3"      # une espace, deliberement
+  WANT="HELIA_STATUSLINE=1 bash \"$PLUG/bin/helia-statusline\""
   # inst <home> : stdout du hook sur stdout, code de sortie en derniere ligne.
   inst() { HOME="$1" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/statusline-install" 2> /dev/null; }
   newhome() { local h; h="$(mktemp -d "$TMP/home.XXXXXX")"; mkdir -p "$h/.claude"; printf '%s' "$h"; }
@@ -984,8 +984,8 @@ if command -v jq > /dev/null 2>&1; then
   H="$(newhome)"
   echo '{"statusLine":{"type":"command","command":"AIKIT_STATUSLINE=1 bash \"/ancien/1.0.0/bin/aikit-statusline\""},"theme":"dark"}' > "$H/.claude/settings.json"
   inst "$H" > /dev/null
-  is "marqueur present : chemin reecrit" "$WANT" "$(getcmd "$H")"
-  is "marqueur present : theme conserve" "dark" "$(jq -r '.theme' "$H/.claude/settings.json")"
+  is "ancien marqueur AIKIT_STATUSLINE=1 : reecrit vers helia" "$WANT" "$(getcmd "$H")"
+  is "ancien marqueur : theme conserve" "dark" "$(jq -r '.theme' "$H/.claude/settings.json")"
 
   H="$(newhome)"
   echo '{"statusLine":{"type":"command","command":"~/mon-script.sh","padding":2}}' > "$H/.claude/settings.json"
@@ -997,14 +997,29 @@ if command -v jq > /dev/null 2>&1; then
   inst "$H" > /dev/null
   is "statusLine qui n'est pas un objet : intacte" '{"statusLine":"une chaine"}' "$(cat "$H/.claude/settings.json")"
 
-  H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"
-  out="$(inst "$H")"; rc=$?
-  [ ! -e "$H/.claude/settings.json" ] && ok "opt-out : settings.json absent n'est pas cree" \
-    || ko "opt-out : settings.json absent n'est pas cree" "absent" "present"
-  is "opt-out : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  H="$(newhome)"
+  echo '{"statusLine":{"type":"command","command":"HELIA_STATUSLINE=1 bash \"/ancien/1.0.0/bin/helia-statusline\""}}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "marqueur HELIA_STATUSLINE=1 : chemin reecrit" "$WANT" "$(getcmd "$H")"
+
+  H="$(newhome)"; echo '{"statusLine":{"type":"command","command":"bash ~/helia-a-moi.sh"}}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "sans marqueur, meme avec le mot helia : intacte" "bash ~/helia-a-moi.sh" "$(getcmd "$H")"
+  is "aucun fichier temporaire laisse" "settings.json" "$(ls -A "$H/.claude")"
+
+  H="$(newhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-statusline"
   echo '{"theme":"dark"}' > "$H/.claude/settings.json"
   inst "$H" > /dev/null
-  is "opt-out : settings.json existant intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+  is "opt-out helia : settings.json intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
+
+  H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"
+  out="$(inst "$H")"; rc=$?
+  [ ! -e "$H/.claude/settings.json" ] && ok "opt-out sous l'ancien nom : settings.json absent n'est pas cree" \
+    || ko "opt-out sous l'ancien nom : settings.json absent n'est pas cree" "absent" "present"
+  is "opt-out sous l'ancien nom : rien sur stdout, sortie 0" "|0" "$out|$rc"
+  echo '{"theme":"dark"}' > "$H/.claude/settings.json"
+  inst "$H" > /dev/null
+  is "opt-out sous l'ancien nom : settings.json existant intact" '{"theme":"dark"}' "$(cat "$H/.claude/settings.json")"
 
   H="$(newhome)"; printf '{"theme": "dark",\n' > "$H/.claude/settings.json"
   cp "$H/.claude/settings.json" "$TMP/avant-invalide.json"

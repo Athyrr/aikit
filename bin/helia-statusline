@@ -2,7 +2,7 @@
 # Status line renderer. Reads the session JSON on stdin, writes ONE line on
 # stdout, always exits 0.
 #
-#   aikit · <model> · <project> (<branch>) · ctx <N> % · 5h : <N> % · hebdo : <N> %
+#   helia · <model> · <project> (<branch>) · ctx <N> % · 5h : <N> % · hebdo : <N> %
 #
 # The two last segments (share of the 5-hour and of the weekly allowance already
 # used) only appear when the session JSON carries `rate_limits`.
@@ -21,7 +21,7 @@ sep=" ${dim}·${off} "
 
 # Without jq the session JSON cannot be read: fall back on the shell's own cwd.
 if ! command -v jq > /dev/null 2>&1; then
-  line="aikit · ${PWD##*/}"
+  line="helia · ${PWD##*/}"
   br="$(git -C "$PWD" branch --show-current 2> /dev/null)"
   [ -z "$br" ] || line+=" (${br})"
   printf '%s\n' "$line"
@@ -46,7 +46,7 @@ model="${model:-?}"
 dir="${dir:-$PWD}"
 dir="${dir%/}"
 key="${sid//[^A-Za-z0-9_-]/_}"; key="${key:-nosession}"
-cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/aikit"
+cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/helia"
 printf -v now '%(%s)T' -1
 
 cache_put() {  # cache_put <file> <content> -- atomic, never fatal
@@ -115,7 +115,7 @@ lim7="$(limit_seg hebdo "$p7")"
 
 loc="$project"
 [ -z "$branch" ] || loc+=" (${branch})"
-line="${dim}aikit${off}${sep}${cyan}${model}${off}${sep}${loc}${sep}${ctx_col}${ctx_txt}${off}"
+line="${dim}helia${off}${sep}${cyan}${model}${off}${sep}${loc}${sep}${ctx_col}${ctx_txt}${off}"
 [ -z "$lim5" ] || line+="${sep}${lim5}"
 [ -z "$lim7" ] || line+="${sep}${lim7}"
 printf '%s\n' "$line"

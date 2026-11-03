@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SessionStart hook (matcher: startup). Points the `statusLine` key of
-# ~/.claude/settings.json at this plugin's renderer, bin/aikit-statusline.
+# ~/.claude/settings.json at this plugin's renderer, bin/helia-statusline.
 #
 # A plugin cannot declare `statusLine` itself, and ${CLAUDE_PLUGIN_ROOT} is not
 # substituted inside it: so the hook writes a path that is already resolved,
@@ -15,19 +15,21 @@
 set -uo pipefail
 exec > /dev/null
 
-note() { printf 'aikit statusline: %s\n' "$*" >&2; }
+note() { printf 'helia statusline: %s\n' "$*" >&2; }
 tmp=""
 trap '[ -z "$tmp" ] || rm -f "$tmp" 2> /dev/null' EXIT
 
 home="${HOME:-}"
 [ -n "$home" ] || exit 0
+[ -e "$home/.config/helia/no-statusline" ] && exit 0
+# Former name, still honoured until every machine is migrated.
 [ -e "$home/.config/aikit/no-statusline" ] && exit 0
 
 command -v jq > /dev/null 2>&1 || { note "jq not found, settings.json left untouched"; exit 0; }
 root="${CLAUDE_PLUGIN_ROOT:-}"
 [ -n "$root" ] || { note "CLAUDE_PLUGIN_ROOT is empty, nothing written"; exit 0; }
 
-command_value="AIKIT_STATUSLINE=1 bash \"${root}/bin/aikit-statusline\""
+command_value="HELIA_STATUSLINE=1 bash \"${root}/bin/helia-statusline\""
 filter='.statusLine = {type: "command", command: $c}'
 
 target="$home/.claude/settings.json"
@@ -40,11 +42,14 @@ if [ -e "$target" ]; then
   { [ -f "$target" ] && [ -r "$target" ]; } || { note "$target is not a readable file, left untouched"; exit 0; }
   jq -e 'type == "object"' "$target" > /dev/null 2>&1 \
     || { note "$target is not a JSON object, left untouched"; exit 0; }
-  # `set` when there is no statusLine or it carries our marker; `keep` otherwise.
+  # `set` when there is no statusLine or it carries our marker, current or
+  # former: a line written under the former name must keep being rewritten,
+  # or it dies in silence with its cache. `keep` otherwise.
   verdict="$(jq -r '
     if .statusLine == null then "set"
     elif (.statusLine | type) == "object"
-         and ((.statusLine.command // "") | tostring | contains("AIKIT_STATUSLINE=1"))
+         and ((.statusLine.command // "") | tostring
+              | (contains("HELIA_STATUSLINE=1") or contains("AIKIT_STATUSLINE=1")))
     then "set" else "keep" end' "$target" 2> /dev/null)"
   [ "$verdict" = "set" ] || exit 0
   # Already identical: do not wake the settings watcher.
@@ -56,7 +61,7 @@ fi
 
 # Temporary file NEXT TO the resolved target, so the rename stays on one volume.
 # cp -p first: the redirection below truncates and so keeps the permissions.
-tmp="$target.aikit-tmp.$$"
+tmp="$target.helia-tmp.$$"
 if [ -e "$target" ]; then
   cp -p "$target" "$tmp" 2> /dev/null || exit 0
   jq --arg c "$command_value" "$filter" "$target" > "$tmp" 2> /dev/null || { note "jq failed, left untouched"; exit 0; }
