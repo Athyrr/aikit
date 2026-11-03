@@ -99,6 +99,11 @@ past what was named is exactly the drift the file declaration exists to catch;
 treat it the same way whether the declaration came from a plan task or from
 this estimate.
 
+**A tranche is always Heavy-Path.** A request that opens a tranche of the
+project's trame (`VOCABULARY.md`, *The trame*) skips the estimate, whatever
+its size: a tranche has its own directory, and step 3 checks its
+prerequisites before it opens.
+
 **Fast-Path dispatch:** the request itself, restated with the exact files
 named, is the brief — there is no plan to extract it from. Dispatch
 `aikit:implementer` at its frontmatter model and effort — pass neither. When it reports done, run

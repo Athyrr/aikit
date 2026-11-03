@@ -9,9 +9,10 @@ All notable changes to the aiKit method. Versions follow the plugin manifests
   titres obligatoires But du projet, Graphe, Vue d'ensemble, Les tranches,
   Historique du decoupage. Une `tranche` est un need `feature` dont le slug
   figure dans la colonne `Dossier` de la trame. `aikit:understanding-need`
-  verifie a l'ouverture d'une tranche que celles de sa cellule `Attend` sont
-  archivees avec `status: done`, liste les prerequis hors tranche, s'arrete
-  s'il en manque un, puis ecrit `en cours (ouverte le <date>)` ;
+  route toute tranche en Heavy-Path et verifie a l'ouverture d'une tranche
+  que celles de sa cellule `Attend` sont archivees avec `status: done`,
+  liste les prerequis hors tranche, s'arrete s'il en manque un, puis ecrit
+  `en cours (ouverte le <date>)` ;
   `aikit:verifying-completion` ecrit `archivée le <date>` (ou
   `abandonnée le <date>`) a l'archivage et passe la trame en `status: done`
   apres sa derniere tranche. Nouvelle section « Levels of work » ; `slice`,
