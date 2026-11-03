@@ -36,14 +36,15 @@ Branch commits: gh api 'repos/<owner/repo>/compare/<seen>...<branch>' --jq '.com
 No seen value:  gh api 'repos/<owner/repo>/commits?sha=<branch>&per_page=20' --jq '.[] | .sha[0:7] + " " + (.commit.message | split("\n")[0])'
 PR:             gh pr view <N> --repo <owner/repo> --json state,commits
 
-Never read the plan whole. A task is closed if its section carries the closing line
-`- [x] Task N (` (N may carry a letter, e.g. `11b`); otherwise it is open,
-whatever its other boxes. This prints the title and Files block of each open task:
+Never read the plan whole. A task is closed if its section carries its own closing line
+`- [x] Task N (`, N being the task's number, optionally followed by a letter
+(`11b`); otherwise it is open, whatever its other boxes. This prints the title and Files block of each open task:
 
 awk 'function flush() { if (head != "" && !closed) printf "%s", head }
-/^### Task / { flush(); head = $(0) "\n"; closed = 0; files = 0; next }
+/^### Task / { flush(); head = $(0) "\n"; closed = 0; files = 0
+  id = $(3); sub(/[^0-9].*/, "", id); next }
 head == "" { next }
-/^[ \t]*- \[x\] Task [0-9]+[a-z]* \(/ { closed = 1 }
+$(0) ~ "^[ \t]*- \\[x\\] Task " id "[a-z]* \\(" { closed = 1 }
 /^\*\*Files:\*\*/ { files = 1; next }
 files && !/^[-*] \[/ && /^[-*] / { head = head $(0) "\n"; next }
 files && !/^[ \t]*$/ { files = 0 }
