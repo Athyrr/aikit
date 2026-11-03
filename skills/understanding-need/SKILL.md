@@ -164,6 +164,16 @@ pointer: after an upward cycle, trust the heading, not the most recent section.
 Phase 6 closes it; `aikit:routing-failures` writes to it when a cycle goes up.
 Between those, it is the only thing a resumed session can trust.
 
+**A new need in a project that has a trame may be a tranche.** If
+`<vault>/<project>/trame.md` lists the slug in the `Dossier` column of its
+`Vue d'ensemble`, the need is that tranche (`VOCABULARY.md`, *The trame*).
+Read its `Attend` cell. A prerequisite tranche is met only once it lies under
+`<project>/_archive/` with `status: done`. List those that are not, and every
+prerequisite outside tranches (a decision, a measure), which you cannot
+check. If the `Graphe` disagrees with `Attend`, say so: `Attend` decides.
+A slug the trame does not list is an ordinary need; a resumption does not
+re-check.
+
 **A need carrying `derived_from:` is a child cycle.** It runs the phases
 normally, with one restriction: it may not derive again. Depth is capped at 1,
 so anything discovered inside it that would otherwise derive — because the
@@ -187,6 +197,15 @@ empty, or at your human partner's request: check it with your own tools; your hu
 
 **Heavy-Path:** state back, in three lines: the project, the feature slug, the
 route, and whether this is new or a resumption. Get agreement, then continue.
+
+**A new tranche: its check goes with the route** (step 3). Name each
+prerequisite its `Attend` cell lists, met or not. One not met, or one you
+cannot check: stop there. Your human partner decides whether the tranche
+opens; until then write nothing — no directory, no stub, no change to the
+trame. Once agreed: if it opens with a prerequisite missing, write the waiver
+in the `plan.md` stub — what was missing, the date, the reason given. Then set
+the tranche's `État` in `<project>/trame.md`, in the table and in its
+sub-heading, to `en cours (ouverte le <date>)`, and the trame's `updated:`.
 
 If your own model — as your environment states it — is not opus, add one
 line to that Heavy-Path confirmation: this need is Heavy-Path, this session
