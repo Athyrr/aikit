@@ -346,12 +346,12 @@ printf '%s' "$out" | json_valid \
   && ok "le hook emet du JSON valide" \
   || ko "le hook emet du JSON valide" "JSON" "invalide"
 ctx=$(printf '%s' "$out" | json_ctx)
-# Le hook n'emet plus le texte de skills/using-aikit/SKILL.md : son stub est en
+# Le hook n'emet plus le texte de skills/using-helia/SKILL.md : son stub est en
 # dur dans hooks/session-start. `pre` ne figure donc plus dans `ctx` et
 # `${ctx#*"$pre"}` rend `ctx` entier ; on garde l'idiome (il redeviendrait utile
 # si le hook reinjectait le skill). Les assertions ci-dessous portent sur des
 # lignes de table entieres, jamais sur un mot que le stub pourrait aussi porter.
-pre=$(cat skills/using-aikit/SKILL.md)
+pre=$(cat skills/using-helia/SKILL.md)
 reg="${ctx#*"$pre"}"
 case "$reg" in
   *"## Vault: espace"*) ok "la table est etiquetee par vault" ;;

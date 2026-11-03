@@ -1,6 +1,6 @@
 ---
-name: using-aikit
-description: Use when starting any conversation - establishes the aiKit method, its phases, where artifacts live, and how to react when a task fails
+name: using-helia
+description: Use when starting any conversation - establishes the Helia method, its phases, where artifacts live, and how to react when a task fails
 ---
 
 <SUBAGENT-STOP>
@@ -25,7 +25,7 @@ for the situation, you don't have to use it.
 Then announce "Using [skill] to [purpose]" and follow it exactly. If it has a
 checklist, create a todo per item.
 
-**Every distinct need starts with `aikit:understanding-need`** — once per need,
+**Every distinct need starts with `helia:understanding-need`** — once per need,
 not once per message: answering clarifying questions inside a need already
 routed does not re-invoke it. It names the project, reads its registry, routes.
 
@@ -40,7 +40,7 @@ routed does not re-invoke it. It names the project, reads its registry, routes.
   spec, broken into micro-tasks, delegated to disposable subagents — the
   full phase table below.
 
-`aikit:understanding-need` makes this call and proves it: Fast-Path with
+`helia:understanding-need` makes this call and proves it: Fast-Path with
 `git diff --name-only` against the files it named; Heavy-Path drift-checked
 per task. Tables: `reference.md`.
 
@@ -50,22 +50,22 @@ per task. Tables: `reference.md`.
 
 | # | Phase | Skill | Artifact |
 |---|---|---|---|
-| 1 | Understand | `aikit:understanding-need` | the need's directory, `vault/<project>/<feature>/plan.md` initialised |
-| 2 | Design | `aikit:designing-the-solution` then `aikit:writing-specs` | `spec.md` |
+| 1 | Understand | `helia:understanding-need` | the need's directory, `vault/<project>/<feature>/plan.md` initialised |
+| 2 | Design | `helia:designing-the-solution` then `helia:writing-specs` | `spec.md` |
 | 3 | Assess | the domain expert, consultatively | the `## Impact` section of `spec.md` |
-| 4 | Plan | `aikit:writing-plans` | `vault/<project>/<feature>/plan.md` filled in with tasks |
-| 5 | Execute | `aikit:executing-plans` | the code, and `vault/<project>/<feature>/plan.md`'s checkboxes |
-| 6 | Verify | `aikit:verifying-completion` | the verdict, `vault/<project>/<feature>/plan.md` closed, candidates harvested |
+| 4 | Plan | `helia:writing-plans` | `vault/<project>/<feature>/plan.md` filled in with tasks |
+| 5 | Execute | `helia:executing-plans` | the code, and `vault/<project>/<feature>/plan.md`'s checkboxes |
+| 6 | Verify | `helia:verifying-completion` | the verdict, `vault/<project>/<feature>/plan.md` closed, candidates harvested |
 
-Cross-cutting: `aikit:budgeting-context` before any dispatch or large read,
-`aikit:checking-plan-drift` after every task, `aikit:checking-dependencies` when
-`aikit-deps`, run in phase 1 and by the orchestrator before dispatching
-`aikit:planner` (`aikit:writing-plans`), reports a change on a plan with tasks,
-`aikit:routing-failures` on any failure, `aikit:handling-secrets` before writing config or committing anything
-that touches credentials, `aikit:delegating-to-a-perimeter` when a question needs
-a project's own MCP servers, `aikit:receiving-code-review` when incorporating
-feedback from outside the method's own review loop. `aikit:writing-notes` only when the human partner explicitly asks to
-set an idea aside, `aikit:capturing-reference` only when they explicitly ask to keep a document as a reference.
+Cross-cutting: `helia:budgeting-context` before any dispatch or large read,
+`helia:checking-plan-drift` after every task, `helia:checking-dependencies` when
+`helia-deps`, run in phase 1 and by the orchestrator before dispatching
+`helia:planner` (`helia:writing-plans`), reports a change on a plan with tasks,
+`helia:routing-failures` on any failure, `helia:handling-secrets` before writing config or committing anything
+that touches credentials, `helia:delegating-to-a-perimeter` when a question needs
+a project's own MCP servers, `helia:receiving-code-review` when incorporating
+feedback from outside the method's own review loop. `helia:writing-notes` only when the human partner explicitly asks to
+set an idea aside, `helia:capturing-reference` only when they explicitly ask to keep a document as a reference.
 
 **Heuristics** — two more vault files, both capped at 50 lines, read in
 cascade (`_global/` then `<project>/`) while writing the plan, written only
@@ -82,7 +82,7 @@ A subagent reads the 27,000-token doc, returns a 300-token finding, and dies.
 
 Never open a large doc whole: the registry routes each kind of task to the
 section it needs. Pass **paths, not contents**. Full table:
-`aikit:budgeting-context`.
+`helia:budgeting-context`.
 
 Phases 1 and 2 need the human, so they are never delegated: a subagent cannot
 ask a question, and a delegated spec is an invented spec.
@@ -90,13 +90,13 @@ ask a question, and a delegated spec is an invented spec.
 **The artifact is the memory, not the conversation.** Each phase ends with a
 file. Never chain two phases in one context hoping to remember the first.
 
-**aiKit writes nothing inside the project repositories** except the code
+**Helia writes nothing inside the project repositories** except the code
 changes themselves. The plan, its live status, and checkbox task tracking
 all live in one per-feature file, `vault/<project>/<feature>/plan.md`,
 removed when the feature closes. Specs, probe findings and scratch live
 alongside it — the vault that owns the project is an **Obsidian vault**:
 invoke `obsidian:obsidian-markdown` before writing its syntax,
-`obsidian:obsidian-bases` before editing `aikit.base`.
+`obsidian:obsidian-bases` before editing `helia.base`.
 
 ## The archetypes: model and effort
 
@@ -106,33 +106,33 @@ when the two differ. Rationale per role: `reference.md`, next to this skill.
 
 | Archetype | Model | Effort |
 |---|---|---|
-| `aikit:explorer` | `sonnet` | `medium` |
-| `aikit:implementer` | `sonnet` | `medium` |
-| `aikit:probe` | `sonnet` | `medium` |
-| `aikit:verifier` | `sonnet` | `medium` |
-| `aikit:planner` | `opus` | `high` |
-| `aikit:reviewer` | `opus` | `high` |
+| `helia:explorer` | `sonnet` | `medium` |
+| `helia:implementer` | `sonnet` | `medium` |
+| `helia:probe` | `sonnet` | `medium` |
+| `helia:verifier` | `sonnet` | `medium` |
+| `helia:planner` | `opus` | `high` |
+| `helia:reviewer` | `opus` | `high` |
 
 **Effort rises automatically on a mechanical signal; the model never changes
 without your human partner.** The signals, and what each passes at dispatch,
-live in one table only: `aikit:executing-plans`, Model and Effort Selection.
-Two failed attempts still stop the loop (`aikit:routing-failures`).
+live in one table only: `helia:executing-plans`, Model and Effort Selection.
+Two failed attempts still stop the loop (`helia:routing-failures`).
 
-`aikit:reviewer` is always a fresh instance — never the one that wrote the code.
+`helia:reviewer` is always a fresh instance — never the one that wrote the code.
 
 **Task-review exemption:** a task whose tests pass, whose diff is ≤30 lines,
 and that changes no public API or shared contract skips the per-task
-`aikit:reviewer` dispatch — the orchestrator moves straight to the next
+`helia:reviewer` dispatch — the orchestrator moves straight to the next
 task. The final whole-branch review still covers it; the exemption removes
 only the per-task gate, never the branch-level one. See
-`aikit:executing-plans`.
+`helia:executing-plans`.
 
 When a task names a domain expert (`Agent: api-expert`), dispatch it instead
 of the generic implementer. Its frontmatter belongs to its project, not to
-aiKit: how it is dispatched is a row of the same escalation table.
+Helia: how it is dispatched is a row of the same escalation table.
 
 **Your own model.** A Heavy-Path need confirmed in a session that does not
-run on opus gets one line suggesting `/model opus` (`aikit:understanding-need`,
+run on opus gets one line suggesting `/model opus` (`helia:understanding-need`,
 step 4). The choice stays your human partner's; nothing blocks.
 
 ## When something fails, the nature of the failure decides the direction
@@ -144,7 +144,7 @@ then re-plan; spec ambiguous or contradictory → stop, back to phase 2 with the
 human. **Out**: a missing behaviour decision, current work not wrong → a derived
 need (own directory, spec, cycle) if this cycle needs the answer to continue, else a candidate. Going up is expensive, but
 retrying a wrong plan is the most expensive of all. **The attempt budget is two,
-and it lives in `vault/<project>/<feature>/plan.md`.** Protocol: `aikit:routing-failures`.
+and it lives in `vault/<project>/<feature>/plan.md`.** Protocol: `helia:routing-failures`.
 
 ## Red Flags
 

@@ -15,8 +15,8 @@
 # Gate 11 does the same for checking-plan-drift's `plan-drift`: a drift detector
 # that stopped detecting would pass every form gate and stay silent in a session.
 # Gate 12 checks each agent's frontmatter model/effort against the mirror table
-# in using-aikit; it prints one short line per divergence, so it needs no cap.
-# Gate 13 runs the suite of bin/aikit-deps against a fake gh, without network: a
+# in using-helia; it prints one short line per divergence, so it needs no cap.
+# Gate 13 runs the suite of bin/helia-deps against a fake gh, without network: a
 # comparator that stopped comparing would pass every form gate and say nothing.
 #
 # A failing gate prints its own output, capped: `run` at 25 lines, the three
@@ -200,22 +200,22 @@ done
 suite "11 plan-drift tests" scripts/test-plan-drift
 
 # Gate 12 keeps the one readable copy of the archetypes' base values honest.
-# Only the frontmatter of agents/*.md runs; skills/using-aikit/SKILL.md mirrors
+# Only the frontmatter of agents/*.md runs; skills/using-helia/SKILL.md mirrors
 # it in the table under "## The archetypes: model and effort", and a mirror
 # nobody checks drifts — the planner once read opus in one skill and sonnet in
 # three other files. Same `fm>=2` guard as gate 10, and `\r` stripped first:
 # the tree may be checked out with CRLF.
-echo "→ 12 archetype frontmatter == using-aikit mirror"
+echo "→ 12 archetype frontmatter == using-helia mirror"
 g12=0
 mirror=$(awk '
   { sub(/\r$/, "") }
   /^## / { insec = ($0 == "## The archetypes: model and effort"); next }
-  insec && /^\| `aikit:[a-z-]+` \|/ {
+  insec && /^\| `helia:[a-z-]+` \|/ {
     split($0, c, "|")
     for (i = 2; i <= 4; i++) gsub(/[`[:space:]]/, "", c[i])
-    sub(/^aikit:/, "", c[2])
+    sub(/^helia:/, "", c[2])
     print c[2] "\t" c[3] "\t" c[4]
-  }' skills/using-aikit/SKILL.md)
+  }' skills/using-helia/SKILL.md)
 for f in agents/*.md; do
   a=$(basename "$f" .md)
   for field in model effort; do
@@ -225,7 +225,7 @@ for f in agents/*.md; do
     if [ -z "$got" ]; then
       echo "    $a: '$field' absent from the frontmatter of $f"; g12=1
     elif [ -z "$want" ]; then
-      echo "    $a: no '$field' for aikit:$a in the mirror table of skills/using-aikit/SKILL.md"; g12=1
+      echo "    $a: no '$field' for helia:$a in the mirror table of skills/using-helia/SKILL.md"; g12=1
     elif [ "$got" != "$want" ]; then
       echo "    DIVERGENCE: $a $field: frontmatter=$got mirror=$want"; g12=1
     fi
@@ -233,11 +233,11 @@ for f in agents/*.md; do
 done
 while IFS=$'\t' read -r a _; do
   [ -n "$a" ] || continue
-  [ -f "agents/$a.md" ] || { echo "    mirror row aikit:$a has no agents/$a.md"; g12=1; }
+  [ -f "agents/$a.md" ] || { echo "    mirror row helia:$a has no agents/$a.md"; g12=1; }
 done < <(printf '%s\n' "$mirror")
 if [ "$g12" != 0 ]; then echo "  ✗ FAILED"; fail=1; fi
 
-# Gate 13 is a behaviour test like gates 9 and 11: it drives bin/aikit-deps against
+# Gate 13 is a behaviour test like gates 9 and 11: it drives bin/helia-deps against
 # throwaway vaults and a fake gh, so it needs neither network nor authentication.
 suite "13 upstream dependency tests" scripts/test-deps
 
