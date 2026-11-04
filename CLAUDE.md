@@ -189,7 +189,7 @@ lines instead, on every commit and PR made from this repository:
   ```
 - PR description footer:
   ```
-  🤖 Generated with Helia
+  ✺ Generated with Helia
   ```
 
 No model name, no `anthropic.com` — the signature should stay stable across
