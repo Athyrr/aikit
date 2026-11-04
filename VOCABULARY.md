@@ -44,7 +44,8 @@ exists to prevent.
 | **feasibility** | the class of request that asks whether a thing can be done | a probe, a spike | it is a request class, not an activity |
 | **candidate** | a real problem that nothing is waiting on | parked, backlog, TODO | it is written as a `note` in `<project>/_notes/` and survives the need |
 | **parked** | a review finding the human partner ruled acceptable to leave, after the attempt budget was spent | a candidate | it lives in `vault/<project>/<feature>/plan.md`, is not harvested, and stays only in the archived `traces/plan.md` |
-| **heuristic** | one empirical rule or trap, written as Condition -> Action | a convention, a trap (registry §6) | it lives in `<project>/heuristics.md`, or `_global/heuristics.md` for the machine; one bullet, orchestrator-written, only at phase 6 |
+| **heuristic** | one empirical rule or trap, written as Condition -> Action | a convention, a trap (registry §6) | it lives in `<project>/heuristics.md`, or `_global/heuristics.md` for a trap that does not depend on the project; a trap is one bullet, orchestrator-written, only at phase 6 |
+| **consigne** | a lasting instruction the human partner gave | a heuristic (a trap the method learned), a memory | for one project it lives in `<project>/heuristics.md`, for every project in `_global/consignes.md`; written the moment it is given, never only in the harness memory |
 | **ecosystem** | a registry file with `kind: ecosysteme`: projects that share a contract or a document, with a directory for what they share | a company, a data dependency, a project with code | members declare `part_of: <ecosystem>`; the session table lists them under it, prefixed `↳` |
 | **kind** | the frontmatter field of a registry file saying what sort of project it is: `depot`, `conception` or `ecosysteme` | `type` (what a *need* produces) | `kind` lives in `<vault>/projects/<name>.md`; `type` lives in a need's `plan.md` |
 

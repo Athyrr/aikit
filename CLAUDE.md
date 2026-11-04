@@ -38,6 +38,7 @@ bloc en est la formulation impérative, pas une règle séparée.
   in one screen — it pays on every session and every compaction, unconditionally.
   The full skill body pays once, in whichever context invokes it, so it can
   afford to be larger, but it is still read by a live context: cut before you add.
+  `hooks/consignes` injects, as a separate `additionalContext`, each declared vault's `_global/consignes.md`. It reads files only — no scan, no `git`, no config migration — because it runs at every session event, `resume` included, and before every `helia:*` agent.
 - **Any agent carrying a `tools:` list must include `Skill` in it.** A `tools:`
   list is exhaustive: without `Skill` an agent cannot invoke a single skill —
   not even the one its own body tells it to follow. `agents/implementer.md`
@@ -58,9 +59,10 @@ bloc en est la formulation impérative, pas une règle séparée.
   file, not a skill: read it by path, do not invoke it.
 - The completion criterion is `scripts/doctor`, in this repository — see
   **Completion criterion** below. Run it; do not invent an equivalent.
-- After touching `hooks/session-start`, verify it still emits valid JSON:
+- After touching `hooks/session-start` or `hooks/consignes`, verify they still emit valid JSON:
   ```bash
   CLAUDE_PLUGIN_ROOT=$PWD bash hooks/session-start | python3 -m json.tool > /dev/null
+  CLAUDE_PLUGIN_ROOT=$PWD bash hooks/consignes SubagentStart | python3 -m json.tool > /dev/null
   ```
 - **`claude plugin validate .` validates the marketplace manifest and nothing
   else** — it reads no `SKILL.md` and no `agents/*.md`. That is why gates 1-3
@@ -76,9 +78,11 @@ bloc en est la formulation impérative, pas une règle séparée.
   a copy pinned to a version under `~/.claude/plugins/cache/`, never this
   working tree. Editing a file here changes nothing until `scripts/deploy` has
   bumped, committed and pushed.
-  `/reload-plugins` reloads skills, agents and hooks without restarting; only
-  the SessionStart preamble needs `startup|clear|compact` — and `/clear` is one
-  of those. `claude --plugin-dir .` loads this tree for one session, taking
+  `/reload-plugins` reloads skills, agents and hooks without restarting; the
+  SessionStart injections still need a session event — `session-start` matches
+  `startup|clear|compact`, `consignes` matches `startup|resume|clear|compact|fork`,
+  a difference that is deliberate — and `/clear` is one of them.
+  `claude --plugin-dir .` loads this tree for one session, taking
   precedence over the installed copy.
 
 ## Completion criterion
@@ -97,7 +101,7 @@ naming each gate that fell.
 | 1 | `claude plugin validate .` — the marketplace manifest ONLY |
 | 2 | `claude plugin validate ./skills --strict` — the skills |
 | 3 | `claude plugin validate ./agents --strict` — the archetypes |
-| 4 | `hooks/session-start` emits valid JSON |
+| 4 | `hooks/session-start` and `hooks/consignes` (both events) emit valid JSON |
 | 5 | no ancestor-walk resolution left — a tripwire against its return, not a debt probe |
 | 6 | no probe left pointing at the plugin's former bundled registry |
 | 7 | no workspace fact left in the tree — five hard-coded brand strings |

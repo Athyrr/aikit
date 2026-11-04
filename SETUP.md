@@ -113,8 +113,10 @@ a git-hook name.
 ## 6. One known trap
 
 - **`/reload-plugins` reloads skills, agents and hooks without restarting.**
-  Only the SessionStart preamble needs `startup|clear|compact` — and `/clear` is
-  one of those.
+  The SessionStart injections still need a session event: `session-start`
+  matches `startup|clear|compact`, `consignes` matches
+  `startup|resume|clear|compact|fork` — a deliberate difference — and `/clear`
+  is one of them.
 
 ## 7. The status line
 

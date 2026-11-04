@@ -3,6 +3,31 @@
 All notable changes to the Helia method (named aiKit up to 0.27.0). Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.30.0
+- **Consignes communes.** `<vault>/_global/consignes.md` (consignes de l'humain
+  valables pour tous les projets) est injecte par un nouveau hook,
+  `hooks/consignes`, en `additionalContext` distinct : `SessionStart`
+  (`startup|resume|clear|compact|fork`) et `SubagentStart` pour les seuls
+  agents `helia:*` (matcher `^helia:`). Nettoyage (CR, BOM, frontmatter),
+  budget global de 9 000 octets pour tous les vaults, troncature sur fin de
+  ligne nommee, `{}` quand rien n'est a injecter. Nettoyage, decompte et
+  `escape_for_json` vivent dans `lib/vaults`, partages avec
+  `hooks/session-start`. Porte 4 etendue au nouveau hook (quatorze portes).
+- **Regle cardinale n° 6** : une consigne durable de l'humain s'ecrit dans le
+  vault des qu'elle est donnee, jamais seulement dans la memoire de l'outil.
+  Avertissement dans le tableau de session quand un `consignes.md` depasse
+  4 000 octets.
+- **Methode.** `using-helia` : ou vit une consigne, precedence, frontiere
+  `heuristics.md` / `consignes.md`. `understanding-need` : souvenir, fiche et
+  constat en desaccord se signalent a tout moment ; une intention se demande,
+  un fait se mesure ; champ `opened:` du stub. `diagnosing` : un fait se
+  mesure, une consigne n'est pas un piege. `verifying-completion` : etape
+  Memoire de phase 6 (un tableau, un seul accord). `writing-plans` et
+  `budgeting-context` : place de `consignes.md`. Agents `explorer`, `planner`,
+  `implementer` : un document du vault dementi se rapporte.
+- `hooks/run-hook.cmd` : sans bash, seul `session-start` annonce l'echec ; les
+  autres hooks sortent muets.
+
 ## 0.29.0
 - **Themes Helia et Umbra.** Deux themes sombres dans `themes/`, generes par
   `scripts/build-themes` depuis `palettes/helia.json` et `palettes/umbra.json`

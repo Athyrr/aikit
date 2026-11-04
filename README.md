@@ -31,6 +31,12 @@ compaction**, two things:
 2. a table of every registered vault's projects, built from `<vault>/projects/*.md`
    for each vault declared on this machine — the router.
 
+A second hook, in a block of its own, injects each declared vault's
+`_global/consignes.md` — the instructions your human partner gave for every
+project — at the same moments and on `resume`, capped at 9,000 bytes for all
+vaults together; a `SubagentStart` hook gives the same block to every
+`helia:*` agent.
+
 The full method (`skills/using-helia/SKILL.md`) loads on demand, like any
 other skill, the first time a session actually needs it — the compaction
 matcher on the stub is what survives context loss without re-paying for the
@@ -155,7 +161,7 @@ what it tried, and waits.
 and machine-global, capped at 50 lines each) is read in cascade before
 planning and written by the orchestrator alone, only at close, only for a
 trap this cycle actually hit — never a restatement of what was already
-known.
+known. An instruction your human partner gives is not a trap: it goes to the vault the moment it is given — `<project>/heuristics.md` for one project, `_global/consignes.md` for all of them — never only into the harness memory.
 
 **A perimeter is a process, not a subagent.** A subagent runs inside its
 caller's session: it cannot re-scope to another directory or load a project's
@@ -196,7 +202,7 @@ the method itself.
 
 ```
 <anywhere>/helia/             a clone of the method — the SOURCE, not the plugin
-  hooks/                      the SessionStart injection
+  hooks/                      the SessionStart and SubagentStart injections
   palettes/                   the colours of the two themes, by role — their source of truth
   themes/                     Helia and Umbra, generated from palettes/ by scripts/build-themes
   skills/                     the skills
@@ -208,9 +214,10 @@ the method itself.
 ~/.config/helia/vaults         which vaults this machine knows, and where
 <vault>/                      a clone of a vault (an Obsidian vault)
   projects/                   the registry: one file per project
-  _global/heuristics.md       cross-project environment, OS and shell rules
+  _global/heuristics.md       technical traps that hold for every project — machine, OS, shell
+  _global/consignes.md        the human partner's instructions for every project — injected at session start
   _notes/                     notes whose idea would be another project
-  <project>/heuristics.md     empirical rules and traps for this project — orchestrator-written, at /finish only
+  <project>/heuristics.md     this project's traps (phase 6) and the human partner's instructions for it (when given)
   <project>/trame.md          how the project splits into tranches, if it does — VOCABULARY.md, The trame
   <project>/_notes/           one note per file — real problems nothing is waiting on, ideas to study later
   <project>/_archive/<need>/  finished or abandoned needs: spec.md, traces/
@@ -331,6 +338,7 @@ session with no deploy.
   ledger consolidated into one file, `vault/<project>/<feature>/plan.md`,
   instead of three
 - per-vault registry injected at session start, from declared vaults
+- the human partner's instructions for every project (`_global/consignes.md`) injected at session start and into every `helia:*` agent
 - failure-direction rule (down = probe/two attempts, up = re-plan/re-spec, out = derived need)
 - attempt budget (two) written to `vault/<project>/<feature>/plan.md`, not held in context —
   spent, it stops and asks a human partner rather than escalating on its own
