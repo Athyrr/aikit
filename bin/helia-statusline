@@ -1,23 +1,27 @@
 #!/usr/bin/env bash
-# Status line renderer. Reads the session JSON on stdin, writes ONE line on
+# Status line renderer. Reads the session JSON on stdin, writes TWO lines on
 # stdout, always exits 0.
 #
-#   helia · <model> · <project> (<branch>) · ctx <N> % · 5h : <N> % · hebdo : <N> %
+#   ✺ helia  │  <model>  │  <project> ⎇ <branch>
+#   ctx ━━━━━─────── <N> %    5h ━━━━━━━───── <N> % ↺ 2h14    hebdo ━━━━──────── <N> % ↺ 3j
 #
-# The two last segments (share of the 5-hour and of the weekly allowance already
-# used) only appear when the session JSON carries `rate_limits`.
+# The 5h and hebdo segments (share of the 5-hour and of the weekly allowance
+# already used, and the time left before each resets) only appear when the
+# session JSON carries `rate_limits`.
 #
-# Installed into ~/.claude/settings.json by hooks/statusline-install. Runs on
-# every refresh of the bar: the project lookup (lib/vaults) is expensive, so it
-# is cached per session; the branch is cached for a few seconds.
+# Colours: the exact (truecolor) values of the palette of the active theme --
+# palettes/umbra.json when ~/.claude/settings.json says `custom:helia:umbra`,
+# palettes/helia.json for anything else, a foreign theme included. The theme is
+# not part of the session JSON, hence the read of settings.json, cached 5 s. An
+# unreadable palette falls back on the terminal's 16 ANSI colours: no colour is
+# ever copied into this script.
+#
+# Installed into ~/.claude/settings.json by hooks/appearance. Runs on every
+# refresh of the bar: the project lookup (lib/vaults) is expensive, so it is
+# cached per session; the branch and the theme are cached for 5 seconds.
 # No `set -e`: a renderer that dies prints an empty bar.
 set -uo pipefail
 export LC_ALL=C
-
-esc=$'\033'
-dim="${esc}[2m"; cyan="${esc}[36m"; green="${esc}[32m"
-yellow="${esc}[33m"; red="${esc}[31m"; off="${esc}[0m"
-sep=" ${dim}·${off} "
 
 # Without jq the session JSON cannot be read: fall back on the shell's own cwd.
 if ! command -v jq > /dev/null 2>&1; then
@@ -39,9 +43,11 @@ fields="$(printf '%s' "$input" | jq -r '
     (.session_id // ""),
     ((.context_window.used_percentage // "") | tostring),
     ((.rate_limits.five_hour.used_percentage // "") | tostring),
-    ((.rate_limits.seven_day.used_percentage // "") | tostring)
+    ((.rate_limits.five_hour.resets_at // "") | tostring),
+    ((.rate_limits.seven_day.used_percentage // "") | tostring),
+    ((.rate_limits.seven_day.resets_at // "") | tostring)
   ] | map(tostring) | join("\u001f")' 2> /dev/null)" || fields=""
-IFS=$'\037' read -r model dir sid pct p5 p7 <<< "$fields"
+IFS=$'\037' read -r model dir sid pct p5 r5 p7 r7 <<< "$fields"
 model="${model:-?}"
 dir="${dir:-$PWD}"
 dir="${dir%/}"
@@ -55,6 +61,40 @@ cache_put() {  # cache_put <file> <content> -- atomic, never fatal
   { printf '%s\n' "$2" > "$t" && mv -f "$t" "$f"; } 2> /dev/null || rm -f "$t" 2> /dev/null
   return 0
 }
+
+# --- theme: read from settings.json, cached for 5 seconds ----------------------
+theme=""; fresh=0
+tf="$cache_dir/theme"
+if [ -f "$tf" ]; then
+  IFS=$'\t' read -r tts tval < "$tf" || true
+  case "${tts:-}" in
+    ''|*[!0-9]*) ;;
+    *) if [ $((now - tts)) -lt 5 ]; then theme="${tval:-}"; fresh=1; fi ;;
+  esac
+fi
+if [ "$fresh" = 0 ]; then
+  theme="$(jq -r '.theme // "" | tostring' "${HOME:-}/.claude/settings.json" 2> /dev/null)" || theme=""
+  cache_put "$tf" "$now"$'\t'"$theme"
+fi
+case "$theme" in custom:helia:umbra) palette=umbra ;; *) palette=helia ;; esac
+
+# --- colours: the palette in truecolor, else the 16 ANSI colours ---------------
+esc=$'\033'; off="${esc}[0m"; bold="${esc}[1m"
+tc() {  # tc <#RRGGBB> -> truecolor foreground sequence
+  local h=${1#\#}
+  printf '%s[38;2;%d;%d;%dm' "$esc" "$((16#${h:0:2}))" "$((16#${h:2:2}))" "$((16#${h:4:2}))"
+}
+cols="$(jq -r '.colors | [.accent, .accent2, .text, .muted, .border, .success, .warning, .error]
+               | if all(type == "string" and test("^#[0-9A-Fa-f]{6}$")) then join(" ") else empty end' \
+          "$self/../palettes/$palette.json" 2> /dev/null)" || cols=""
+if [ -n "$cols" ]; then
+  read -r c_acc c_acc2 c_txt c_mut c_brd c_ok c_warn c_err <<< "$cols"
+  acc="$(tc "$c_acc")"; acc2="$(tc "$c_acc2")"; txt="$(tc "$c_txt")"; mut="$(tc "$c_mut")"
+  brd="$(tc "$c_brd")"; ok="$(tc "$c_ok")"; warn="$(tc "$c_warn")"; err="$(tc "$c_err")"
+else
+  acc="${esc}[33m"; acc2="${esc}[36m"; txt="${esc}[39m"; mut="${esc}[2m"
+  brd="${esc}[2m"; ok="${esc}[32m"; warn="${esc}[33m"; err="${esc}[31m"
+fi
 
 # --- project: cached per session (and per directory) --------------------------
 project=""
@@ -87,36 +127,44 @@ if [ "$fresh" = 0 ]; then
   cache_put "$bf" "$now"$'\t'"$dir"$'\t'"$branch"
 fi
 
-# --- context: green < 60, yellow <= 85, red above; en dash when unknown --------
-ctx_txt="ctx –"; ctx_col="$dim"
-if [ -n "$pct" ] && r="$(printf '%.0f' "$pct" 2> /dev/null)"; then
-  case "$r" in
-    ''|*[!0-9]*) ;;
-    *)
-      ctx_txt="ctx $r %"
-      if   [ "$r" -lt 60 ]; then ctx_col="$green"
-      elif [ "$r" -le 85 ]; then ctx_col="$yellow"
-      else                       ctx_col="$red"; fi ;;
-  esac
-fi
-
-# --- rate limits: share of each allowance already used, same colours as ctx ---
-limit_seg() {  # limit_seg <label> <used_pct> -> segment or nothing
-  local label="$1" used="$2" r col
-  [ -n "$used" ] && r="$(printf '%.0f' "$used" 2> /dev/null)" || return 0
+# --- gauges --------------------------------------------------------------------
+pct_int() {  # pct_int <value> -> rounded integer, or nothing
+  local r
+  [ -n "$1" ] && r="$(printf '%.0f' "$1" 2> /dev/null)" || return 0
   case "$r" in ''|*[!0-9]*) return 0 ;; esac
-  if   [ "$r" -lt 60 ]; then col="$green"
-  elif [ "$r" -le 85 ]; then col="$yellow"
-  else                       col="$red"; fi
-  printf '%s%s : %s %%%s' "$col" "$label" "$r" "$off"
+  printf '%s' "$r"
 }
-lim5="$(limit_seg 5h "$p5")"
-lim7="$(limit_seg hebdo "$p7")"
+gauge() {  # gauge <label> <value> -> "<label> <12 cells> <N> %", or "–" for the number
+  local label="$1" r col n k cells=""
+  r="$(pct_int "$2")"
+  if [ -z "$r" ]; then
+    for ((k = 0; k < 12; k++)); do cells+="─"; done
+    printf '%s%s%s %s%s%s %s–%s' "$mut" "$label" "$off" "$brd" "$cells" "$off" "$mut" "$off"
+    return 0
+  fi
+  if   [ "$r" -lt 60 ]; then col="$ok"
+  elif [ "$r" -le 85 ]; then col="$warn"
+  else                       col="$err"; fi
+  n=$(( (r * 12 + 50) / 100 )); [ "$n" -le 12 ] || n=12
+  local full="" empty=""
+  for ((k = 0; k < n; k++)); do full+="━"; done
+  for ((k = n; k < 12; k++)); do empty+="─"; done
+  printf '%s%s%s %s%s%s%s%s %s%s %%%s' "$mut" "$label" "$off" "$col" "$full" "$brd" "$empty" "$off" "$col" "$r" "$off"
+}
+reset_in() {  # reset_in <epoch> -> " ↺ 42min" | " ↺ 2h14" | " ↺ 3j", or nothing
+  local at="$1" d
+  case "$at" in ''|*[!0-9]*) return 0 ;; esac
+  d=$((at - now)); [ "$d" -ge 0 ] || d=0
+  if   [ "$d" -lt 3600 ];  then printf ' %s↺ %dmin%s' "$mut" $((d / 60)) "$off"
+  elif [ "$d" -lt 86400 ]; then printf ' %s↺ %dh%02d%s' "$mut" $((d / 3600)) $((d % 3600 / 60)) "$off"
+  else                          printf ' %s↺ %dj%s' "$mut" $((d / 86400)) "$off"; fi
+}
 
-loc="$project"
-[ -z "$branch" ] || loc+=" (${branch})"
-line="${dim}helia${off}${sep}${cyan}${model}${off}${sep}${loc}${sep}${ctx_col}${ctx_txt}${off}"
-[ -z "$lim5" ] || line+="${sep}${lim5}"
-[ -z "$lim7" ] || line+="${sep}${lim7}"
-printf '%s\n' "$line"
+sep="  ${brd}│${off}  "
+line1="${acc}${bold}✺ helia${off}${sep}${acc2}${model}${off}${sep}${txt}${project}${off}"
+[ -z "$branch" ] || line1+=" ${mut}⎇ ${branch}${off}"
+line2="$(gauge ctx "$pct")"
+[ -z "$(pct_int "$p5")" ] || line2+="    $(gauge 5h "$p5")$(reset_in "$r5")"
+[ -z "$(pct_int "$p7")" ] || line2+="    $(gauge hebdo "$p7")$(reset_in "$r7")"
+printf '%s\n%s\n' "$line1" "$line2"
 exit 0

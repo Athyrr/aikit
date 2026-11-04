@@ -265,80 +265,114 @@ hasnt "plus aucune mention de statusline-install" "statusline-install" "$(cat "$
 
 # =============================================================================
 echo "bin/helia-statusline"
-REPO="$PWD"
-SLCACHE="$TMP/sl-cache"; SLHOME="$TMP/sl-home"; mkdir -p "$SLHOME"
-git -C "$ROOT/avec-remote" symbolic-ref HEAD refs/heads/trunk
-mkdir -p "$ROOT/sans-git/dedans" "$TMP/hors-registre"
-ESC="$(printf '\033')"
-plain() { sed "s/${ESC}\[[0-9;]*m//g"; }
-# sl <json> [vaults-file] : le rendu brut, sur un HOME et un cache jetables.
-sl() { printf '%s' "$1" | HOME="$SLHOME" XDG_CACHE_HOME="$SLCACHE" HELIA_VAULTS="${2:-$CONF}" bash "$REPO/bin/helia-statusline"; }
+SLHOME="$TMP/sl-home"; mkdir -p "$SLHOME/.claude"
+echo '{"theme":"dark"}' > "$SLHOME/.claude/settings.json"
+# sl <json> [vaults-file] : le rendu brut, sur un HOME et un cache jetables --
+# un cache neuf a chaque appel (SLC= pour en imposer un), sinon le theme lu
+# reste 5 s en cache. SLH= et SLBIN= imposent un HOME et un renderer.
+sl() {
+  printf '%s' "$1" | HOME="${SLH:-$SLHOME}" XDG_CACHE_HOME="${SLC:-$(mktemp -d "$TMP/slc.XXXXXX")}" \
+    HELIA_VAULTS="${2:-$CONF}" bash "${SLBIN:-$REPO/bin/helia-statusline}"
+}
 slin() {  # slin <dir> <session> <pct-json|null>
   jq -nc --arg d "$1" --arg s "$2" --argjson p "$3" \
     '{model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:$p}}'
 }
-if command -v jq > /dev/null 2>&1; then
-  out="$(sl "$(slin "$ROOT/avec-remote" s30 30)")"; rc=$?
-  is "30 % : la ligne complete" "helia · Opus · avec-remote (trunk) · ctx 30 %" "$(printf '%s' "$out" | plain)"
-  is "30 % : code de sortie 0"  "0" "$rc"
-  is "30 % : une seule ligne"   "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
-  has "30 % : vert"   "${ESC}[32mctx 30 %" "$out"
-  has "70 % : jaune"  "${ESC}[33mctx 70 %" "$(sl "$(slin "$ROOT/avec-remote" s70 70)")"
-  has "85 % : jaune (borne haute)" "${ESC}[33mctx 85 %" "$(sl "$(slin "$ROOT/avec-remote" s85 85)")"
-  has "86 % : rouge"  "${ESC}[31mctx 86 %" "$(sl "$(slin "$ROOT/avec-remote" s86 86)")"
-  has "90 % : rouge"  "${ESC}[31mctx 90 %" "$(sl "$(slin "$ROOT/avec-remote" s90 90)")"
-  has "59,6 % : arrondi a 60, jaune" "${ESC}[33mctx 60 %" "$(sl "$(slin "$ROOT/avec-remote" s596 59.6)")"
-  out="$(sl "$(slin "$ROOT/avec-remote" snull null)")"; rc=$?
-  is "contexte null : tiret" "helia · Opus · avec-remote (trunk) · ctx –" "$(printf '%s' "$out" | plain)"
-  is "contexte null : code de sortie 0" "0" "$rc"
-  is "dossier hors git : pas de parentheses" \
-     "helia · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git" shg 30)" | plain)"
-  is "sous-dossier d'un projet : le projet" \
-     "helia · Opus · sans-git · ctx 30 %" "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)" | plain)"
-  is "projet hors registre : le nom du dossier" \
-     "helia · Opus · hors-registre · ctx 30 %" "$(sl "$(slin "$TMP/hors-registre" shr 30)" | plain)"
-  is "aucun vault declare : le nom du dossier" \
-     "helia · Opus · avec-remote (trunk) · ctx 30 %" \
-     "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file | plain)"
-  # Limites de debit : part du forfait deja consommee, absente quand le JSON n'en porte pas.
-  slrl() {  # slrl <session> <pct5|""> <pct7|"">
-    jq -nc --arg d "$ROOT/avec-remote" --arg s "$1" --arg a "$2" --arg b "$3" '
-      {model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:30},
-       rate_limits:({}
-         + (if $a == "" then {} else {five_hour:{used_percentage:($a|tonumber),resets_at:9999999999}} end)
-         + (if $b == "" then {} else {seven_day:{used_percentage:($b|tonumber),resets_at:9999999999}} end))}'
-  }
-  is "limites : 5h et hebdo, en progression" \
-     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 % · hebdo : 32 %" \
-     "$(sl "$(slrl rl1 60 32)" | plain)"
-  has "limites : 5h a 60 % jaune"    "${ESC}[33m5h : 60 %" "$(sl "$(slrl rl2 60 32)")"
-  has "limites : hebdo a 32 % vert"  "${ESC}[32mhebdo : 32 %" "$(sl "$(slrl rl3 60 32)")"
-  has "limites : hebdo a 90 % rouge" "${ESC}[31mhebdo : 90 %" "$(sl "$(slrl rl4 10 90)")"
-  has "limites : 5h a 10 % vert"     "${ESC}[32m5h : 10 %" "$(sl "$(slrl rl5 10 90)")"
-  is "limites : 5h seule, pas de segment hebdo" \
-     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 20 %" \
-     "$(sl "$(slrl rl6 20 "")" | plain)"
-  is "limites : 59,6 % arrondi a 60" \
-     "helia · Opus · avec-remote (trunk) · ctx 30 % · 5h : 60 %" \
-     "$(sl "$(slrl rl7 59.6 "")" | plain)"
-  out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
-  is "entree invalide : code de sortie 0" "0" "$rc"
-  is "entree invalide : une seule ligne"  "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
-  out="$(sl '')"; rc=$?
-  is "entree vide : code de sortie 0" "0" "$rc"
-  # Le cache par session : une entree posee a la main est relue telle quelle.
-  mkdir -p "$SLCACHE/helia"
-  printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$SLCACHE/helia/project-scache"
-  is "le projet vient du cache de la session" \
-     "helia · Opus · nom-en-cache (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" scache 30)" | plain)"
-  printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$SLCACHE/helia/project-sperime"
-  is "un cache d'un autre dossier est ignore" \
-     "helia · Opus · avec-remote (trunk) · ctx 30 %" "$(sl "$(slin "$ROOT/avec-remote" sperime 30)" | plain)"
-  [ -f "$SLCACHE/helia/project-s30" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/helia" \
-    || ko "le cache est ecrit sous XDG_CACHE_HOME/helia" "project-s30 present" "absent"
-else
-  echo "  (jq absent : cas de rendu avec jq ignores)"
-fi
+NOW=$(date +%s)
+G4="━━━━────────"; G0="────────────"   # jauges a 30 % et a vide
+slrl() {  # slrl <pct5|""> <pct7|""> [secondes avant reset 5h] [secondes avant reset hebdo]
+  jq -nc --arg d "$ROOT/avec-remote" --arg a "$1" --arg b "$2" \
+         --argjson r5 "$((NOW + ${3:-3630}))" --argjson r7 "$((NOW + ${4:-86430}))" '
+    {model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:"rl",context_window:{used_percentage:30},
+     rate_limits:({}
+       + (if $a == "" then {} else {five_hour:{used_percentage:($a|tonumber),resets_at:$r5}} end)
+       + (if $b == "" then {} else {seven_day:{used_percentage:($b|tonumber),resets_at:$r7}} end))}'
+}
+
+out="$(sl "$(slin "$ROOT/avec-remote" s30 30)")"; rc=$?
+is "30 % : deux lignes" "2" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+is "30 % : ligne 1" "✺ helia  │  Opus  │  avec-remote ⎇ trunk" "$(line 1 "$out" | plain)"
+is "30 % : ligne 2, ctx seul sans rate_limits" "ctx $G4 30 %" "$(line 2 "$out" | plain)"
+is "30 % : code de sortie 0" "0" "$rc"
+has "✺ helia en accent gras" "${ACC}${ESC}[1m✺ helia" "$out"
+has "modele en accent2" "${ACC2}Opus" "$out"
+has "projet en text" "${TXT}avec-remote" "$out"
+has "branche en muted" "${MUT}⎇ trunk" "$out"
+has "separateur en border" "${BRD}│" "$out"
+has "libelle ctx en muted" "${MUT}ctx" "$out"
+has "30 % : cellules pleines en success, vides en border" "${OK}━━━━${BRD}────────" "$out"
+gauge_of() { line 2 "$(sl "$(slin "$ROOT/avec-remote" "g$1" "$1")")"; }
+has "59 % : success" "${OK}59 %" "$(gauge_of 59)"
+has "60 % : warning" "${WARN}60 %" "$(gauge_of 60)"
+has "85 % : warning (borne haute)" "${WARN}85 %" "$(gauge_of 85)"
+has "86 % : error" "${ERR}86 %" "$(gauge_of 86)"
+has "59,6 % : arrondi a 60, warning" "${WARN}60 %" "$(line 2 "$(sl "$(slin "$ROOT/avec-remote" s596 59.6)")")"
+is "100 % : douze cellules pleines" "ctx ━━━━━━━━━━━━ 100 %" "$(gauge_of 100 | plain)"
+is "0 % : douze cellules vides" "ctx $G0 0 %" "$(gauge_of 0 | plain)"
+out="$(sl "$(slin "$ROOT/avec-remote" snull null)")"; rc=$?
+is "contexte null : jauge vide et tiret" "ctx $G0 –" "$(line 2 "$out" | plain)"
+is "contexte null : code de sortie 0" "0" "$rc"
+is "dossier hors git : pas de branche" \
+   "✺ helia  │  Opus  │  sans-git" "$(line 1 "$(sl "$(slin "$ROOT/sans-git" shg 30)")" | plain)"
+is "sous-dossier d'un projet : le projet" \
+   "✺ helia  │  Opus  │  sans-git" "$(line 1 "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)")" | plain)"
+is "projet hors registre : le nom du dossier" \
+   "✺ helia  │  Opus  │  hors-registre" "$(line 1 "$(sl "$(slin "$TMP/hors-registre" shr 30)")" | plain)"
+is "aucun vault declare : le nom du dossier" \
+   "✺ helia  │  Opus  │  avec-remote ⎇ trunk" \
+   "$(line 1 "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file)" | plain)"
+
+# Limites de debit : jauge, part consommee, temps avant reset.
+is "limites : 5h et hebdo, quatre espaces entre segments" \
+   "ctx $G4 30 %    5h ━━━━━━━───── 60 % ↺ 42min    hebdo $G4 32 % ↺ 2h14" \
+   "$(line 2 "$(sl "$(slrl 60 32 $((42 * 60 + 30)) $((2 * 3600 + 14 * 60 + 30)))")" | plain)"
+is "reset a plus de 24 h : jours entiers" \
+   "ctx $G4 30 %    5h $G4 30 % ↺ 3j" "$(line 2 "$(sl "$(slrl 30 "" $((3 * 86400 + 3600)))")" | plain)"
+has "limites : 5h a 60 % warning" "${WARN}60 %" "$(sl "$(slrl 60 32)")"
+has "limites : hebdo a 90 % error" "${ERR}90 %" "$(sl "$(slrl 10 90)")"
+has "limites : reset en muted" "${MUT}↺ 1h00" "$(sl "$(slrl 10 "")")"
+is "limites : 5h seule, pas de segment hebdo" \
+   "ctx $G4 30 %    5h ━━────────── 20 % ↺ 1h00" "$(line 2 "$(sl "$(slrl 20 "")")" | plain)"
+out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
+is "entree invalide : code de sortie 0" "0" "$rc"
+is "entree invalide : deux lignes"  "2" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+out="$(sl '')"; rc=$?
+is "entree vide : code de sortie 0" "0" "$rc"
+
+# Le theme actif choisit la palette ; tout ce qui n'est pas Umbra rend Helia.
+UH="$TMP/sl-umbra"; mkdir -p "$UH/.claude"; echo '{"theme":"custom:helia:umbra"}' > "$UH/.claude/settings.json"
+out="$(SLH="$UH" sl "$(slin "$ROOT/avec-remote" su 30)")"
+has "theme Umbra : accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺ helia" "$out"
+has "theme Umbra : succes Umbra" "$(tc "$(pal umbra success)")━━━━" "$out"
+hasnt "theme Umbra : aucune couleur Helia" "$ACC" "$out"
+has "theme etranger (dark) : couleurs Helia" "${ACC}${ESC}[1m✺ helia" "$(sl "$(slin "$ROOT/avec-remote" sd 30)")"
+# Cache de 5 s : un changement de theme dans la fenetre ne se voit pas encore.
+SC="$TMP/sl-cache-theme"
+SLH="$UH" SLC="$SC" sl "$(slin "$ROOT/avec-remote" sc1 30)" > /dev/null
+echo '{"theme":"custom:helia:helia"}' > "$UH/.claude/settings.json"
+has "theme en cache 5 s : Umbra encore" "$(tc "$(pal umbra accent)")" "$(SLH="$UH" SLC="$SC" sl "$(slin "$ROOT/avec-remote" sc2 30)")"
+
+# Palette illisible : ANSI 16, aucune truecolor.
+PT="$TMP/palette-cassee"; mkdir -p "$PT/bin" "$PT/lib" "$PT/palettes"
+cp bin/helia-statusline "$PT/bin/"; cp lib/vaults "$PT/lib/"; echo '{pas du json' > "$PT/palettes/helia.json"
+out="$(SLBIN="$PT/bin/helia-statusline" sl "$(slin "$ROOT/avec-remote" spc 30)")"; rc=$?
+hasnt "palette illisible : aucune truecolor" "[38;2;" "$out"
+has "palette illisible : ANSI 16 (vert)" "${ESC}[32m━━━━" "$out"
+is "palette illisible : meme texte" "✺ helia  │  Opus  │  avec-remote ⎇ trunk" "$(line 1 "$out" | plain)"
+is "palette illisible : sortie 0" "0" "$rc"
+
+# Le cache par session : une entree posee a la main est relue telle quelle.
+CC="$TMP/sl-cache-projet"; mkdir -p "$CC/helia"
+printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$CC/helia/project-scache"
+is "le projet vient du cache de la session" \
+   "✺ helia  │  Opus  │  nom-en-cache ⎇ trunk" "$(line 1 "$(SLC="$CC" sl "$(slin "$ROOT/avec-remote" scache 30)")" | plain)"
+printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$CC/helia/project-sperime"
+is "un cache d'un autre dossier est ignore" \
+   "✺ helia  │  Opus  │  avec-remote ⎇ trunk" "$(line 1 "$(SLC="$CC" sl "$(slin "$ROOT/avec-remote" sperime 30)")" | plain)"
+SLC="$CC" sl "$(slin "$ROOT/avec-remote" s30w 30)" > /dev/null
+[ -f "$CC/helia/project-s30w" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/helia" \
+  || ko "le cache est ecrit sous XDG_CACHE_HOME/helia" "project-s30w present" "absent"
+
 # Sans jq : un PATH qui ne contient que git.
 # Un script relais, pas un lien : sous Git Bash, ln -s copie git.exe et le prive de ses DLL.
 NOJQ="$TMP/path-sans-jq"; mkdir -p "$NOJQ"
@@ -347,7 +381,7 @@ out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/
 is "sans jq : ligne de repli" "helia · avec-remote (trunk)" "$out"
 is "sans jq : code de sortie 0" "0" "$rc"
 out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"
-is "sans jq, hors git : pas de parentheses" "helia · hors-registre" "$out"
+is "sans jq, hors git : pas de branche" "helia · hors-registre" "$out"
 
 # =============================================================================
 echo "lib/banner"
