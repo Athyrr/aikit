@@ -15,7 +15,7 @@
     {
       "name": "helia",
       "description": "Helia - an agentic method for Claude Code",
-      "version": "0.29.0",
+      "version": "0.29.1",
       "source": "./",
       "author": {
         "name": "Adam Adhar"
