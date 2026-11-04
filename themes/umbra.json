@@ -1,0 +1,25 @@
+{
+  "name": "Umbra",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E9D3A0",
+    "claudeShimmer": "#8FA3CC",
+    "promptBorder": "#7A8194",
+    "promptBorderShimmer": "#E9D3A0",
+    "text": "#D8DCE6",
+    "inactive": "#7A8194",
+    "subtle": "#2A2E3A",
+    "suggestion": "#8FA3CC",
+    "permission": "#8FA3CC",
+    "success": "#7FB59A",
+    "warning": "#D9A65B",
+    "error": "#D06B6B",
+    "diffAdded": "#16261F",
+    "diffRemoved": "#2E1719",
+    "diffAddedWord": "#24402F",
+    "diffRemovedWord": "#4C2226",
+    "userMessageBackground": "#15171E",
+    "rate_limit_fill": "#E9D3A0",
+    "rate_limit_empty": "#2A2E3A"
+  }
+}

@@ -10,10 +10,12 @@ other sessions until `scripts/deploy` has published it.
 - `git`
 - `node` **or** `python3` — the scripts try `node` first and fall back to
   `python3`; either one alone is enough.
-- `jq` — **required for the status line**: the installer edits `~/.claude/settings.json`
-  with it and leaves the file untouched when `jq` is missing; the renderer falls
-  back to a bare `helia · <folder> (<branch>)` line, where `<folder>` is the shell's
-  folder (the process's current directory), not the session's working folder. Everything else works without it.
+- `jq` — **required for the status line, the theme and the startup banner**: the startup hook edits
+  `~/.claude/settings.json` with it and leaves the file untouched when `jq` is
+  missing; the renderer falls back to a bare `helia · <folder> (<branch>)` line,
+  where `<folder>` is the shell's folder (the process's current directory), not
+  the session's working folder. `scripts/test-appearance` (gate 14) refuses to
+  run without it. Everything else works without it.
 - an SSH key loaded in `ssh-agent`, with `github.com` in `known_hosts`
 - Claude Code ≥ 2.1.193
 - **optional:** an `obsidian` plugin providing the `obsidian:obsidian-markdown`
@@ -81,7 +83,7 @@ git config core.hooksPath .githooks     # arms the pre-commit gate — per clone
 git switch -c <chantier>
 # ... edit skills/ agents/ hooks/ ...
 
-scripts/doctor                          # the thirteen gates
+scripts/doctor                          # the fourteen gates
 claude --plugin-dir .                   # test in a session WITHOUT publishing
                                         # (takes precedence over the installed
                                         # plugin, for that session only)
@@ -116,36 +118,50 @@ a git-hook name.
 
 ## 7. The status line
 
-By default, every machine with the plugin installed shows one line, with no manual setting:
+By default, every machine with the plugin installed shows two lines, with no manual setting:
 
 ```
-helia · <model> · <project> (<branch>) · ctx <N> %
+✺ helia  │  <model>  │  <project> ⎇ <branch>
+ctx <gauge> <N> %    5h <gauge> <N> % ↺ <reset>    hebdo <gauge> <N> % ↺ <reset>
 ```
 
 `<project>` is the registered project whose working folder contains the current
-folder (see section 3), else the folder's name. `ctx` is green below 60 %, yellow
-up to 85 %, red above, `ctx –` when Claude Code reports no value.
+folder (see section 3), else the folder's name; `⎇ <branch>` is omitted outside
+a git repository. Each gauge has 12 cells, in the palette's success colour below
+60 %, warning up to 85 %, error above; `–` replaces the number when Claude Code
+reports no value. `5h` and `hebdo` — the share of the 5-hour and weekly
+allowances already used, and the time before each resets (`42min`, `2h14`,
+`3j`) — only appear when Claude Code reports rate limits. Colours are the exact
+values of the active theme's palette (README, *Appearance*), re-read at the next
+message after a `/theme` (the renderer caches the theme for up to 5 s); an unreadable palette falls back on the terminal's 16
+ANSI colours.
 
 How it gets there: a plugin cannot declare `statusLine`, so a `SessionStart` hook
-(matcher `startup`) writes the key into `~/.claude/settings.json`, with a path
-already resolved to the current plugin version, and rewrites it at every startup.
-It writes nothing when the value is already right, and it never touches a
-`statusLine` that does not carry the marker `HELIA_STATUSLINE=1` — your own
-status line stays yours.
+(`hooks/appearance`, matcher `startup`) writes the key into
+`~/.claude/settings.json`, with a path already resolved to the current plugin
+version, and rewrites it at every startup. It writes nothing when the value is
+already right, and it never touches a `statusLine` that does not carry the
+marker `HELIA_STATUSLINE=1` — your own status line stays yours. The same hook
+sets the theme (README, *Appearance*): it is the only writer of that file, in
+one read and at most one atomic write.
 
-**Opt out:** create the flag file, the hook then neither reads nor writes anything.
-The flag only stops future writes: to remove a bar already installed, also delete
+**Opt out**, one flag file per part; the hook then leaves that part alone. A
+flag only stops future writes: to remove a bar already installed, also delete
 the `statusLine` key from `~/.claude/settings.json`.
 
 ```bash
-mkdir -p ~/.config/helia && touch ~/.config/helia/no-statusline
+mkdir -p ~/.config/helia
+touch ~/.config/helia/no-statusline   # the status line
+touch ~/.config/helia/no-theme        # the theme
+touch ~/.config/helia/no-banner       # the startup banner
 ```
 
 Known limits:
 
-- **Uninstalling the plugin leaves the `statusLine` key behind**, pointing at a
-  script that no longer exists; Claude Code then hides the bar. Delete the key
-  from `~/.claude/settings.json` by hand.
+- **Uninstalling the plugin leaves the `statusLine` and `theme` keys behind**,
+  pointing at a script and a theme that no longer exist; Claude Code then hides
+  the bar. Delete `statusLine` from `~/.claude/settings.json` by hand and pick
+  another theme with `/theme`.
 - The bar stays empty without trust in the workspace, with `disableAllHooks` or
   `allowManagedHooksOnly`; a project-level or managed `statusLine` takes
   precedence over the one in `~/.claude/settings.json`.

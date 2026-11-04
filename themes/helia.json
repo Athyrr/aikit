@@ -1,0 +1,25 @@
+{
+  "name": "Helia",
+  "base": "dark",
+  "overrides": {
+    "claude": "#F5B921",
+    "claudeShimmer": "#E8871E",
+    "promptBorder": "#9C8F7A",
+    "promptBorderShimmer": "#F5B921",
+    "text": "#EDE3D1",
+    "inactive": "#9C8F7A",
+    "subtle": "#3A3024",
+    "suggestion": "#E8871E",
+    "permission": "#E8871E",
+    "success": "#7FA650",
+    "warning": "#E8871E",
+    "error": "#C8553D",
+    "diffAdded": "#26301A",
+    "diffRemoved": "#3A1E16",
+    "diffAddedWord": "#3E5222",
+    "diffRemovedWord": "#5C2A1E",
+    "userMessageBackground": "#221C15",
+    "rate_limit_fill": "#F5B921",
+    "rate_limit_empty": "#3A3024"
+  }
+}

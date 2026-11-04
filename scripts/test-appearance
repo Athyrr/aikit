@@ -1,0 +1,528 @@
+#!/usr/bin/env bash
+# Tests de l'apparence : palettes et themes (scripts/build-themes), hook
+# hooks/appearance, status line bin/helia-statusline, banniere lib/banner.
+# Aucune dependance reseau, aucune fixture versionnee. jq est requis : le hook
+# et la status line en dependent a l'execution (SETUP.md), sans lui la suite ne
+# prouverait rien et le dit.
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+command -v jq > /dev/null 2>&1 || { echo "jq absent : test impossible (prerequis, SETUP.md)" >&2; exit 1; }
+
+pass=0; fail=0
+ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
+ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
+is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
+has() { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
+hasnt() { case "$3" in *"$2"*) ko "$1" "ne contient pas [$2]" "$3" ;; *) ok "$1" ;; esac; }
+
+REPO="$PWD"
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+ESC="$(printf '\033')"
+plain() { sed "s/${ESC}\[[0-9;]*m//g"; }
+tc() {  # tc <#RRGGBB> -> la sequence truecolor de premier plan attendue
+  local h=${1#\#}
+  printf '%s[38;2;%d;%d;%dm' "$ESC" "$((16#${h:0:2}))" "$((16#${h:2:2}))" "$((16#${h:4:2}))"
+}
+pal() { jq -r ".colors.$2" "$REPO/palettes/$1.json"; }  # pal <helia|umbra> <role>
+
+line() { printf '%s\n' "$2" | sed -n "${1}p"; }   # line <n> <texte>
+# Les couleurs Helia attendues, en sequences truecolor.
+ACC=$(tc "$(pal helia accent)"); ACC2=$(tc "$(pal helia accent2)"); BRD=$(tc "$(pal helia border)")
+MUT=$(tc "$(pal helia muted)"); TXT=$(tc "$(pal helia text)")
+OK=$(tc "$(pal helia success)"); WARN=$(tc "$(pal helia warning)"); ERR=$(tc "$(pal helia error)")
+
+# =============================================================================
+echo "palettes et themes (scripts/build-themes)"
+ROLES="accent accent2 bg border diffAddedBg diffAddedWord diffRemovedBg diffRemovedWord error muted success surface text warning"
+KEYS="claude claudeShimmer diffAdded diffAddedWord diffRemoved diffRemovedWord error inactive permission promptBorder promptBorderShimmer rate_limit_empty rate_limit_fill subtle success suggestion text userMessageBackground warning"
+# Les valeurs de la spec, recopiees ici : l'oracle ne derive pas des fichiers testes.
+SPEC_HELIA="bg=#16130F surface=#221C15 border=#3A3024 text=#EDE3D1 muted=#9C8F7A accent=#F5B921 accent2=#E8871E success=#7FA650 warning=#E8871E error=#C8553D diffAddedBg=#26301A diffRemovedBg=#3A1E16 diffAddedWord=#3E5222 diffRemovedWord=#5C2A1E"
+SPEC_UMBRA="bg=#0B0C10 surface=#15171E border=#2A2E3A text=#D8DCE6 muted=#7A8194 accent=#E9D3A0 accent2=#8FA3CC success=#7FB59A warning=#D9A65B error=#D06B6B diffAddedBg=#16261F diffRemovedBg=#2E1719 diffAddedWord=#24402F diffRemovedWord=#4C2226"
+for p in helia umbra; do
+  f="palettes/$p.json"; t="themes/$p.json"
+  is "$f : les quatorze roles, exactement" "$ROLES" "$(jq -r '.colors | keys | join(" ")' "$f")"
+  is "$f : chaque valeur en #RRGGBB" "0" "$(jq '[.colors[] | select(type != "string" or (test("^#[0-9A-Fa-f]{6}$") | not))] | length' "$f")"
+  if [ "$p" = helia ]; then want="$SPEC_HELIA"; else want="$SPEC_UMBRA"; fi
+  is "$f : les valeurs de la spec" "$want" "$(jq -r '.colors | to_entries | map("\(.key)=\(.value)") | join(" ")' "$f")"
+  is "$f : une description d'une ligne" "1" "$(jq -r '.description' "$f" | grep -c .)"
+  is "$t : base dark" "dark" "$(jq -r '.base' "$t")"
+  is "$t : cles d'overrides = la table de correspondance" "$KEYS" "$(jq -r '.overrides | keys | join(" ")' "$t")"
+  is "$t : chaque valeur en #RRGGBB" "0" "$(jq '[.overrides[] | select(type != "string" or (test("^#[0-9A-Fa-f]{6}$") | not))] | length' "$t")"
+done
+is "themes/helia.json : name" "Helia" "$(jq -r '.name' themes/helia.json)"
+is "themes/umbra.json : name" "Umbra" "$(jq -r '.name' themes/umbra.json)"
+is "correspondance : claude <- accent (Helia)" "#F5B921" "$(jq -r '.overrides.claude' themes/helia.json)"
+is "correspondance : userMessageBackground <- surface (Umbra)" "#15171E" "$(jq -r '.overrides.userMessageBackground' themes/umbra.json)"
+is "correspondance : diffAdded <- diffAddedBg (Umbra)" "#16261F" "$(jq -r '.overrides.diffAdded' themes/umbra.json)"
+is "plugin.json ne declare aucune cle themes (elle remplacerait le scan du dossier)" "" \
+   "$(jq -r '(.themes // .experimental.themes // empty) | tostring' .claude-plugin/plugin.json)"
+out="$(scripts/build-themes --check 2>&1)"; rc=$?
+is "build-themes --check : vert sur le depot" "0|" "$rc|$out"
+# Le detecteur detecte : une copie dont une couleur est alteree.
+CP="$TMP/copie"; mkdir -p "$CP/scripts"
+cp scripts/build-themes "$CP/scripts/"; cp -r palettes themes "$CP/"
+jq '.colors.accent = "#000000"' "$CP/palettes/helia.json" > "$CP/p.tmp" && mv "$CP/p.tmp" "$CP/palettes/helia.json"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "couleur alteree : --check sort en 1" "1" "$rc"
+has "... en nommant le fichier qui differe" "themes/helia.json" "$out"
+hasnt "... et pas celui qui concorde" "themes/umbra.json" "$out"
+is "... sans rien ecrire" "#F5B921" "$(jq -r '.overrides.claude' "$CP/themes/helia.json")"
+bash "$CP/scripts/build-themes"; rc=$?
+is "sans argument : regenere, sortie 0" "0" "$rc"
+is "... la couleur alteree est reportee" "#000000" "$(jq -r '.overrides.claude' "$CP/themes/helia.json")"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "... puis --check repasse au vert" "0" "$rc"
+jq '.overrides.text = "#123456"' "$CP/themes/umbra.json" > "$CP/t.tmp" && mv "$CP/t.tmp" "$CP/themes/umbra.json"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "theme retouche a la main : --check sort en 1" "1" "$rc"
+has "... en le nommant" "themes/umbra.json" "$out"
+jq 'del(.colors.bg)' "$CP/palettes/umbra.json" > "$CP/p.tmp" && mv "$CP/p.tmp" "$CP/palettes/umbra.json"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "palette a qui manque un role : sortie 2" "2" "$rc"
+has "... en la nommant" "palettes/umbra.json" "$out"
+
+
+# --- fixtures : un vault et une racine de depots, que lib/vaults resout -------
+# Une espace dans le chemin du vault, DELIBEREMENT : c'est le cas reel.
+VAULT="$TMP/Mon Espace/levault"; ROOT="$TMP/code"
+mkdir -p "$VAULT/projects" "$ROOT/avec-remote" "$ROOT/sans-git/dedans" "$TMP/hors-registre"
+git -C "$ROOT/avec-remote" init -q
+git -C "$ROOT/avec-remote" remote add origin "git@github.com:acme/avec-remote.git"
+git -C "$ROOT/avec-remote" symbolic-ref HEAD refs/heads/trunk
+printf -- '---\nname: avec-remote\nrepo: github.com/acme/avec-remote\nsummary: x\n---\n' > "$VAULT/projects/avec-remote.md"
+printf -- '---\nname: sans-git\nsummary: x\n---\n' > "$VAULT/projects/sans-git.md"
+CONF="$TMP/vaults"
+printf 'vault levault %s\nroot  levault %s\n' "$VAULT" "$ROOT" > "$CONF"
+export HELIA_VAULTS="$CONF"
+
+# =============================================================================
+echo "hooks/appearance"
+PLUG="$TMP/Plugin Root/helia/1.2.3"      # une espace, deliberement
+WANT="HELIA_STATUSLINE=1 bash \"$PLUG/bin/helia-statusline\""
+HELIA="custom:helia:helia"; UMBRA="custom:helia:umbra"
+NEXT='{"systemMessage":"thème Helia à la prochaine session"}'
+# app <home> [cmd] : stdout du hook, stderr jete.
+app() { HOME="$1" CLAUDE_PLUGIN_ROOT="$PLUG" bash "${2:-$REPO/hooks/appearance}" 2> /dev/null; }
+# newhome : HOME jetable avec .claude/ et l'opt-out de la banniere -- la banniere
+# a sa propre section plus bas ; ici on epingle les cles et le message sans elle.
+newhome() {
+  local h; h="$(mktemp -d "$TMP/home.XXXXXX")"
+  mkdir -p "$h/.claude" "$h/.config/helia"; : > "$h/.config/helia/no-banner"
+  printf '%s' "$h"
+}
+S() { printf '%s' "$1/.claude/settings.json"; }
+getcmd() { jq -r '.statusLine.command' "$(S "$1")"; }
+gettheme() { jq -r '.theme // "absent"' "$(S "$1")"; }
+json_ok() { [ -z "$1" ] || printf '%s' "$1" | jq -e 'type == "object" and (keys == ["systemMessage"])' > /dev/null 2>&1; }
+
+H="$(newhome)"; rmdir "$H/.claude"
+out="$(app "$H")"; rc=$?
+is "settings.json absent : cree avec statusLine" "$WANT" "$(getcmd "$H")"
+is "... type command" "command" "$(jq -r '.statusLine.type' "$(S "$H")")"
+is "... et le theme Helia" "$HELIA" "$(gettheme "$H")"
+is "... seules cles ecrites" "statusLine,theme" "$(jq -r 'keys | join(",")' "$(S "$H")")"
+is "... message : prochaine session" "$NEXT" "$out"
+is "... code de sortie 0" "0" "$rc"
+
+H="$(newhome)"; echo '{"theme":"dark","env":{"A":"1"}}' > "$(S "$H")"
+out="$(app "$H")"
+is "theme etranger : remplace par Helia" "$HELIA" "$(gettheme "$H")"
+is "... statusLine ajoutee dans la meme ecriture" "$WANT" "$(getcmd "$H")"
+is "... autres cles conservees" '{"env":{"A":"1"}}' "$(jq -c 'del(.statusLine, .theme)' "$(S "$H")")"
+is "... message : prochaine session" "$NEXT" "$out"
+
+for th in "$HELIA" "$UMBRA"; do
+  H="$(newhome)"; jq -n --arg t "$th" --arg c "$WANT" '{theme: $t, statusLine: {type: "command", command: $c}}' > "$(S "$H")"
+  touch -d @0 "$(S "$H")"
+  out="$(app "$H")"
+  is "$th deja pose : intact" "$th" "$(gettheme "$H")"
+  is "$th deja pose, statusLine deja juste : fichier non reecrit (mtime)" "0" "$(stat -c %Y "$(S "$H")")"
+  is "$th deja pose : stdout vide" "" "$out"
+done
+
+H="$(newhome)"; echo '{"theme":"custom:autre:joli"}' > "$(S "$H")"
+app "$H" > /dev/null
+is "theme d'un autre plugin : remplace" "$HELIA" "$(gettheme "$H")"
+
+H="$(newhome)"; : > "$H/.config/helia/no-theme"; echo '{"theme":"dark"}' > "$(S "$H")"
+out="$(app "$H")"
+is "opt-out no-theme : theme intact" "dark" "$(gettheme "$H")"
+is "... statusLine quand meme posee" "$WANT" "$(getcmd "$H")"
+is "... stdout vide" "" "$out"
+
+H="$(newhome)"; : > "$H/.config/helia/no-statusline"; echo '{"theme":"dark"}' > "$(S "$H")"
+out="$(app "$H")"
+is "opt-out no-statusline : pas de statusLine" "null" "$(jq -c '.statusLine' "$(S "$H")")"
+is "... theme quand meme pose" "$HELIA" "$(gettheme "$H")"
+is "... message : prochaine session" "$NEXT" "$out"
+
+H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"
+echo '{"theme":"dark"}' > "$(S "$H")"
+app "$H" > /dev/null
+is "opt-out sous l'ancien nom : pas de statusLine" "null" "$(jq -c '.statusLine' "$(S "$H")")"
+is "... theme quand meme pose" "$HELIA" "$(gettheme "$H")"
+
+H="$(newhome)"; : > "$H/.config/helia/no-statusline"; : > "$H/.config/helia/no-theme"; rm -f "$(S "$H")"
+out="$(app "$H")"; rc=$?
+[ ! -e "$(S "$H")" ] && ok "tous les opt-outs : settings.json absent n'est pas cree" \
+  || ko "tous les opt-outs : settings.json absent n'est pas cree" "absent" "present"
+is "... rien sur stdout, sortie 0" "|0" "$out|$rc"
+
+H="$(newhome)"
+echo '{"statusLine":{"type":"command","command":"AIKIT_STATUSLINE=1 bash \"/ancien/1.0.0/bin/aikit-statusline\""},"theme":"dark"}' > "$(S "$H")"
+app "$H" > /dev/null
+is "ancien marqueur AIKIT_STATUSLINE=1 : reecrit vers helia" "$WANT" "$(getcmd "$H")"
+
+H="$(newhome)"
+echo '{"statusLine":{"type":"command","command":"HELIA_STATUSLINE=1 bash \"/ancien/1.0.0/bin/helia-statusline\""},"theme":"custom:helia:umbra"}' > "$(S "$H")"
+app "$H" > /dev/null
+is "marqueur HELIA_STATUSLINE=1 : chemin reecrit" "$WANT" "$(getcmd "$H")"
+is "... Umbra conserve" "$UMBRA" "$(gettheme "$H")"
+
+H="$(newhome)"
+echo '{"statusLine":{"type":"command","command":"~/mon-script.sh","padding":2},"theme":"custom:helia:helia"}' > "$(S "$H")"
+cp "$(S "$H")" "$TMP/avant-perso.json"
+app "$H" > /dev/null
+is "statusLine personnalisee, theme Helia : octets identiques" "$(cat "$TMP/avant-perso.json")" "$(cat "$(S "$H")")"
+
+H="$(newhome)"; echo '{"statusLine":"une chaine","theme":"custom:helia:helia"}' > "$(S "$H")"
+app "$H" > /dev/null
+is "statusLine qui n'est pas un objet : intacte" '{"statusLine":"une chaine","theme":"custom:helia:helia"}' "$(cat "$(S "$H")")"
+
+H="$(newhome)"; echo '{"statusLine":{"type":"command","command":"bash ~/helia-a-moi.sh"},"theme":"dark"}' > "$(S "$H")"
+app "$H" > /dev/null
+is "sans marqueur, meme avec le mot helia : intacte" "bash ~/helia-a-moi.sh" "$(getcmd "$H")"
+is "... le theme, lui, est pose" "$HELIA" "$(gettheme "$H")"
+is "aucun fichier temporaire laisse" "settings.json" "$(ls -A "$H/.claude")"
+
+H="$(newhome)"; printf '{"theme": "dark",\n' > "$(S "$H")"
+cp "$(S "$H")" "$TMP/avant-invalide.json"
+out="$(app "$H")"; rc=$?
+is "JSON invalide : intact" "$(cat "$TMP/avant-invalide.json")" "$(cat "$(S "$H")")"
+is "... rien sur stdout, sortie 0" "|0" "$out|$rc"
+H="$(newhome)"; : > "$(S "$H")"
+app "$H" > /dev/null
+is "fichier vide : intact" "0" "$(wc -c < "$(S "$H")" | tr -d ' ')"
+H="$(newhome)"; echo '[1,2]' > "$(S "$H")"
+app "$H" > /dev/null
+is "JSON qui n'est pas un objet : intact" '[1,2]' "$(cat "$(S "$H")")"
+
+H="$(newhome)"; app "$H" > /dev/null
+touch -d @0 "$(S "$H")"
+out="$(app "$H")"
+is "deuxieme demarrage : fichier non reecrit (mtime)" "0" "$(stat -c %Y "$(S "$H")")"
+is "... stdout vide" "" "$out"
+
+H="$(newhome)"; mkdir -p "$TMP/reel"
+echo '{"theme":"dark"}' > "$TMP/reel/settings.json"; chmod 640 "$TMP/reel/settings.json"
+ln -s "$TMP/reel/settings.json" "$(S "$H")"
+app "$H" > /dev/null
+[ -L "$(S "$H")" ] && ok "lien symbolique : le lien reste un lien" \
+  || ko "lien symbolique : le lien reste un lien" "lien" "fichier"
+is "lien symbolique : la cible resolue est ecrite" "$WANT|$HELIA" "$(jq -r '"\(.statusLine.command)|\(.theme)"' "$TMP/reel/settings.json")"
+is "lien symbolique : permissions conservees" "640" "$(stat -c %a "$TMP/reel/settings.json")"
+is "lien symbolique : aucun temporaire laisse" "settings.json" "$(ls "$TMP/reel")"
+
+H="$(newhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+mkdir -p "$TMP/path-vide"
+out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" PATH="$TMP/path-vide" "$BASH" "$REPO/hooks/appearance" 2> /dev/null)"; rc=$?
+is "sans jq : settings.json intact" '{"theme":"dark"}' "$(cat "$(S "$H")")"
+is "sans jq : rien sur stdout, sortie 0" "|0" "$out|$rc"
+
+H="$(newhome)"
+out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/run-hook.cmd" appearance 2> /dev/null)"; rc=$?
+is "via run-hook.cmd : statusLine posee" "$WANT" "$(getcmd "$H")"
+is "via run-hook.cmd : message JSON, sortie 0" "$NEXT|0" "$out|$rc"
+
+# Un faux jq ecrit sur stdout puis delegue au vrai : le hook ne doit rien
+# laisser fuir (stdout neutralise, objet final construit sans jq).
+REALJQ="$(command -v jq)"
+FAKEBIN="$TMP/faux-jq"; mkdir -p "$FAKEBIN"
+printf '#!/usr/bin/env bash\necho FUITE-STDOUT\nexec "%s" "$@"\n' "$REALJQ" > "$FAKEBIN/jq"; chmod +x "$FAKEBIN/jq"
+fuite="$(PATH="$FAKEBIN:$PATH" bash -c 'jq -n 1' 2> /dev/null)"
+is "faux jq : ecrit bien sur stdout (temoin)" "FUITE-STDOUT" "$(printf '%s' "$fuite" | head -1)"
+H="$(newhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+out="$(PATH="$FAKEBIN:$PATH" HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/appearance" 2> /dev/null)"; rc=$?
+is "faux jq bavard : rien sur stdout, sortie 0" "|0" "$out|$rc"
+is "faux jq bavard : settings.json intact (sortie refusee)" '{"theme":"dark"}' "$(cat "$(S "$H")")"
+
+
+echo "hooks/hooks.json"
+HJ=hooks/hooks.json
+is "SessionStart porte deux groupes" "2" "$(jq '.hooks.SessionStart | length' "$HJ")"
+is "premier groupe inchange : matcher" "startup|clear|compact" "$(jq -r '.hooks.SessionStart[0].matcher' "$HJ")"
+is "premier groupe inchange : commande" \
+   '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" session-start' "$(jq -r '.hooks.SessionStart[0].hooks[0].command' "$HJ")"
+is "second groupe : matcher startup seul" "startup" "$(jq -r '.hooks.SessionStart[1].matcher' "$HJ")"
+is "second groupe : commande appearance" \
+   '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" appearance' "$(jq -r '.hooks.SessionStart[1].hooks[0].command' "$HJ")"
+is "second groupe : synchrone" "false" "$(jq '.hooks.SessionStart[1].hooks[0].async' "$HJ")"
+is "second groupe : timeout 10" "10" "$(jq '.hooks.SessionStart[1].hooks[0].timeout' "$HJ")"
+hasnt "plus aucune mention de statusline-install" "statusline-install" "$(cat "$HJ")"
+[ -x hooks/appearance ] && ok "hooks/appearance est executable" || ko "hooks/appearance est executable" "x" "non"
+[ ! -e hooks/statusline-install ] && ok "hooks/statusline-install est supprime" \
+  || ko "hooks/statusline-install est supprime" "absent" "present"
+
+# =============================================================================
+echo "bin/helia-statusline"
+SLHOME="$TMP/sl-home"; mkdir -p "$SLHOME/.claude"
+echo '{"theme":"dark"}' > "$SLHOME/.claude/settings.json"
+# sl <json> [vaults-file] : le rendu brut, sur un HOME et un cache jetables --
+# un cache neuf a chaque appel (SLC= pour en imposer un), sinon le theme lu
+# reste 5 s en cache. SLH= et SLBIN= imposent un HOME et un renderer.
+sl() {
+  printf '%s' "$1" | HOME="${SLH:-$SLHOME}" XDG_CACHE_HOME="${SLC:-$(mktemp -d "$TMP/slc.XXXXXX")}" \
+    HELIA_VAULTS="${2:-$CONF}" bash "${SLBIN:-$REPO/bin/helia-statusline}"
+}
+slin() {  # slin <dir> <session> <pct-json|null>
+  jq -nc --arg d "$1" --arg s "$2" --argjson p "$3" \
+    '{model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:$p}}'
+}
+G4="━━━━────────"; G0="────────────"   # jauges a 30 % et a vide
+slrl() {  # slrl <pct5|""> <pct7|""> [secondes avant reset 5h] [secondes avant reset hebdo]
+  local NOW; NOW=$(date +%s)   # a l'appel : un Git Bash lent ne fait pas deriver 1h00 en 0h59
+  jq -nc --arg d "$ROOT/avec-remote" --arg a "$1" --arg b "$2" \
+         --argjson r5 "$((NOW + ${3:-3630}))" --argjson r7 "$((NOW + ${4:-86430}))" '
+    {model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:"rl",context_window:{used_percentage:30},
+     rate_limits:({}
+       + (if $a == "" then {} else {five_hour:{used_percentage:($a|tonumber),resets_at:$r5}} end)
+       + (if $b == "" then {} else {seven_day:{used_percentage:($b|tonumber),resets_at:$r7}} end))}'
+}
+
+out="$(sl "$(slin "$ROOT/avec-remote" s30 30)")"; rc=$?
+is "30 % : deux lignes" "2" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+is "30 % : ligne 1" "✺ helia  │  Opus  │  avec-remote ⎇ trunk" "$(line 1 "$out" | plain)"
+is "30 % : ligne 2, ctx seul sans rate_limits" "ctx $G4 30 %" "$(line 2 "$out" | plain)"
+is "30 % : code de sortie 0" "0" "$rc"
+has "✺ helia en accent gras" "${ACC}${ESC}[1m✺ helia" "$out"
+has "modele en accent2" "${ACC2}Opus" "$out"
+has "projet en text" "${TXT}avec-remote" "$out"
+has "branche en muted" "${MUT}⎇ trunk" "$out"
+has "separateur en border" "${BRD}│" "$out"
+has "libelle ctx en muted" "${MUT}ctx" "$out"
+has "30 % : cellules pleines en success, vides en border" "${OK}━━━━${BRD}────────" "$out"
+gauge_of() { line 2 "$(sl "$(slin "$ROOT/avec-remote" "g$1" "$1")")"; }
+has "59 % : success" "${OK}59 %" "$(gauge_of 59)"
+has "60 % : warning" "${WARN}60 %" "$(gauge_of 60)"
+has "85 % : warning (borne haute)" "${WARN}85 %" "$(gauge_of 85)"
+has "86 % : error" "${ERR}86 %" "$(gauge_of 86)"
+has "59,6 % : arrondi a 60, warning" "${WARN}60 %" "$(line 2 "$(sl "$(slin "$ROOT/avec-remote" s596 59.6)")")"
+is "100 % : douze cellules pleines" "ctx ━━━━━━━━━━━━ 100 %" "$(gauge_of 100 | plain)"
+is "0 % : douze cellules vides" "ctx $G0 0 %" "$(gauge_of 0 | plain)"
+out="$(sl "$(slin "$ROOT/avec-remote" snull null)")"; rc=$?
+is "contexte null : jauge vide et tiret" "ctx $G0 –" "$(line 2 "$out" | plain)"
+is "contexte null : code de sortie 0" "0" "$rc"
+is "dossier hors git : pas de branche" \
+   "✺ helia  │  Opus  │  sans-git" "$(line 1 "$(sl "$(slin "$ROOT/sans-git" shg 30)")" | plain)"
+is "sous-dossier d'un projet : le projet" \
+   "✺ helia  │  Opus  │  sans-git" "$(line 1 "$(sl "$(slin "$ROOT/sans-git/dedans" ssd 30)")" | plain)"
+is "projet hors registre : le nom du dossier" \
+   "✺ helia  │  Opus  │  hors-registre" "$(line 1 "$(sl "$(slin "$TMP/hors-registre" shr 30)")" | plain)"
+is "aucun vault declare : le nom du dossier" \
+   "✺ helia  │  Opus  │  avec-remote ⎇ trunk" \
+   "$(line 1 "$(sl "$(slin "$ROOT/avec-remote" snov 30)" /nonexistent-vaults-file)" | plain)"
+
+# Limites de debit : jauge, part consommee, temps avant reset.
+is "limites : 5h et hebdo, quatre espaces entre segments" \
+   "ctx $G4 30 %    5h ━━━━━━━───── 60 % ↺ 42min    hebdo $G4 32 % ↺ 2h14" \
+   "$(line 2 "$(sl "$(slrl 60 32 $((42 * 60 + 30)) $((2 * 3600 + 14 * 60 + 30)))")" | plain)"
+is "reset a plus de 24 h : jours entiers" \
+   "ctx $G4 30 %    5h $G4 30 % ↺ 3j" "$(line 2 "$(sl "$(slrl 30 "" $((3 * 86400 + 3600)))")" | plain)"
+has "limites : 5h a 60 % warning" "${WARN}60 %" "$(sl "$(slrl 60 32)")"
+has "limites : hebdo a 90 % error" "${ERR}90 %" "$(sl "$(slrl 10 90)")"
+has "limites : reset en muted" "${MUT}↺ 1h00" "$(sl "$(slrl 10 "")")"
+is "limites : 5h seule, pas de segment hebdo" \
+   "ctx $G4 30 %    5h ━━────────── 20 % ↺ 1h00" "$(line 2 "$(sl "$(slrl 20 "")")" | plain)"
+out="$(sl 'ceci n'"'"'est pas du json')"; rc=$?
+is "entree invalide : code de sortie 0" "0" "$rc"
+is "entree invalide : deux lignes"  "2" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+out="$(sl '')"; rc=$?
+is "entree vide : code de sortie 0" "0" "$rc"
+
+# Le theme actif choisit la palette ; tout ce qui n'est pas Umbra rend Helia.
+UH="$TMP/sl-umbra"; mkdir -p "$UH/.claude"; echo '{"theme":"custom:helia:umbra"}' > "$UH/.claude/settings.json"
+out="$(SLH="$UH" sl "$(slin "$ROOT/avec-remote" su 30)")"
+has "theme Umbra : accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺ helia" "$out"
+has "theme Umbra : succes Umbra" "$(tc "$(pal umbra success)")━━━━" "$out"
+hasnt "theme Umbra : aucune couleur Helia" "$ACC" "$out"
+has "theme etranger (dark) : couleurs Helia" "${ACC}${ESC}[1m✺ helia" "$(sl "$(slin "$ROOT/avec-remote" sd 30)")"
+# Cache de 5 s : un changement de theme dans la fenetre ne se voit pas encore.
+SC="$TMP/sl-cache-theme"
+SLH="$UH" SLC="$SC" sl "$(slin "$ROOT/avec-remote" sc1 30)" > /dev/null
+echo '{"theme":"custom:helia:helia"}' > "$UH/.claude/settings.json"
+has "theme en cache 5 s : Umbra encore" "$(tc "$(pal umbra accent)")" "$(SLH="$UH" SLC="$SC" sl "$(slin "$ROOT/avec-remote" sc2 30)")"
+
+# Palette illisible : ANSI 16, aucune truecolor.
+PT="$TMP/palette-cassee"; mkdir -p "$PT/bin" "$PT/lib" "$PT/palettes"
+cp bin/helia-statusline "$PT/bin/"; cp lib/vaults "$PT/lib/"; echo '{pas du json' > "$PT/palettes/helia.json"
+out="$(SLBIN="$PT/bin/helia-statusline" sl "$(slin "$ROOT/avec-remote" spc 30)")"; rc=$?
+hasnt "palette illisible : aucune truecolor" "[38;2;" "$out"
+has "palette illisible : ANSI 16 (vert)" "${ESC}[32m━━━━" "$out"
+is "palette illisible : meme texte" "✺ helia  │  Opus  │  avec-remote ⎇ trunk" "$(line 1 "$out" | plain)"
+is "palette illisible : sortie 0" "0" "$rc"
+
+# Le cache par session : une entree posee a la main est relue telle quelle.
+CC="$TMP/sl-cache-projet"; mkdir -p "$CC/helia"
+printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$CC/helia/project-scache"
+is "le projet vient du cache de la session" \
+   "✺ helia  │  Opus  │  nom-en-cache ⎇ trunk" "$(line 1 "$(SLC="$CC" sl "$(slin "$ROOT/avec-remote" scache 30)")" | plain)"
+printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$CC/helia/project-sperime"
+is "un cache d'un autre dossier est ignore" \
+   "✺ helia  │  Opus  │  avec-remote ⎇ trunk" "$(line 1 "$(SLC="$CC" sl "$(slin "$ROOT/avec-remote" sperime 30)")" | plain)"
+SLC="$CC" sl "$(slin "$ROOT/avec-remote" s30w 30)" > /dev/null
+[ -f "$CC/helia/project-s30w" ] && ok "le cache est ecrit sous XDG_CACHE_HOME/helia" \
+  || ko "le cache est ecrit sous XDG_CACHE_HOME/helia" "project-s30w present" "absent"
+
+# Sans jq : un PATH qui ne contient que git.
+# Un script relais, pas un lien : sous Git Bash, ln -s copie git.exe et le prive de ses DLL.
+NOJQ="$TMP/path-sans-jq"; mkdir -p "$NOJQ"
+printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v git)" > "$NOJQ/git"; chmod +x "$NOJQ/git"
+out="$(cd "$ROOT/avec-remote" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"; rc=$?
+is "sans jq : ligne de repli" "helia · avec-remote (trunk)" "$out"
+is "sans jq : code de sortie 0" "0" "$rc"
+out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"
+is "sans jq, hors git : pas de branche" "helia · hors-registre" "$out"
+
+# =============================================================================
+echo "lib/banner"
+. lib/banner
+mono="$(banner_render mono "" "helia 1.2.3" "thème Helia actif" "vault levault · 2 projets")"; rc=$?
+is "mono : trois lignes, texte a droite aligne" \
+" ✺  █ █ █▀▀ █   █ ▄▀█    helia 1.2.3
+    █▀█ ██▄ █▄▄ █ █▀█▌   thème Helia actif
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀   vault levault · 2 projets" "$mono"
+is "mono : sortie 0" "0" "$rc"
+hasnt "mono : aucune sequence d'echappement" "$ESC" "$mono"
+is "mono, sans texte a droite : le logotype seul, sans espace final" \
+" ✺  █ █ █▀▀ █   █ ▄▀█
+    █▀█ ██▄ █▄▄ █ █▀█▌
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀" "$(banner_render mono "")"
+is "mono, un seul texte : la ligne 2 n'en porte pas" "    █▀█ ██▄ █▄▄ █ █▀█▌" \
+   "$(banner_render mono "" "helia 1.2.3" | sed -n 2p)"
+col="$(banner_render color palettes/helia.json "helia 1.2.3" "thème Helia actif" "vault levault · 2 projets")"; rc=$?
+is "couleur : sortie 0" "0" "$rc"
+is "couleur : trois lignes" "3" "$(printf '%s\n' "$col" | wc -l | tr -d ' ')"
+is "couleur : memes caracteres que mono" "$mono" "$(printf '%s\n' "$col" | plain)"
+has "✺ en accent gras" "${ACC}${ESC}[1m✺" "$col"
+has "premiere colonne de lettres en accent" "  ${ACC}█" "$(line 1 "$col")"
+has "derniere colonne de lettres en accent2" "${ACC2}█${ESC}[0m${BRD}▌" "$(line 2 "$col")"
+has "ombre de la ligne 3 en border" "     ${BRD}▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀" "$(line 3 "$col")"
+is "degrade : une couleur par colonne (13 colonnes de lettres et l'ombre, ligne 2)" "14" \
+   "$(banner_render color palettes/helia.json | sed -n 2p | grep -o "${ESC}\[38;2;[0-9;]*m" | sort -u | wc -l | tr -d ' ')"
+ucol="$(banner_render color palettes/umbra.json "x")"
+has "palette Umbra : accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺" "$ucol"
+out="$(banner_render color "$TMP/nexiste-pas.json" "x")"; rc=$?
+is "palette illisible en couleur : sortie 1, rien imprime" "1|" "$rc|$out"
+is "mode par defaut : couleur" "color" "$BANNER_MODE"
+
+# =============================================================================
+echo "hooks/appearance : banniere"
+VERSION="$(jq -r '.version' .claude-plugin/plugin.json)"
+# bhome : HOME jetable SANS l'opt-out de la banniere.
+bhome() { local h; h="$(mktemp -d "$TMP/bhome.XXXXXX")"; mkdir -p "$h/.claude"; printf '%s' "$h"; }
+msg() { printf '%s' "$1" | jq -r '.systemMessage'; }   # msg <stdout du hook>
+
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+out="$(app "$H")"; rc=$?
+json_ok "$out" && ok "banniere : stdout est un seul objet {systemMessage}" \
+  || ko "banniere : stdout est un seul objet {systemMessage}" "JSON" "$out"
+m="$(msg "$out")"
+is "banniere : sortie 0" "0" "$rc"
+is "banniere : commence par un saut de ligne" "" "$(printf '%s\n' "$m" | sed -n 1p)"
+is "banniere : logotype et etat, theme etranger" \
+"
+ ✺  █ █ █▀▀ █   █ ▄▀█    helia $VERSION
+    █▀█ ██▄ █▄▄ █ █▀█▌   thème Helia à la prochaine session
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀   vault levault · 2 projets" "$(printf '%s' "$m" | plain)"
+has "banniere : en couleurs Helia" "${ACC}${ESC}[1m✺" "$m"
+is "banniere : le theme est quand meme pose" "$HELIA" "$(gettheme "$H")"
+
+H="$(bhome)"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
+has "Helia actif" "thème Helia actif" "$(msg "$(app "$H")" | plain)"
+H="$(bhome)"; echo '{"theme":"custom:helia:umbra"}' > "$(S "$H")"
+m="$(msg "$(app "$H")")"
+has "Umbra actif" "thème Umbra actif" "$(printf '%s' "$m" | plain)"
+has "Umbra actif : couleurs Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺" "$m"
+hasnt "Umbra actif : aucune couleur Helia" "$ACC" "$m"
+
+H="$(bhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-theme"; echo '{"theme":"dark"}' > "$(S "$H")"
+m="$(msg "$(app "$H")" | plain)"
+is "no-theme : la ligne d'etat est omise, le vault remonte" \
+"
+ ✺  █ █ █▀▀ █   █ ▄▀█    helia $VERSION
+    █▀█ ██▄ █▄▄ █ █▀█▌   vault levault · 2 projets
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀" "$m"
+is "no-theme : theme intact" "dark" "$(gettheme "$H")"
+
+H="$(bhome)"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
+m="$(HELIA_VAULTS=/nonexistent-vaults-file app "$H" | jq -r '.systemMessage' | plain)"
+hasnt "aucun vault resolu : ligne vault omise" "vault " "$m"
+has "... le reste est la" "thème Helia actif" "$m"
+
+H="$(bhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-statusline"; : > "$H/.config/helia/no-theme"
+echo '{"theme":"dark"}' > "$(S "$H")"; cp "$(S "$H")" "$TMP/avant-banniere.json"
+out="$(app "$H")"
+has "no-statusline + no-theme : la banniere seule" "helia $VERSION" "$(msg "$out" | plain)"
+is "... settings.json intact" "$(cat "$TMP/avant-banniere.json")" "$(cat "$(S "$H")")"
+
+H="$(bhome)"; printf '{"theme": "dark",\n' > "$(S "$H")"
+m="$(msg "$(app "$H")" | plain)"
+has "JSON invalide : banniere quand meme" "helia $VERSION" "$m"
+hasnt "... sans etat du theme" "thème" "$m"
+
+# lib/banner absent, ou palette illisible : le lot 1 seul, message nu.
+NB="$TMP/sans-banner"; mkdir -p "$NB/hooks" "$NB/lib" "$NB/.claude-plugin" "$NB/palettes"
+cp hooks/appearance "$NB/hooks/"; cp lib/vaults "$NB/lib/"; cp .claude-plugin/plugin.json "$NB/.claude-plugin/"; cp palettes/*.json "$NB/palettes/"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+is "lib/banner absent, theme change : le message seul" "$NEXT" "$(app "$H" "$NB/hooks/appearance")"
+H="$(bhome)"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
+is "lib/banner absent, rien a dire : stdout vide" "" "$(app "$H" "$NB/hooks/appearance")"
+cp lib/banner "$NB/lib/"; echo '{pas du json' > "$NB/palettes/helia.json"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+is "palette illisible : banniere omise, message seul" "$NEXT" "$(app "$H" "$NB/hooks/appearance")"
+is "... theme quand meme pose" "$HELIA" "$(gettheme "$H")"
+
+H="$(bhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-banner"; echo '{"theme":"dark"}' > "$(S "$H")"
+is "no-banner, theme change : le message seul" "$NEXT" "$(app "$H")"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+out="$(PATH="$FAKEBIN:$PATH" HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/appearance" 2> /dev/null)"; rc=$?
+json_ok "$out" && ok "faux jq bavard, banniere active : stdout vide ou un seul objet JSON" \
+  || ko "faux jq bavard, banniere active : stdout vide ou un seul objet JSON" "JSON ou vide" "$out"
+hasnt "... aucune fuite dans le message" "FUITE" "$out"
+is "... sortie 0" "0" "$rc"
+H="$(bhome)"
+out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/run-hook.cmd" appearance 2> /dev/null)"
+json_ok "$out" && ok "via run-hook.cmd, banniere : un seul objet JSON" || ko "via run-hook.cmd, banniere : un seul objet JSON" "JSON" "$out"
+is "banniere : sous le plafond de 10 000 caracteres" "1" "$([ "${#out}" -lt 10000 ] && echo 1 || echo "${#out}")"
+
+# Un jq natif Windows (jq.exe sous Git Bash) termine chaque ligne de `jq -r` par
+# \r, que $(...) ne retire pas : un faux jq qui ecrit du CRLF reproduit le cas.
+CRLFBIN="$TMP/jq-crlf"; mkdir -p "$CRLFBIN"
+printf '#!/usr/bin/env bash\n"%s" "$@" | sed "s/\\$/\\r/"\n' "$REALJQ" > "$CRLFBIN/jq"; chmod +x "$CRLFBIN/jq"
+is "jq CRLF : temoin, la sortie finit par CR" "1" "$(PATH="$CRLFBIN:$PATH" bash -c 'jq -rn "\"x\""' | grep -c $'\r')"
+H="$(bhome)"; jq -n --arg t "$UMBRA" --arg c "$WANT" '{theme: $t, statusLine: {type: "command", command: $c}}' > "$(S "$H")"
+touch -d @0 "$(S "$H")"
+out="$(PATH="$CRLFBIN:$PATH" HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/appearance" 2> /dev/null)"; rc=$?
+is "jq CRLF : Umbra + statusLine justes, fichier non reecrit (mtime)" "0" "$(stat -c %Y "$(S "$H")")"
+is "jq CRLF : Umbra conserve" "$UMBRA" "$(gettheme "$H")"
+hasnt "jq CRLF : pas de 'prochaine session'" "prochaine session" "$out"
+has "jq CRLF : banniere affichee, theme Umbra actif" "thème Umbra actif" "$(msg "$out" | plain)"
+has "jq CRLF : version dans la banniere" "helia $VERSION" "$(msg "$out" | plain)"
+is "jq CRLF : sortie 0" "0" "$rc"
+out="$(PATH="$CRLFBIN:$PATH" banner_render color palettes/umbra.json "x")"; rc=$?
+is "jq CRLF : banniere en couleur, sortie 0" "0" "$rc"
+has "jq CRLF : banniere en accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺" "$out"
+UC="$TMP/sl-umbra-crlf"; mkdir -p "$UC/.claude"; echo '{"theme":"custom:helia:umbra"}' > "$UC/.claude/settings.json"
+out="$(PATH="$CRLFBIN:$PATH" SLH="$UC" sl "$(slrl 20 30)")"
+has "jq CRLF, statusline sous Umbra : accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺ helia" "$out"
+hasnt "jq CRLF, statusline sous Umbra : aucune couleur Helia" "$ACC" "$out"
+is "jq CRLF, statusline : reset hebdo conserve" "ctx $G4 30 %    5h ━━────────── 20 % ↺ 1h00    hebdo $G4 30 % ↺ 1j" \
+   "$(line 2 "$out" | plain)"
+
+echo
+echo "$pass passes, $fail echecs"
+# `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
+# d'un script sans `set -e` est celui de sa DERNIERE commande, donc toute
+# ligne ajoutee dessous rendrait la suite verte quoi qu'elle imprime -- et la
+# porte 14 de `scripts/doctor` deviendrait decorative sans que rien ne le dise.
+exit $(( fail != 0 ))

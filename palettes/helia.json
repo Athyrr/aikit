@@ -1,0 +1,20 @@
+{
+  "name": "Helia",
+  "description": "tournesol : coeur brun, petales dores, feuille verte",
+  "colors": {
+    "bg": "#16130F",
+    "surface": "#221C15",
+    "border": "#3A3024",
+    "text": "#EDE3D1",
+    "muted": "#9C8F7A",
+    "accent": "#F5B921",
+    "accent2": "#E8871E",
+    "success": "#7FA650",
+    "warning": "#E8871E",
+    "error": "#C8553D",
+    "diffAddedBg": "#26301A",
+    "diffRemovedBg": "#3A1E16",
+    "diffAddedWord": "#3E5222",
+    "diffRemovedWord": "#5C2A1E"
+  }
+}
