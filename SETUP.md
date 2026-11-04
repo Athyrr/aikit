@@ -10,7 +10,7 @@ other sessions until `scripts/deploy` has published it.
 - `git`
 - `node` **or** `python3` — the scripts try `node` first and fall back to
   `python3`; either one alone is enough.
-- `jq` — **required for the status line and the theme**: the startup hook edits
+- `jq` — **required for the status line, the theme and the startup banner**: the startup hook edits
   `~/.claude/settings.json` with it and leaves the file untouched when `jq` is
   missing; the renderer falls back to a bare `helia · <folder> (<branch>)` line,
   where `<folder>` is the shell's folder (the process's current directory), not
@@ -118,15 +118,23 @@ a git-hook name.
 
 ## 7. The status line
 
-By default, every machine with the plugin installed shows one line, with no manual setting:
+By default, every machine with the plugin installed shows two lines, with no manual setting:
 
 ```
-helia · <model> · <project> (<branch>) · ctx <N> %
+✺ helia  │  <model>  │  <project> ⎇ <branch>
+ctx <gauge> <N> %    5h <gauge> <N> % ↺ <reset>    hebdo <gauge> <N> % ↺ <reset>
 ```
 
 `<project>` is the registered project whose working folder contains the current
-folder (see section 3), else the folder's name. `ctx` is green below 60 %, yellow
-up to 85 %, red above, `ctx –` when Claude Code reports no value.
+folder (see section 3), else the folder's name; `⎇ <branch>` is omitted outside
+a git repository. Each gauge has 12 cells, in the palette's success colour below
+60 %, warning up to 85 %, error above; `–` replaces the number when Claude Code
+reports no value. `5h` and `hebdo` — the share of the 5-hour and weekly
+allowances already used, and the time before each resets (`42min`, `2h14`,
+`3j`) — only appear when Claude Code reports rate limits. Colours are the exact
+values of the active theme's palette (README, *Appearance*), re-read at the next
+message after a `/theme`; an unreadable palette falls back on the terminal's 16
+ANSI colours.
 
 How it gets there: a plugin cannot declare `statusLine`, so a `SessionStart` hook
 (`hooks/appearance`, matcher `startup`) writes the key into
@@ -145,6 +153,7 @@ the `statusLine` key from `~/.claude/settings.json`.
 mkdir -p ~/.config/helia
 touch ~/.config/helia/no-statusline   # the status line
 touch ~/.config/helia/no-theme        # the theme
+touch ~/.config/helia/no-banner       # the startup banner
 ```
 
 Known limits:

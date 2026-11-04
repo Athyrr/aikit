@@ -14,6 +14,13 @@ All notable changes to the Helia method (named aiKit up to 0.27.0). Versions fol
   suivante. Opt-out `~/.config/helia/no-theme`. Suite `scripts/test-appearance`,
   porte 14 de `scripts/doctor` (quatorze portes) ; les tests de la status line
   et de l'installateur quittent `scripts/test-vaults` pour elle.
+- **Status line et banniere.** `bin/helia-statusline` reecrite sur deux lignes
+  (`✺ helia │ modele │ projet ⎇ branche`, puis les jauges `ctx`, `5h` et
+  `hebdo` de 12 cellules avec le temps avant reset), aux couleurs exactes de la
+  palette du theme actif (Umbra sous `custom:helia:umbra`, Helia sinon). Au
+  demarrage, le hook affiche le logotype HELIA (`lib/banner`, degrade et ombre
+  portee), la version, l'etat du theme et le vault. Opt-out
+  `~/.config/helia/no-banner`.
 
 ## 0.28.0
 - **aiKit devient Helia.** Plugin `helia`, marketplace `athyrr-marketplace`

@@ -6,7 +6,8 @@ ever filling up.
 
 **Helia is not a harness.** The harness is Claude Code — it owns the tools, the
 context window, the model calls and the permission system. Helia ships prompts,
-agent definitions and one hook that the harness consumes.
+agent definitions and two hooks (`session-start`, `appearance`) that the harness
+consumes.
 
 Derived from [superpowers](https://github.com/obra/superpowers) (MIT, Jesse
 Vincent) and detached from it: there is no merge path back, by design. Compare
@@ -279,10 +280,24 @@ per session, so the hook says `thème Helia à la prochaine session` and the nex
 session opens in Helia. A `theme` set in a project's or local settings wins
 over the user's.
 
+The status line (`bin/helia-statusline`) draws two lines in the exact colours of
+the active theme's palette — Umbra under `custom:helia:umbra`, Helia under
+anything else:
+
+```
+✺ helia  │  <model>  │  <project> ⎇ <branch>
+ctx ━━━━──────── 30 %    5h ━━━━━━━───── 60 % ↺ 2h14    hebdo ━━━━──────── 32 % ↺ 3j
+```
+
+After a `/theme`, it changes colour at the next message. At startup the hook
+also shows the HELIA logotype, with the plugin version, the theme's state and
+the first declared vault.
+
 Opt-outs, one file each; the hook then leaves that part alone:
 
 - `~/.config/helia/no-statusline` — the status line
 - `~/.config/helia/no-theme` — the theme
+- `~/.config/helia/no-banner` — the startup banner
 
 Uninstalling the plugin leaves `theme` pointing at a theme that no longer
 exists, and `statusLine` at a script that no longer exists: pick another theme
