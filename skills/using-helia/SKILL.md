@@ -67,11 +67,39 @@ a project's own MCP servers, `helia:receiving-code-review` when incorporating
 feedback from outside the method's own review loop. `helia:writing-notes` only when the human partner explicitly asks to
 set an idea aside, `helia:capturing-reference` only when they explicitly ask to keep a document as a reference.
 
-**Heuristics** — two more vault files, both capped at 50 lines, read in
-cascade (`_global/` then `<project>/`) while writing the plan, written only
-by the orchestrator at phase 6 and only when a cycle hit a real, unexpected
-trap: `vault/_global/heuristics.md` (this machine's environment/OS/shell),
-`vault/<project>/heuristics.md` (this project's empirical traps).
+**Heuristics** — two vault files, both capped at 50 lines, read in cascade
+(`_global/` then `<project>/`) while writing the plan:
+`vault/_global/heuristics.md` (technical traps that do not depend on the
+project: machine, OS, shell, or a cross-project pattern) and
+`vault/<project>/heuristics.md` (this project's empirical traps). A **trap**
+is written only by the orchestrator at phase 6, and only when a cycle hit a
+real, unexpected one.
+
+## Where an instruction lives
+
+An instruction your human partner gives is written to the vault the moment it
+is given — at any phase, not only phase 6 — never only to the harness memory:
+
+| The instruction concerns | It goes to |
+|---|---|
+| one project | `<project>/heuristics.md` |
+| every project | `_global/consignes.md` |
+| the method itself | a note |
+| a personal taste of your human partner | the harness memory |
+
+The harness memory keeps only personal tastes and pointers to the vault. With
+no vault reachable it is a buffer that names the destination: move the entry
+as soon as the vault is back.
+
+**Precedence: the most specific wins** — the repository's `CLAUDE.md` >
+`<project>/heuristics.md` > `_global/consignes.md`.
+
+**The two `_global/` files split by origin.** `_global/heuristics.md` holds
+technical traps the method learned; `_global/consignes.md` holds instructions
+your human partner gave for every project, injected at every session start
+(capped at 4,000 bytes per vault). An instruction Helia has absorbed, or that
+became specific to one project, leaves `consignes.md`; the review happens at
+the Memory step of phase 6 (`helia:verifying-completion`).
 
 ## What loads where
 

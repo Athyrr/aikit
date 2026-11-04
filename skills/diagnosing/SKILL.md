@@ -214,6 +214,11 @@ You MUST complete each phase before proceeding to the next.
    - Ask for help
    - Research more
 
+**Ask for an intention, measure a fact.** Before asking your human partner
+whether something is true, measure it: announce the measure in two sentences,
+run it, come back with a verdict. Ask only what depends on their intention.
+Measuring is never trying it in production.
+
 ### Phase 4: Implementation
 
 **Fix the root cause, not the symptom:**
@@ -319,6 +324,10 @@ Once the fix is verified (Phase 4 done). A fix made outside a feature cycle neve
 Was the root cause a trap nothing already written down would have told you, and did it cost real time to find? If yes, append ONE bullet `- <Condition> -> <Action or thing to avoid>` to `vault/<project>/heuristics.md`. If the cause does not depend on the project (machine, OS, shell, or a pattern like one connection per request overloading a shared target), use `vault/_global/heuristics.md` instead. If no, write nothing.
 
 Same rules as `helia:verifying-completion` "Writing to `heuristics.md`": 50-line cap (replace the oldest rule rather than exceed), append below the header, never recreate the file.
+
+This is for **traps**. An instruction your human partner gives is not a trap:
+it is written the moment it is given, at any phase — see `helia:using-helia`,
+"Where an instruction lives".
 
 ## When Process Reveals "No Root Cause"
 

@@ -109,6 +109,24 @@ Never before the human verification: a need under `_archive/` reads as
 finished, and `helia:understanding-need` resumes one only on the human
 partner's word.
 
+## Memory — Heavy-Path, before the heuristics
+
+Before step 2 of the archiving above, check the harness memory: an
+instruction left there is invisible to agents and to every other machine.
+
+1. List the memory files under
+   `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/*/memory/`. Keep those modified
+   since the `opened:` date of `plan.md` (a need without `opened:`: those
+   that name the project or the method), and those that name the project.
+   Past a few commands, delegate the listing to `helia:explorer`.
+2. Show **one table** — memory, proposed verdict (`vault`, `delete`, `keep`),
+   destination — and get **one agreement** from your human partner for the
+   batch. Nothing is deleted without it.
+3. Re-read `_global/consignes.md`: an instruction Helia has absorbed, or that
+   became specific to one project, leaves it.
+
+The memory keeps personal tastes and pointers to the vault, nothing else.
+
 ## Writing to `heuristics.md` — orchestrator only, at close, one bullet
 
 `vault/<project>/heuristics.md` is a living, append-only record of empirical
@@ -119,6 +137,9 @@ It exists from registration, header only (`helia:registering-a-project`): append
 - **Only the orchestrator writes to it, and only here, at phase 6.** A
   subagent never writes to it — heuristics earn their place by surviving to
   the end of a cycle, not by seeming true mid-task.
+- **These rules are for traps.** An instruction your human partner gives is
+  written the moment it is given, at any phase (`helia:using-helia`,
+  "Where an instruction lives").
 - **Write one bullet, and only if this cycle hit an unexpected trap** — a
   fact about this project nothing already written down would have told you,
   that cost real time to discover. A clean run that hit no surprises adds
@@ -134,9 +155,10 @@ Format, one line:
 If the file is at or near 50 lines, the new bullet earns its place only by
 being more load-bearing than the oldest one — replace, don't just append.
 
-A rule about this **machine** (OS, shell, environment) rather than this
-project belongs in `vault/_global/heuristics.md` instead, under the same two
-rules.
+A trap that does not depend on the project (machine, OS, shell, or a
+cross-project pattern) belongs in `vault/_global/heuristics.md` instead, under
+the same two rules. An instruction your human partner gave for every project
+belongs in `vault/_global/consignes.md`, never there.
 
 ## Candidates — written as notes, they survive the need
 

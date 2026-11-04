@@ -37,6 +37,18 @@ branch, the conventions to load, the domain agents, the completion criterion,
 and the traps. Working on a project whose registry file you have not read is a
 process error, not a shortcut.
 
+**A memory, a registry file and an observation that disagree: say so at
+once** — at any point of the need, not only here. The observation beats the
+registry file; the registry file beats the memory. Propose the correction in
+the same message; the vault changes only with your human partner's agreement.
+
+**An intention is asked; a fact is measured.** What your human partner wants
+is theirs to decide. Whether something is true — a file exists, a command
+succeeds, a value is set — is yours to check: announce the measure in two
+sentences, run it, come back with a verdict. A short measure uses your own
+tools; a longer one goes to `helia:probe` or `helia:explorer`. Measuring is
+never trying it in production.
+
 **A registry file is how an expert is declared, not the only way one exists.**
 Phase 3 is skipped only when no expert is *available* — never merely because no
 file names one. When the need falls in a domain the workspace has a standing
@@ -152,6 +164,7 @@ type: <feature|diagnostic|etude|refonte>
 phase: understand
 status: draft
 cycle: 1
+opened: <today>
 updated: <today>
 ---
 
@@ -160,6 +173,9 @@ updated: <today>
 ## Re-enter at
 Phase 2 — nothing specified yet.
 ```
+
+`opened:` is the day the need was opened. It is never rewritten: phase 6 reads
+it to find the memories written during the need.
 
 The top-level `## Re-enter at` heading is rewritten in place on every cycle
 transition — it always reflects the *current* re-entry point. The `## Cycle N`
