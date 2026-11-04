@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# SessionStart hook (matcher: startup). The plugin's ONLY writer of
+# ~/.claude/settings.json: it points `statusLine` at bin/helia-statusline and
+# sets `theme` to Helia, in one read and at most one atomic write. Replaces
+# hooks/statusline-install.
+#
+# statusLine -- a plugin cannot declare it, and ${CLAUDE_PLUGIN_ROOT} is not
+# substituted inside it: the hook writes a path already resolved, and rewrites
+# it at every startup (the plugin directory changes with each version). A
+# statusLine without the marker HELIA_STATUSLINE=1 (or the former
+# AIKIT_STATUSLINE=1) is the user's and is never touched.
+#
+# theme -- custom:helia:helia and custom:helia:umbra are kept; anything else,
+# or nothing, becomes custom:helia:helia. Claude Code reads the theme once at
+# startup: the change shows at the NEXT session, and the message says so.
+#
+# Opt-outs, one file each, existence is enough, each cuts only its own part:
+# ~/.config/helia/no-statusline (or the former ~/.config/aikit/no-statusline),
+# ~/.config/helia/no-theme. All tested before jq.
+#
+# No lock: the hooks of one event run in parallel, and being the only writer is
+# what makes one unnecessary (flock does not exist under Git Bash for Windows).
+#
+# ALWAYS exits 0. Stdout carries nothing, or ONE JSON object
+# {"systemMessage": "..."}: on SessionStart any other stdout text lands in the
+# model's context. Fd 1 is saved on fd 3 and silenced for the whole run; only
+# the final object is written to fd 3, and it is built without jq, so a chatty
+# jq cannot leak into it. Diagnostics go to stderr only.
+set -uo pipefail
+exec 3>&1 > /dev/null
+
+note() { printf 'helia appearance: %s\n' "$*" >&2; }
+tmp=""
+trap '[ -z "$tmp" ] || rm -f "$tmp" 2> /dev/null' EXIT
+
+json_str() {  # json_str <text> -> the text escaped for a JSON string
+  local s=$1
+  s=${s//\\/\\\\}; s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}; s=${s//$'\r'/\\r}; s=${s//$'\t'/\\t}; s=${s//$'\033'/\\u001b}
+  printf '%s' "$s"
+}
+
+home="${HOME:-}"
+[ -n "$home" ] || exit 0
+want_sl=1; want_theme=1
+[ -e "$home/.config/helia/no-statusline" ] && want_sl=0
+# Former name, still honoured until every machine is migrated.
+[ -e "$home/.config/aikit/no-statusline" ] && want_sl=0
+[ -e "$home/.config/helia/no-theme" ] && want_theme=0
+[ "$want_sl$want_theme" = 00 ] && exit 0
+
+command -v jq > /dev/null 2>&1 || { note "jq not found, settings.json left untouched"; exit 0; }
+root="${CLAUDE_PLUGIN_ROOT:-}"
+[ -n "$root" ] || { note "CLAUDE_PLUGIN_ROOT is empty, statusLine left untouched"; want_sl=0; }
+command_value="HELIA_STATUSLINE=1 bash \"${root}/bin/helia-statusline\""
+
+# --- one read -------------------------------------------------------------------
+# usable=0: the file cannot be read as a JSON object, and is then never written.
+usable=1; cur_theme=""; sl_verdict=set
+target="$home/.claude/settings.json"
+if [ -L "$target" ]; then
+  target="$(readlink -f "$target" 2> /dev/null)" || target=""
+  [ -n "$target" ] || usable=0
+fi
+if [ "$usable" = 1 ] && [ -e "$target" ]; then
+  if [ -f "$target" ] && [ -r "$target" ]; then
+    # `set`: no statusLine, or one carrying our marker, current or former -- a
+    # line written under the former name must keep being rewritten. `same`:
+    # already exactly right, do not wake the settings watcher. `keep`: the user's.
+    read_out="$(jq -r --arg c "$command_value" '
+      if type != "object" then "invalid"
+      else
+        [ (if .statusLine == null then "set"
+           elif (.statusLine | type) == "object"
+                and ((.statusLine.command // "") | tostring
+                     | (contains("HELIA_STATUSLINE=1") or contains("AIKIT_STATUSLINE=1")))
+           then (if .statusLine == {type: "command", command: $c} then "same" else "set" end)
+           else "keep" end),
+          ((.theme // "") | tostring)
+        ] | join("\u001f")
+      end' "$target" 2> /dev/null)" || read_out="invalid"
+    read_out="${read_out##*$'\n'}"   # the last line: jq's answer, whatever else ran
+    if [ -z "$read_out" ] || [ "$read_out" = invalid ]; then
+      note "$target is not a JSON object, left untouched"; usable=0
+    else
+      IFS=$'\037' read -r sl_verdict cur_theme <<< "$read_out"
+    fi
+  else
+    note "$target is not a readable file, left untouched"; usable=0
+  fi
+fi
+
+# --- what changes ---------------------------------------------------------------
+set_sl=0; set_theme=0; theme_state=""
+if [ "$usable" = 1 ]; then
+  [ "$want_sl" = 1 ] && [ "$sl_verdict" = set ] && set_sl=1
+  if [ "$want_theme" = 1 ]; then
+    case "$cur_theme" in
+      custom:helia:helia|custom:helia:umbra) theme_state=active ;;
+      *) set_theme=1; theme_state=next ;;
+    esac
+  fi
+fi
+
+# --- at most one write, atomic --------------------------------------------------
+if [ "$set_sl$set_theme" != 00 ]; then
+  filter='.'
+  [ "$set_sl" = 1 ] && filter+=' | .statusLine = {type: "command", command: $c}'
+  [ "$set_theme" = 1 ] && filter+=' | .theme = "custom:helia:helia"'
+  written=0
+  # Temporary file NEXT TO the resolved target, so the rename stays on one
+  # volume. cp -p first: the redirection below truncates and so keeps the
+  # permissions.
+  if [ -e "$target" ] || mkdir -p "${target%/*}" 2> /dev/null; then
+    tmp="$target.helia-tmp.$$"
+    if [ -e "$target" ]; then
+      cp -p "$target" "$tmp" 2> /dev/null \
+        && jq --arg c "$command_value" "$filter" "$target" > "$tmp" 2> /dev/null && written=1
+    else
+      jq -n --arg c "$command_value" "{} | $filter" > "$tmp" 2> /dev/null && written=1
+    fi
+    if [ "$written" = 1 ]; then
+      if ! jq -e . "$tmp" > /dev/null 2>&1; then note "refused to write an invalid result"; written=0
+      elif ! mv -f "$tmp" "$target" 2> /dev/null; then note "could not replace $target"; written=0
+      else tmp=""; fi
+    else
+      note "jq failed, $target left untouched"
+    fi
+  fi
+  # Nothing written: the theme did not change, so announce nothing about it.
+  [ "$written" = 1 ] || theme_state=""
+fi
+
+# --- the message ----------------------------------------------------------------
+msg=""
+[ "$theme_state" = next ] && msg="thème Helia à la prochaine session"
+[ -z "$msg" ] || printf '{"systemMessage":"%s"}\n' "$(json_str "$msg")" >&3
+exit 0
