@@ -1047,6 +1047,28 @@ grep -vE '^[[:space:]]*#' hooks/consignes | grep -nE 'vaults_migrate_legacy|vaul
   || ok "hooks/consignes ne lit que des fichiers"
 
 echo
+echo "session-start : regle cardinale 6 et avertissement de taille des consignes"
+AV="$TMP/avert"
+avault() {  # avault <nom> <octets> : vault a une fiche, consignes de cette taille apres nettoyage
+  mkdir -p "$AV/$1/projects" "$AV/$1/_global"
+  printf -- '---\nname: fiche-%s\nkind: conception\nsummary: fiche de test\n---\n' "$1" > "$AV/$1/projects/fiche-$1.md"
+  { printf -- '---\ntype: consignes\n---\n'; cgen "$2" "$1"; } > "$AV/$1/_global/consignes.md"
+}
+avault limite 4000; avault trop 4001
+mkdir -p "$AV/nu/_global"; cgen 4001 nu > "$AV/nu/_global/consignes.md"
+printf 'vault limite %s\nvault trop %s\nvault nu %s\n' "$AV/limite" "$AV/trop" "$AV/nu" > "$TMP/c-avert"
+a_out=$(HELIA_VAULTS="$TMP/c-avert" bash hooks/session-start)
+printf '%s' "$a_out" | json_valid && ok "avertissement : JSON valide" || ko "avertissement : JSON valide" "JSON" "invalide"
+a_ctx=$(printf '%s' "$a_out" | json_ctx)
+has "4001 octets : avertissement" '`_global/consignes.md` du vault `trop` fait 4001 octets (plafond 4 000) : à resserrer' "$a_ctx"
+hasnt "4000 octets : aucun avertissement" 'du vault `limite` fait' "$a_ctx"
+has "vault sans fiche : averti aussi" 'du vault `nu` fait 4001 octets' "$a_ctx"
+hasnt "session-start n'injecte pas les consignes" "- consigne trop" "$a_ctx"
+has "regle cardinale 6 presente" "6. A lasting instruction from your human partner is written to the vault the moment it is given" "$a_ctx"
+r6=$(printf '%s\n' "$a_ctx" | grep -F '6. A lasting instruction' | head -1)
+r6_len=$(consignes_bytes "$r6")
+[ "$r6_len" -le 450 ] && ok "regle 6 : <= 450 octets ($r6_len)" || ko "regle 6 : <= 450 octets" "<= 450" "$r6_len"
+
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
 # d'un script sans `set -e` est celui de sa DERNIERE commande, donc toute

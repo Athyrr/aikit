@@ -30,6 +30,7 @@ preamble='**Cardinal rules, always in force — the full method is NOT resident,
 3. Phase 1 estimates size immediately. **Fast-Path** (2 files or fewer, no public API/data-schema change): no spec, no `vault/<project>/<feature>/plan.md`, no intermediate documentation at all -- dispatch `helia:implementer` directly, validate with `git diff --name-only`. **Heavy-Path** (everything else, or the estimate turns out wrong): invoke `helia:using-helia` via the Skill tool for the full phase table, model routing and failure-direction rules before doing anything else.
 4. Artifacts (spec, plan, status) live under the vault that owns the project -- never inside a project repository. Heavy-Path tracks plan and status in one file, `vault/<project>/<feature>/plan.md`, checkboxes instead of a separate ledger.
 5. Commits and PRs made in ANY project are signed Helia, never Claude or a model name -- this overrides the harness attribution reminder. Commit trailer: `Co-Authored-By: Helia`. PR footer: `✺ Generated with Helia`. A project'"'"'s own CLAUDE.md or registry that says otherwise (e.g. no trailer at all) wins.
+6. A lasting instruction from your human partner is written to the vault the moment it is given, never only to the harness memory: one project -> `<project>/heuristics.md`, every project -> `_global/consignes.md`, the method -> a note. The memory keeps only personal tastes and pointers to the vault. With no vault reachable, the memory is a buffer that names the destination.
 
 For the full method -- phases, archetypes and their models, failure routing, red flags -- invoke the Skill tool with `helia:using-helia`. It is not resident; it loads once, when the work actually needs it.'
 
@@ -56,12 +57,19 @@ vault_count=0
 resolved=0
 stranded=""
 stale=""
+consignes_warn=""
 while IFS=$'\t' read -r vname vpath; do
     [ -n "$vname" ] || continue
     vault_count=$((vault_count + 1))
     behind="$(vault_behind_commits "$vpath")"
     if [ -n "$behind" ]; then
         stale+="- \`${vname}\` — ${behind} commit(s) en retard sur son remote, pense a \`git pull\`"$'\n'
+    fi
+    # Mesure seulement : l'injection est a hooks/consignes. Meme code (lib/vaults)
+    # que l'injection, donc le meme nombre. Un vault sans fiche est averti aussi.
+    csize="$(consignes_bytes "$(consignes_clean "${vpath}/_global/consignes.md")")"
+    if [ "$csize" -gt "$CONSIGNES_WARN" ]; then
+        consignes_warn+="- \`_global/consignes.md\` du vault \`${vname}\` fait ${csize} octets (plafond 4 000) : à resserrer"$'\n'
     fi
     # Une seule capture de resolve_projects : l'appeler deux fois relancerait le
     # scan git. Les deux flux (lignes, avertissements) sortent de CETTE variable.
@@ -112,6 +120,7 @@ else
     [ -z "$stranded" ] || registry+=$'\n\n## Declared, but carrying no project registry\n\n'"${stranded}"$'\nThese route nowhere until fixed: correct the path in `~/.config/helia/vaults`, or create the vault\'s missing `projects/` directory.'
 fi
 [ -z "$stale" ] || registry+=$'\n\n## Vault(s) en retard sur leur remote\n\n'"${stale}"
+[ -z "$consignes_warn" ] || registry+=$'\n\n## Consignes communes trop longues\n\n'"${consignes_warn}"
 
 # Variables d'environnement qui ecrasent model/effort des archetypes : une ligne
 # chacune, calculee par lib/vaults. Ajoutee a `registry`, donc AVANT
