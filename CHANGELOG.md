@@ -3,7 +3,7 @@
 All notable changes to the Helia method (named aiKit up to 0.27.0). Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
-## Unreleased
+## 0.29.0
 - **Themes Helia et Umbra.** Deux themes sombres dans `themes/`, generes par
   `scripts/build-themes` depuis `palettes/helia.json` et `palettes/umbra.json`
   (roles semantiques, source de verite des couleurs ; `--check` verifie la
