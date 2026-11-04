@@ -403,7 +403,8 @@ consignes_bytes() {  # consignes_bytes <texte> -> nombre d'octets
 # garde tel quel : on n'avale pas un fichier entier sur une faute de frappe.
 consignes_clean() {
   local f="${1:-}" c
-  [ -n "$f" ] && [ -f "$f" ] && [ -r "$f" ] || return 0
+  # Jamais de lien symbolique (fichier ou dossier _global) : on ne lit rien hors du vault.
+  [ -n "$f" ] && [ -f "$f" ] && [ -r "$f" ] && [ ! -L "$f" ] && [ ! -L "${f%/*}" ] || return 0
   c=$(LC_ALL=C awk -v bom=$'\357\273\277' '
     { gsub(/\r/, "") }
     NR == 1 && index($0, bom) == 1 { $0 = substr($0, 4) }
@@ -435,7 +436,7 @@ _consignes_title() {  # _consignes_title <nom-du-vault>
 # et les vaults non servis. Rien quand aucun vault n'a de consignes.
 consignes_text() {
   local names=() bodies=() vname vpath c i full="" out="" head room kept used
-  local cut_part="" unserved="" stop=0 limit
+  local cut_part="" unserved="" stop=0 limit unames=() line shown n k
   while IFS=$'\t' read -r vname vpath; do
     [ -n "$vname" ] || continue
     c="$(consignes_clean "${vpath}/_global/consignes.md")"
@@ -451,7 +452,7 @@ consignes_text() {
   fi
   limit=$((CONSIGNES_BUDGET - CONSIGNES_RESERVE))
   for i in "${!names[@]}"; do
-    if [ "$stop" = 1 ]; then unserved+="${unserved:+, }\`${names[$i]}\`"; continue; fi
+    if [ "$stop" = 1 ]; then unames+=("${names[$i]}"); continue; fi
     head="$(_consignes_title "${names[$i]}")"$'\n\n'
     used=$(consignes_bytes "$out")
     if [ $((used + $(consignes_bytes "$head${bodies[$i]}") + 2)) -le "$limit" ]; then
@@ -467,10 +468,24 @@ consignes_text() {
       out+="$head$kept"$'\n\n'
       cut_part="vault \`${names[$i]}\` coupé à $(consignes_bytes "$kept") octets ; "
     else
-      unserved+="${unserved:+, }\`${names[$i]}\`"
+      unames+=("${names[$i]}")
     fi
   done
-  printf '%sconsignes tronquées : %snon servis : %s\n' "$out" "$cut_part" "${unserved:-aucun}"
+  # La ligne finale tient dans CONSIGNES_RESERVE : au-dela, on liste ce qui
+  # tient et on termine par « … et N autres ».
+  n=${#unames[@]}
+  for ((k = n; k >= 0; k--)); do
+    shown=""
+    for ((i = 0; i < k; i++)); do shown+="${shown:+, }\`${unames[$i]}\`"; done
+    if [ "$k" -eq "$n" ]; then
+      unserved="${shown:-aucun}"
+    else
+      unserved="${shown:+$shown }… et $((n - k)) autres"
+    fi
+    line="consignes tronquées : ${cut_part}non servis : ${unserved}"$'\n'
+    [ "$(consignes_bytes "$line")" -le "$CONSIGNES_RESERVE" ] && break
+  done
+  printf '%s%s' "$out" "$line"
 }
 # escape_for_json <chaine> : partagee par hooks/session-start et hooks/consignes.
 escape_for_json() {

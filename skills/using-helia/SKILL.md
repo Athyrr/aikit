@@ -97,7 +97,7 @@ as soon as the vault is back.
 **The two `_global/` files split by origin.** `_global/heuristics.md` holds
 technical traps the method learned; `_global/consignes.md` holds instructions
 your human partner gave for every project, injected at every session start
-(capped at 4,000 bytes per vault). An instruction Helia has absorbed, or that
+(kept under 4,000 bytes per vault — warned beyond). An instruction Helia has absorbed, or that
 became specific to one project, leaves `consignes.md`; the review happens at
 the Memory step of phase 6 (`helia:verifying-completion`).
 

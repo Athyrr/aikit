@@ -1042,6 +1042,33 @@ printf '%s' "$c_out" | json_valid && ok "100 000 octets : JSON valide" || ko "10
 c_len=$(consignes_bytes "$(printf '%s' "$c_out" | json_ctx)")
 [ "$c_len" -lt 10000 ] && ok "100 000 octets : < 10000 ($c_len)" || ko "100 000 octets : < 10000" "< 10000" "$c_len"
 
+# Liens symboliques : refuses (fichier ou dossier _global), rien n'est lu hors du vault.
+mkdir -p "$TMP/ext"; cgen 4500 SECRETMARK > "$TMP/ext/dehors.md"
+mkdir -p "$CV/lienf/_global" "$CV/liend" "$TMP/ext/glob"
+ln -s "$TMP/ext/dehors.md" "$CV/lienf/_global/consignes.md"
+cp "$TMP/ext/dehors.md" "$TMP/ext/glob/consignes.md"; ln -s "$TMP/ext/glob" "$CV/liend/_global"
+for lv in lienf liend; do
+  cconf "$TMP/c-$lv" "$lv"
+  is "lien symbolique ($lv) : SessionStart {}" "{}" "$(chook "$TMP/c-$lv" SessionStart)"
+  is "lien symbolique ($lv) : SubagentStart {}" "{}" "$(chook "$TMP/c-$lv" SubagentStart)"
+  mkdir -p "$CV/$lv/projects"
+  printf -- '---\nname: fiche-%s\nkind: conception\nsummary: fiche de test\n---\n' "$lv" > "$CV/$lv/projects/fiche-$lv.md"
+  l_ctx=$(HELIA_VAULTS="$TMP/c-$lv" bash hooks/session-start | json_ctx)
+  hasnt "lien symbolique ($lv) : session-start sans avertissement" "consignes.md\` du vault \`$lv\`" "$l_ctx"
+  hasnt "lien symbolique ($lv) : marqueur absent" "SECRETMARK" "$l_ctx"
+done
+
+# Troncature bornee a la reserve : beaucoup de petits vaults non servis.
+cvault grosM; cgen 8400 grosM > "$CV/grosM/_global/consignes.md"
+cn=(grosM)
+for i in $(seq 1 60); do v="pm$i"; cvault "$v"; printf 'règle %s\n' "$v" > "$CV/$v/_global/consignes.md"; cn+=("$v"); done
+cconf "$TMP/c-mille" "${cn[@]}"
+c_ctx=$(chook "$TMP/c-mille" | json_ctx)
+c_len=$(consignes_bytes "$c_ctx")
+[ "$c_len" -le 9000 ] && ok "60 vaults non servis : <= 9000 octets ($c_len)" || ko "60 vaults non servis : <= 9000 octets" "<= 9000" "$c_len"
+c_last=$(printf '%s' "$c_ctx" | tail -1)
+case "$c_last" in *" et "[0-9]*" autres") ok "60 vaults non servis : finit par « et N autres »" ;; *) ko "60 vaults non servis : finit par « et N autres »" "... et N autres" "$c_last" ;; esac
+
 grep -vE '^[[:space:]]*#' hooks/consignes | grep -nE 'vaults_migrate_legacy|vaults_scan|resolve_projects|vault_behind_commits|git ' \
   && ko "hooks/consignes ne lit que des fichiers" "aucun appel" "trouve" \
   || ok "hooks/consignes ne lit que des fichiers"

@@ -5,8 +5,8 @@ behaves, including this one.
 
 **Helia is a plugin, not a harness.** The harness is Claude Code — it owns the
 tools, the context window, the model calls, the permission system and the
-hooks. Helia ships prompts, agent definitions and one hook that the harness
-consumes. Anything written here that assumes Helia *is* the runtime is wrong.
+hooks. Helia ships prompts, agent definitions and the hooks the harness
+consumes (`session-start`, `appearance`, `consignes`). Anything written here that assumes Helia *is* the runtime is wrong.
 
 ## Règle d'aiguillage d'exécution obligatoire
 

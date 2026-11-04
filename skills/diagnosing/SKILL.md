@@ -216,8 +216,9 @@ You MUST complete each phase before proceeding to the next.
 
 **Ask for an intention, measure a fact.** Before asking your human partner
 whether something is true, measure it: announce the measure in two sentences,
-run it, come back with a verdict. Ask only what depends on their intention.
-Measuring is never trying it in production.
+run it, come back with a verdict. A short measure uses your own tools; a
+longer one goes to `helia:probe` or `helia:explorer`. Ask only what depends on
+their intention. Measuring is never trying it in production.
 
 ### Phase 4: Implementation
 

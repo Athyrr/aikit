@@ -33,7 +33,7 @@ compaction**, two things:
 
 A second hook, in a block of its own, injects each declared vault's
 `_global/consignes.md` — the instructions your human partner gave for every
-project — at the same moments and on `resume`, capped at 9,000 bytes for all
+project — at the same moments and on `resume` and `fork`, capped at 9,000 bytes for all
 vaults together; a `SubagentStart` hook gives the same block to every
 `helia:*` agent.
 

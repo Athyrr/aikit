@@ -164,7 +164,9 @@ awk 'NR>=A && NR<=B' FILE | wc -c                                  # a section
 Every registered project owns `<vault>/<name>/`, with the same fixed shape (plus `_reference/` on request),
 present even when empty:
 
-- `heuristics.md` — header only at first; written at phase 6, never here.
+- `heuristics.md` — header only at first; written at phase 6, never here — except a standing instruction from the human
+  partner about the project, written there at any time (`helia:using-helia`,
+  "Where an instruction lives").
 - `_notes/` — one note per file (`type: note`).
 - `_archive/` — finished or abandoned needs, `<need>/` each.
 - `_reference/` — background documents and an `INDEX.md`; created on request by `helia:capturing-reference`, **not part of the skeleton**.
@@ -183,7 +185,7 @@ An ecosystem owns the same directory, from the same skeleton (`p=<ecosystem name
 
 ```
 <vault>/<ecosystem>/
-├─ heuristics.md     rules common to the members, written at phase 6
+├─ heuristics.md     rules common to the members, written at phase 6 (a standing instruction from the human partner: at any time)
 ├─ _notes/  _archive/
 └─ _reference/       INDEX.md and the documents its members share, one per file
 ```

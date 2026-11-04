@@ -46,7 +46,7 @@ Every `helia:*` agent receives `_global/consignes.md` at start, injected by a
 At any moment it should hold roughly:
 
 ```
-resident (preamble + registry)   ~4k
+resident (preamble + registry + consignes)   ~4k plus the consignes
 `vault/<project>/<feature>/plan.md` (plan + status)  ~3-5k
 ────────────────────────────────────
                                  ~10k

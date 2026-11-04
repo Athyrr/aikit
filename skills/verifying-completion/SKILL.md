@@ -137,14 +137,14 @@ It exists from registration, header only (`helia:registering-a-project`): append
 - **Only the orchestrator writes to it, and only here, at phase 6.** A
   subagent never writes to it — heuristics earn their place by surviving to
   the end of a cycle, not by seeming true mid-task.
-- **These rules are for traps.** An instruction your human partner gives is
-  written the moment it is given, at any phase (`helia:using-helia`,
-  "Where an instruction lives").
 - **Write one bullet, and only if this cycle hit an unexpected trap** — a
   fact about this project nothing already written down would have told you,
   that cost real time to discover. A clean run that hit no surprises adds
   nothing; padding the file with things everyone already knew is how a
   50-line cap stops meaning anything.
+- **These rules are for traps.** An instruction your human partner gives is
+  written the moment it is given, at any phase (`helia:using-helia`,
+  "Where an instruction lives").
 
 Format, one line:
 
