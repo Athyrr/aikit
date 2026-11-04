@@ -121,30 +121,6 @@ overrides="$(dispatch_override_warnings)"
 [ -z "$overrides" ] || registry+=$'\n\n## Agent settings overridden by this environment\n\n'"${overrides}"$'\n'
 # ---------------------------------------------------------------------------
 
-escape_for_json() {
-    local s="$1"
-    # Les caracteres de controle NUS d'abord, avant tout echappement : un
-    # `summary:` de fiche est ecrit a la main, et un seul octet de ce genre
-    # rend la chaine JSON invalide -- donc porte 4 rouge et preambule perdu a
-    # CHAQUE demarrage de session. Tabulation (011), LF (012) et CR (015) sont
-    # exclus du filtre expres : ils sont echappes correctement juste en dessous,
-    # et les supprimer casserait la mise en forme du preambule injecte.
-    #
-    # La sentinelle `x` n'est pas decorative : `$( )` depouille les sauts de
-    # ligne TERMINAUX, et ce sous-shell est le seul de la fonction qui voie
-    # encore de vrais `\n` -- apres les substitutions ci-dessous il n'en reste
-    # aucun, tous devenus deux caracteres, donc le `$( )` de l'appelant ne peut
-    # plus rien manger. Sans elle, un preambule finissant par une ligne vide la
-    # perdrait en silence.
-    s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037'; printf x); s=${s%x}
-    s="${s//\\/\\\\}"
-    s="${s//\"/\\\"}"
-    s="${s//$'\n'/\\n}"
-    s="${s//$'\r'/\\r}"
-    s="${s//$'\t'/\\t}"
-    printf '%s' "$s"
-}
-
 body=$(escape_for_json "${preamble}${registry}")
 
 session_context="<EXTREMELY_IMPORTANT>\nHelia is active. This is a minimal stub, not the full method -- invoke 'helia:using-helia' via the 'Skill' tool for that, and every other skill the same way.\n\n${body}\n</EXTREMELY_IMPORTANT>"

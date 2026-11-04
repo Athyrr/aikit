@@ -382,3 +382,117 @@ dispatch_override_warnings() {  # dispatch_override_warnings -> 0, 1 ou 2 lignes
   fi
   return 0
 }
+
+# --- consignes communes (hooks/consignes, hooks/session-start) ---------------
+# <vault>/_global/consignes.md : consignes de l'humain valables pour tous les
+# projets. UN seul code nettoie et compte : l'avertissement de session-start et
+# l'injection de hooks/consignes doivent donner le meme nombre. Tout se compte
+# en OCTETS (LC_ALL=C) : borne sure (octets >= caracteres), identique sur toute
+# machine. Le harnais plafonne CHAQUE additionalContext a 10 000 caracteres.
+CONSIGNES_BUDGET=9000    # octets, tous vaults, titres et ligne de troncature compris
+CONSIGNES_WARN=4000      # octets ; au-dela, avertissement dans le tableau de session
+CONSIGNES_RESERVE=512    # octets gardes pour la ligne de troncature
+
+consignes_bytes() {  # consignes_bytes <texte> -> nombre d'octets
+  printf '%s' "${1:-}" | LC_ALL=C wc -c | tr -d ' \r'
+}
+
+# consignes_clean <fichier> -> contenu sans \r, sans BOM initial, sans
+# frontmatter initial FERME ; rien si absent, illisible, ou blanc apres
+# nettoyage (un fichier vide vaut absent). Un frontmatter jamais ferme est
+# garde tel quel : on n'avale pas un fichier entier sur une faute de frappe.
+consignes_clean() {
+  local f="${1:-}" c
+  [ -n "$f" ] && [ -f "$f" ] && [ -r "$f" ] || return 0
+  c=$(LC_ALL=C awk -v bom=$'\357\273\277' '
+    { gsub(/\r/, "") }
+    NR == 1 && index($0, bom) == 1 { $0 = substr($0, 4) }
+    NR == 1 && $0 == "---" { infm = 1; next }
+    infm { if ($0 == "---") infm = 0; else held[++h] = $0; next }
+    { print }
+    END { if (infm) { print "---"; for (i = 1; i <= h; i++) print held[i] } }
+  ' "$f" 2> /dev/null) || c=""
+  case "$c" in *[![:space:]]*) printf '%s' "$c" ;; esac
+  return 0
+}
+
+# _consignes_cut <octets-max> : stdin -> les lignes ENTIERES qui tiennent dans
+# le maximum, sauts de ligne compris. Lit tout (pas d'exit) : un `exit` ferait
+# mourir l'ecrivain en SIGPIPE, fatal sous pipefail. Couper sur \n est sur en
+# UTF-8 : l'octet 0x0A n'apparait dans aucun caractere multi-octets.
+_consignes_cut() {
+  LC_ALL=C awk -v max="$1" 'stop { next } { n = length($0) + 1; if (used + n > max) { stop = 1; next } used += n; print }'
+}
+
+_consignes_title() {  # _consignes_title <nom-du-vault>
+  printf '## Consignes communes — vault `%s` (the most specific wins: the repository CLAUDE.md > <project>/heuristics.md > _global/consignes.md)' "$1"
+}
+
+# consignes_text -> le texte a injecter : un bloc titre par vault de
+# vaults_list qui a des consignes, dans l'ordre de la config. Au-dela de
+# CONSIGNES_BUDGET : les vaults sont servis dans l'ordre, le bloc qui ne tient
+# plus est coupe sur une fin de ligne, et une ligne finale nomme le vault coupe
+# et les vaults non servis. Rien quand aucun vault n'a de consignes.
+consignes_text() {
+  local names=() bodies=() vname vpath c i full="" out="" head room kept used
+  local cut_part="" unserved="" stop=0 limit
+  while IFS=$'\t' read -r vname vpath; do
+    [ -n "$vname" ] || continue
+    c="$(consignes_clean "${vpath}/_global/consignes.md")"
+    [ -n "$c" ] || continue
+    names+=("$vname"); bodies+=("$c")
+  done < <(vaults_list)
+  [ "${#names[@]}" -gt 0 ] || return 0
+  for i in "${!names[@]}"; do
+    full+="$(_consignes_title "${names[$i]}")"$'\n\n'"${bodies[$i]}"$'\n\n'
+  done
+  if [ "$(consignes_bytes "$full")" -le "$CONSIGNES_BUDGET" ]; then
+    printf '%s' "$full"; return 0
+  fi
+  limit=$((CONSIGNES_BUDGET - CONSIGNES_RESERVE))
+  for i in "${!names[@]}"; do
+    if [ "$stop" = 1 ]; then unserved+="${unserved:+, }\`${names[$i]}\`"; continue; fi
+    head="$(_consignes_title "${names[$i]}")"$'\n\n'
+    used=$(consignes_bytes "$out")
+    if [ $((used + $(consignes_bytes "$head${bodies[$i]}") + 2)) -le "$limit" ]; then
+      out+="$head${bodies[$i]}"$'\n\n'; continue
+    fi
+    stop=1
+    room=$((limit - used - $(consignes_bytes "$head") - 2))
+    kept=""
+    if [ "$room" -gt 0 ]; then
+      kept="$(printf '%s\n' "${bodies[$i]}" | _consignes_cut "$room")" || kept=""
+    fi
+    if [ -n "$kept" ]; then
+      out+="$head$kept"$'\n\n'
+      cut_part="vault \`${names[$i]}\` coupé à $(consignes_bytes "$kept") octets ; "
+    else
+      unserved+="${unserved:+, }\`${names[$i]}\`"
+    fi
+  done
+  printf '%sconsignes tronquées : %snon servis : %s\n' "$out" "$cut_part" "${unserved:-aucun}"
+}
+# escape_for_json <chaine> : partagee par hooks/session-start et hooks/consignes.
+escape_for_json() {
+    local s="$1"
+    # Les caracteres de controle NUS d'abord, avant tout echappement : un
+    # `summary:` de fiche est ecrit a la main, et un seul octet de ce genre
+    # rend la chaine JSON invalide -- donc porte 4 rouge et preambule perdu a
+    # CHAQUE demarrage de session. Tabulation (011), LF (012) et CR (015) sont
+    # exclus du filtre expres : ils sont echappes correctement juste en dessous,
+    # et les supprimer casserait la mise en forme du preambule injecte.
+    #
+    # La sentinelle `x` n'est pas decorative : `$( )` depouille les sauts de
+    # ligne TERMINAUX, et ce sous-shell est le seul de la fonction qui voie
+    # encore de vrais `\n` -- apres les substitutions ci-dessous il n'en reste
+    # aucun, tous devenus deux caracteres, donc le `$( )` de l'appelant ne peut
+    # plus rien manger. Sans elle, un preambule finissant par une ligne vide la
+    # perdrait en silence.
+    s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037'; printf x); s=${s%x}
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}

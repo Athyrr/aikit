@@ -370,9 +370,9 @@ is "un projet clone est marque present" \
 printf '%s' "$reg" | grep -qi workspace \
   && ko "le mot workspace a disparu de la table injectee" "" "workspace present" \
   || ok "le mot workspace a disparu de la table injectee"
-grep -qi workspace hooks/session-start \
-  && ko "le mot workspace a disparu du hook" "" "workspace present" \
-  || ok "le mot workspace a disparu du hook"
+grep -qi workspace hooks/session-start hooks/consignes \
+  && ko "le mot workspace a disparu des hooks" "" "workspace present" \
+  || ok "le mot workspace a disparu des hooks"
 
 echo "hook : vault en retard sur son remote"
 CONF_RETARD="$TMP/vaults-retard"
@@ -951,6 +951,100 @@ esac
 printf '%s' "$t_long" | iconv -f UTF-8 -t UTF-8 > /dev/null 2>&1 \
   && ok "resume long : sortie UTF-8 valide" \
   || ko "resume long : sortie UTF-8 valide" "UTF-8" "invalide"
+
+echo "consignes : lib/vaults et hooks/consignes"
+json_event() {  # lit le JSON du hook sur stdin, imprime .hookSpecificOutput.hookEventName
+  local input; input="$(cat)"
+  if command -v node > /dev/null 2>&1; then
+    printf '%s' "$input" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{process.stdout.write(JSON.parse(s).hookSpecificOutput.hookEventName)})' 2> /dev/null && return 0
+  fi
+  printf '%s' "$input" | python3 -c "import json,sys;print(json.load(sys.stdin)['hookSpecificOutput']['hookEventName'],end='')"
+}
+CV="$TMP/consignes"
+cvault() { mkdir -p "$CV/$1/_global"; }  # cvault <nom> : vault jetable, sans fiche
+cconf() {  # cconf <fichier> <nom...> : une ligne `vault` par nom, dans l'ordre
+  local f="$1" n; shift; : > "$f"
+  for n in "$@"; do printf 'vault %s %s\n' "$n" "$CV/$n" >> "$f"; done
+}
+cgen() {  # cgen <octets> <etiquette> : lignes accentuees, exactement <octets> octets
+  local n="$1" t="$2" s="" i=0 l lb used=0 num
+  l="- consigne $t : une règle écrite pour remplir le fichier de test n°"
+  lb=$(( $(consignes_bytes "$l") + 6 ))
+  while [ $((used + lb)) -le $((n - 1)) ]; do
+    i=$((i + 1)); printf -v num '%05d' "$i"; s+="$l$num"$'\n'; used=$((used + lb))
+  done
+  s+="$(printf '%*s' $((n - used)) '' | tr ' ' 'x')"
+  printf '%s' "$s"
+}
+chook() { local c="$1"; shift; HELIA_VAULTS="$c" bash hooks/consignes "$@" 2> /dev/null; }
+
+is "consignes_bytes compte des octets" "2" "$(LC_ALL=C.UTF-8 consignes_bytes "é")"
+cvault net
+printf '\357\273\277---\r\ntitle: x\r\n---\r\nligne é1\r\nligne 2\r\n' > "$CV/net/_global/consignes.md"
+is "nettoyage : BOM, frontmatter et CR retires" "ligne é1"$'\n'"ligne 2" "$(consignes_clean "$CV/net/_global/consignes.md")"
+cvault ouvert; printf -- '---\nabc\n' > "$CV/ouvert/_global/consignes.md"
+is "frontmatter non ferme : garde tel quel" "---"$'\n'"abc" "$(consignes_clean "$CV/ouvert/_global/consignes.md")"
+cvault blanc; printf -- '---\nx: 1\n---\n  \n\n' > "$CV/blanc/_global/consignes.md"
+is "vide apres nettoyage : rien" "" "$(consignes_clean "$CV/blanc/_global/consignes.md")"
+is "fichier absent : rien" "" "$(consignes_clean "$CV/absent/_global/consignes.md")"
+
+is "aucun vault declare : {}" "{}" "$(chook /nonexistent-vaults-file)"
+cvault sans; cconf "$TMP/c-sans" sans blanc
+is "vault sans consignes.md, ou vide : {}" "{}" "$(chook "$TMP/c-sans")"
+
+cconf "$TMP/c-un" net
+c_out=$(chook "$TMP/c-un")
+printf '%s' "$c_out" | json_valid && ok "un vault : JSON valide" || ko "un vault : JSON valide" "JSON" "$c_out"
+is "sans argument : SessionStart" "SessionStart" "$(printf '%s' "$c_out" | json_event)"
+is "argument SessionStart" "SessionStart" "$(chook "$TMP/c-un" SessionStart | json_event)"
+is "argument SubagentStart" "SubagentStart" "$(chook "$TMP/c-un" SubagentStart | json_event)"
+c_ctx=$(printf '%s' "$c_out" | json_ctx)
+has "titre du bloc, precedence comprise" '## Consignes communes — vault `net` (the most specific wins: the repository CLAUDE.md > <project>/heuristics.md > _global/consignes.md)' "$c_ctx"
+has "contenu nettoye injecte" "ligne é1"$'\n'"ligne 2" "$c_ctx"
+hasnt "aucun CR injecte" $'\r' "$c_ctx"
+hasnt "frontmatter non injecte" "title: x" "$c_ctx"
+
+cvault hostile; printf 'guillemet " et barre \\ et\ttab\n' > "$CV/hostile/_global/consignes.md"
+cconf "$TMP/c-hostile" hostile
+c_out=$(chook "$TMP/c-hostile")
+printf '%s' "$c_out" | json_valid && ok "guillemet, barre, tabulation : JSON valide" || ko "guillemet, barre, tabulation : JSON valide" "JSON" "$c_out"
+has "guillemet, barre, tabulation : intacts" 'guillemet " et barre \ et'$'\t''tab' "$(printf '%s' "$c_out" | json_ctx)"
+
+cvault deux; printf 'règle deux\n' > "$CV/deux/_global/consignes.md"
+cconf "$TMP/c-ordre" deux net
+c_ctx=$(chook "$TMP/c-ordre" | json_ctx)
+has "deux vaults : l'ordre de la config est garde" 'vault `deux`' "${c_ctx%%vault \`net\`*}"
+
+cvault gros1; cvault gros2; cvault petit
+cgen 5001 gros1 > "$CV/gros1/_global/consignes.md"; cgen 5001 gros2 > "$CV/gros2/_global/consignes.md"
+printf 'règle du petit\n' > "$CV/petit/_global/consignes.md"
+is "fixture : 5001 octets" "5001" "$(LC_ALL=C wc -c < "$CV/gros1/_global/consignes.md" | tr -d ' ')"
+cconf "$TMP/c-budget" gros1 gros2 petit
+c_out=$(chook "$TMP/c-budget")
+printf '%s' "$c_out" | json_valid && ok "budget : JSON valide" || ko "budget : JSON valide" "JSON" "invalide"
+c_ctx=$(printf '%s' "$c_out" | json_ctx)
+c_len=$(consignes_bytes "$c_ctx")
+[ "$c_len" -le 9000 ] && ok "budget : <= 9000 octets ($c_len)" || ko "budget : <= 9000 octets" "<= 9000" "$c_len"
+has "budget : le premier vault est servi entier" "$(cat "$CV/gros1/_global/consignes.md")" "$c_ctx"
+has "budget : vault coupe nomme" 'consignes tronquées : vault `gros2` coupé à ' "$c_ctx"
+has "budget : vault non servi nomme" 'non servis : `petit`' "$c_ctx"
+hasnt "budget : le vault non servi n'est pas injecte" "règle du petit" "$c_ctx"
+printf '%s' "$c_ctx" | iconv -f UTF-8 -t UTF-8 > /dev/null 2>&1 && ok "budget : UTF-8 valide" || ko "budget : UTF-8 valide" "UTF-8" "invalide"
+c_der=$(printf '%s' "${c_ctx%%$'\n\n'consignes tronquées*}" | tail -1)
+grep -qxF -- "$c_der" "$CV/gros2/_global/consignes.md" \
+  && ok "budget : coupe sur une fin de ligne" || ko "budget : coupe sur une fin de ligne" "une ligne entiere de gros2" "$c_der"
+cconf "$TMP/c-deux" gros1 gros2
+has "deux gros vaults : non servis : aucun" "non servis : aucun" "$(chook "$TMP/c-deux" | json_ctx)"
+cvault enorme; cgen 100000 enorme > "$CV/enorme/_global/consignes.md"
+cconf "$TMP/c-enorme" enorme
+c_out=$(chook "$TMP/c-enorme")
+printf '%s' "$c_out" | json_valid && ok "100 000 octets : JSON valide" || ko "100 000 octets : JSON valide" "JSON" "invalide"
+c_len=$(consignes_bytes "$(printf '%s' "$c_out" | json_ctx)")
+[ "$c_len" -lt 10000 ] && ok "100 000 octets : < 10000 ($c_len)" || ko "100 000 octets : < 10000" "< 10000" "$c_len"
+
+grep -vE '^[[:space:]]*#' hooks/consignes | grep -nE 'vaults_migrate_legacy|vaults_scan|resolve_projects|vault_behind_commits|git ' \
+  && ko "hooks/consignes ne lit que des fichiers" "aucun appel" "trouve" \
+  || ok "hooks/consignes ne lit que des fichiers"
 
 echo
 echo "$pass passes, $fail echecs"
