@@ -415,6 +415,86 @@ out="$(banner_render color "$TMP/nexiste-pas.json" "x")"; rc=$?
 is "palette illisible en couleur : sortie 1, rien imprime" "1|" "$rc|$out"
 is "mode par defaut : couleur" "color" "$BANNER_MODE"
 
+# =============================================================================
+echo "hooks/appearance : banniere"
+VERSION="$(jq -r '.version' .claude-plugin/plugin.json)"
+# bhome : HOME jetable SANS l'opt-out de la banniere.
+bhome() { local h; h="$(mktemp -d "$TMP/bhome.XXXXXX")"; mkdir -p "$h/.claude"; printf '%s' "$h"; }
+msg() { printf '%s' "$1" | jq -r '.systemMessage'; }   # msg <stdout du hook>
+
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+out="$(app "$H")"; rc=$?
+json_ok "$out" && ok "banniere : stdout est un seul objet {systemMessage}" \
+  || ko "banniere : stdout est un seul objet {systemMessage}" "JSON" "$out"
+m="$(msg "$out")"
+is "banniere : sortie 0" "0" "$rc"
+is "banniere : commence par un saut de ligne" "" "$(printf '%s\n' "$m" | sed -n 1p)"
+is "banniere : logotype et etat, theme etranger" \
+"
+ ✺  █ █ █▀▀ █   █ ▄▀█    helia $VERSION
+    █▀█ ██▄ █▄▄ █ █▀█▌   thème Helia à la prochaine session
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀   vault levault · 2 projets" "$(printf '%s' "$m" | plain)"
+has "banniere : en couleurs Helia" "${ACC}${ESC}[1m✺" "$m"
+is "banniere : le theme est quand meme pose" "$HELIA" "$(gettheme "$H")"
+
+H="$(bhome)"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
+has "Helia actif" "thème Helia actif" "$(msg "$(app "$H")" | plain)"
+H="$(bhome)"; echo '{"theme":"custom:helia:umbra"}' > "$(S "$H")"
+m="$(msg "$(app "$H")")"
+has "Umbra actif" "thème Umbra actif" "$(printf '%s' "$m" | plain)"
+has "Umbra actif : couleurs Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺" "$m"
+hasnt "Umbra actif : aucune couleur Helia" "$ACC" "$m"
+
+H="$(bhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-theme"; echo '{"theme":"dark"}' > "$(S "$H")"
+m="$(msg "$(app "$H")" | plain)"
+is "no-theme : la ligne d'etat est omise, le vault remonte" \
+"
+ ✺  █ █ █▀▀ █   █ ▄▀█    helia $VERSION
+    █▀█ ██▄ █▄▄ █ █▀█▌   vault levault · 2 projets
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀" "$m"
+is "no-theme : theme intact" "dark" "$(gettheme "$H")"
+
+H="$(bhome)"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
+m="$(HELIA_VAULTS=/nonexistent-vaults-file app "$H" | jq -r '.systemMessage' | plain)"
+hasnt "aucun vault resolu : ligne vault omise" "vault " "$m"
+has "... le reste est la" "thème Helia actif" "$m"
+
+H="$(bhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-statusline"; : > "$H/.config/helia/no-theme"
+echo '{"theme":"dark"}' > "$(S "$H")"; cp "$(S "$H")" "$TMP/avant-banniere.json"
+out="$(app "$H")"
+has "no-statusline + no-theme : la banniere seule" "helia $VERSION" "$(msg "$out" | plain)"
+is "... settings.json intact" "$(cat "$TMP/avant-banniere.json")" "$(cat "$(S "$H")")"
+
+H="$(bhome)"; printf '{"theme": "dark",\n' > "$(S "$H")"
+m="$(msg "$(app "$H")" | plain)"
+has "JSON invalide : banniere quand meme" "helia $VERSION" "$m"
+hasnt "... sans etat du theme" "thème" "$m"
+
+# lib/banner absent, ou palette illisible : le lot 1 seul, message nu.
+NB="$TMP/sans-banner"; mkdir -p "$NB/hooks" "$NB/lib" "$NB/.claude-plugin" "$NB/palettes"
+cp hooks/appearance "$NB/hooks/"; cp lib/vaults "$NB/lib/"; cp .claude-plugin/plugin.json "$NB/.claude-plugin/"; cp palettes/*.json "$NB/palettes/"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+is "lib/banner absent, theme change : le message seul" "$NEXT" "$(app "$H" "$NB/hooks/appearance")"
+H="$(bhome)"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
+is "lib/banner absent, rien a dire : stdout vide" "" "$(app "$H" "$NB/hooks/appearance")"
+cp lib/banner "$NB/lib/"; echo '{pas du json' > "$NB/palettes/helia.json"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+is "palette illisible : banniere omise, message seul" "$NEXT" "$(app "$H" "$NB/hooks/appearance")"
+is "... theme quand meme pose" "$HELIA" "$(gettheme "$H")"
+
+H="$(bhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-banner"; echo '{"theme":"dark"}' > "$(S "$H")"
+is "no-banner, theme change : le message seul" "$NEXT" "$(app "$H")"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+out="$(PATH="$FAKEBIN:$PATH" HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/appearance" 2> /dev/null)"; rc=$?
+json_ok "$out" && ok "faux jq bavard, banniere active : stdout vide ou un seul objet JSON" \
+  || ko "faux jq bavard, banniere active : stdout vide ou un seul objet JSON" "JSON ou vide" "$out"
+hasnt "... aucune fuite dans le message" "FUITE" "$out"
+is "... sortie 0" "0" "$rc"
+H="$(bhome)"
+out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/run-hook.cmd" appearance 2> /dev/null)"
+json_ok "$out" && ok "via run-hook.cmd, banniere : un seul objet JSON" || ko "via run-hook.cmd, banniere : un seul objet JSON" "JSON" "$out"
+is "banniere : sous le plafond de 10 000 caracteres" "1" "$([ "${#out}" -lt 10000 ] && echo 1 || echo "${#out}")"
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
