@@ -921,6 +921,37 @@ ctx="$(hk_copie "$H" | json_ctx)"
 has "aucun vault : le message nomme la nouvelle config" "~/.config/helia/vaults" "$ctx"
 [ ! -e "$H/.config/helia" ] && ok "aucun vault : rien n'est cree" || ko "aucun vault : rien n'est cree" "absent" "present"
 
+echo "troncature du resume"
+# Le harnais plafonne additionalContext a 10 000 caracteres : au-dela il ne
+# garde qu'un apercu et le tableau est perdu. Resumes accentues (octets != caracteres).
+TVAULT="$TMP/tronc/vault"; mkdir -p "$TVAULT/projects"
+LONG=""; while [ "${#LONG}" -lt 1000 ]; do LONG="$LONG éléphant désormais très à l'écart, côté qualité;"; done
+for i in $(seq 1 30); do
+  printf -- '---\nname: gros-%s\nkind: conception\nsummary: %s\n---\n' "$i" "$LONG" > "$TVAULT/projects/gros-$i.md"
+done
+printf -- '---\nname: court\nkind: conception\nsummary: résumé court et déjà bref\n---\n' > "$TVAULT/projects/court.md"
+TCONF="$TMP/vaults-tronc"; echo "vault tronc $TVAULT" > "$TCONF"
+t_out=$(HELIA_VAULTS="$TCONF" bash hooks/session-start)
+printf '%s' "$t_out" | json_valid \
+  && ok "30 fiches a gros resume : JSON valide" \
+  || ko "30 fiches a gros resume : JSON valide" "JSON" "invalide"
+t_ctx=$(printf '%s' "$t_out" | json_ctx)
+t_len=$(printf '%s' "$t_ctx" | LC_ALL=C.UTF-8 wc -m | tr -d ' ')
+[ "$t_len" -lt 10000 ] \
+  && ok "30 fiches a gros resume : additionalContext < 10000 caracteres ($t_len)" \
+  || ko "30 fiches a gros resume : additionalContext < 10000 caracteres" "<10000" "$t_len"
+t_court=$(printf '%s\n' "$t_ctx" | grep -F '| court ' | head -1)
+is "resume court : inchange, sans ellipse" \
+   "| court *(conception)* | — | résumé court et déjà bref |" "$t_court"
+t_long=$(printf '%s\n' "$t_ctx" | grep -F '| gros-1 ' | head -1)
+case "$t_long" in
+  *"… |") ok "resume long : tronque, finit par une ellipse" ;;
+  *) ko "resume long : tronque, finit par une ellipse" "… |" "$t_long" ;;
+esac
+printf '%s' "$t_long" | iconv -f UTF-8 -t UTF-8 > /dev/null 2>&1 \
+  && ok "resume long : sortie UTF-8 valide" \
+  || ko "resume long : sortie UTF-8 valide" "UTF-8" "invalide"
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
