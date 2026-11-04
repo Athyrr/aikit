@@ -47,6 +47,7 @@ fields="$(printf '%s' "$input" | jq -r '
     ((.rate_limits.seven_day.used_percentage // "") | tostring),
     ((.rate_limits.seven_day.resets_at // "") | tostring)
   ] | map(tostring) | join("\u001f")' 2> /dev/null)" || fields=""
+fields="${fields//$'\r'/}"   # a native jq.exe ends its lines with CR
 IFS=$'\037' read -r model dir sid pct p5 r5 p7 r7 <<< "$fields"
 model="${model:-?}"
 dir="${dir:-$PWD}"
@@ -69,11 +70,12 @@ if [ -f "$tf" ]; then
   IFS=$'\t' read -r tts tval < "$tf" || true
   case "${tts:-}" in
     ''|*[!0-9]*) ;;
-    *) if [ $((now - tts)) -lt 5 ]; then theme="${tval:-}"; fresh=1; fi ;;
+    *) if [ $((now - tts)) -lt 5 ] && [ $((now - tts)) -ge 0 ]; then theme="${tval:-}"; fresh=1; fi ;;
   esac
 fi
 if [ "$fresh" = 0 ]; then
   theme="$(jq -r '.theme // "" | tostring' "${HOME:-}/.claude/settings.json" 2> /dev/null)" || theme=""
+  theme="${theme//$'\r'/}"
   cache_put "$tf" "$now"$'\t'"$theme"
 fi
 case "$theme" in custom:helia:umbra) palette=umbra ;; *) palette=helia ;; esac
@@ -87,6 +89,7 @@ tc() {  # tc <#RRGGBB> -> truecolor foreground sequence
 cols="$(jq -r '.colors | [.accent, .accent2, .text, .muted, .border, .success, .warning, .error]
                | if all(type == "string" and test("^#[0-9A-Fa-f]{6}$")) then join(" ") else empty end' \
           "$self/../palettes/$palette.json" 2> /dev/null)" || cols=""
+cols="${cols//$'\r'/}"
 if [ -n "$cols" ]; then
   read -r c_acc c_acc2 c_txt c_mut c_brd c_ok c_warn c_err <<< "$cols"
   acc="$(tc "$c_acc")"; acc2="$(tc "$c_acc2")"; txt="$(tc "$c_txt")"; mut="$(tc "$c_mut")"

@@ -291,7 +291,7 @@ ctx ━━━━──────── 30 %    5h ━━━━━━━──�
 
 After a `/theme`, it changes colour at the next message. At startup the hook
 also shows the HELIA logotype, with the plugin version, the theme's state and
-the first declared vault.
+the first declared vault that has a `projects/` folder.
 
 Opt-outs, one file each; the hook then leaves that part alone:
 

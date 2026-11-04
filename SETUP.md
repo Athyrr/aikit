@@ -133,7 +133,7 @@ reports no value. `5h` and `hebdo` — the share of the 5-hour and weekly
 allowances already used, and the time before each resets (`42min`, `2h14`,
 `3j`) — only appear when Claude Code reports rate limits. Colours are the exact
 values of the active theme's palette (README, *Appearance*), re-read at the next
-message after a `/theme`; an unreadable palette falls back on the terminal's 16
+message after a `/theme` (the renderer caches the theme for up to 5 s); an unreadable palette falls back on the terminal's 16
 ANSI colours.
 
 How it gets there: a plugin cannot declare `statusLine`, so a `SessionStart` hook

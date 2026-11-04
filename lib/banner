@@ -50,6 +50,7 @@ banner_render() {
     cols=$(jq -r '.colors | [.accent, .accent2, .border, .muted]
                   | if all(type == "string" and test("^#[0-9A-Fa-f]{6}$")) then join(" ") else empty end' \
              "$pal" 2> /dev/null) || return 1
+    cols="${cols//$'\r'/}"   # a native jq.exe ends its lines with CR
     cols="${cols##*$'\n'}"   # the last line: jq's answer, whatever else ran
     local a1 a2 b m r1 g1 b1 r2 g2 b2 hex='^#[0-9A-Fa-f]{6}$'
     read -r a1 a2 b m <<< "$cols"

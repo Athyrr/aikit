@@ -40,8 +40,8 @@ json_str() {  # json_str <text> -> the text escaped for a JSON string
   printf '%s' "$s"
 }
 
-case "${BASH_SOURCE[0]}" in */*) here="${BASH_SOURCE[0]%/*}" ;; *) here="." ;; esac
-plugin="$here/.."
+# Absolute, whatever $0 looks like (a bare name would resolve against the cwd).
+plugin="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2> /dev/null && pwd)" || plugin=""
 
 home="${HOME:-}"
 [ -n "$home" ] || exit 0
@@ -83,6 +83,7 @@ if [ "$usable" = 1 ] && [ -e "$target" ]; then
           ((.theme // "") | tostring)
         ] | join("\u001f")
       end' "$target" 2> /dev/null)" || read_out="invalid"
+    read_out="${read_out//$'\r'/}"   # a native jq.exe ends its lines with CR
     read_out="${read_out##*$'\n'}"   # the last line: jq's answer, whatever else ran
     if [ -z "$read_out" ] || [ "$read_out" = invalid ]; then
       note "$target is not a JSON object, left untouched"; usable=0
@@ -132,7 +133,7 @@ if [ "$set_sl$set_theme" != 00 ]; then
     fi
   fi
   # Nothing written: the theme did not change, so announce nothing about it.
-  [ "$written" = 1 ] || theme_state=""
+  [ "$written" = 1 ] || [ "$set_theme" = 0 ] || theme_state=""
 fi
 
 # --- the message ----------------------------------------------------------------
@@ -142,6 +143,7 @@ if [ "$want_banner" = 1 ] && [ -r "$plugin/lib/banner" ] \
   # The palette of the theme shown NOW, i.e. before this run's change.
   case "$cur_theme" in custom:helia:umbra) pal=umbra ;; *) pal=helia ;; esac
   version="$(jq -r '.version // empty' "$plugin/.claude-plugin/plugin.json" 2> /dev/null)" || version=""
+  version="${version//$'\r'/}"
   version="${version##*$'\n'}"
   [[ "$version" =~ ^[0-9A-Za-z.+-]+$ ]] || version=""
   right=("helia${version:+ $version}")
@@ -154,6 +156,7 @@ if [ "$want_banner" = 1 ] && [ -r "$plugin/lib/banner" ] \
   if [ -r "$plugin/lib/vaults" ] && . "$plugin/lib/vaults" 2> /dev/null; then
     while IFS=$'\t' read -r vname vpath; do
       [ -n "$vname" ] && [ -d "$vpath/projects" ] || continue
+      vname=${vname//[[:cntrl:]]/}
       n="$(find "$vpath/projects" -maxdepth 1 -type f -name '*.md' 2> /dev/null | wc -l | tr -d ' ')"
       right+=("vault $vname · $n projets")
       break

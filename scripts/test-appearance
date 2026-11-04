@@ -278,9 +278,9 @@ slin() {  # slin <dir> <session> <pct-json|null>
   jq -nc --arg d "$1" --arg s "$2" --argjson p "$3" \
     '{model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:$s,context_window:{used_percentage:$p}}'
 }
-NOW=$(date +%s)
 G4="━━━━────────"; G0="────────────"   # jauges a 30 % et a vide
 slrl() {  # slrl <pct5|""> <pct7|""> [secondes avant reset 5h] [secondes avant reset hebdo]
+  local NOW; NOW=$(date +%s)   # a l'appel : un Git Bash lent ne fait pas deriver 1h00 en 0h59
   jq -nc --arg d "$ROOT/avec-remote" --arg a "$1" --arg b "$2" \
          --argjson r5 "$((NOW + ${3:-3630}))" --argjson r7 "$((NOW + ${4:-86430}))" '
     {model:{display_name:"Opus"},workspace:{current_dir:$d},session_id:"rl",context_window:{used_percentage:30},
@@ -494,6 +494,30 @@ H="$(bhome)"
 out="$(HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/run-hook.cmd" appearance 2> /dev/null)"
 json_ok "$out" && ok "via run-hook.cmd, banniere : un seul objet JSON" || ko "via run-hook.cmd, banniere : un seul objet JSON" "JSON" "$out"
 is "banniere : sous le plafond de 10 000 caracteres" "1" "$([ "${#out}" -lt 10000 ] && echo 1 || echo "${#out}")"
+
+# Un jq natif Windows (jq.exe sous Git Bash) termine chaque ligne de `jq -r` par
+# \r, que $(...) ne retire pas : un faux jq qui ecrit du CRLF reproduit le cas.
+CRLFBIN="$TMP/jq-crlf"; mkdir -p "$CRLFBIN"
+printf '#!/usr/bin/env bash\n"%s" "$@" | sed "s/\\$/\\r/"\n' "$REALJQ" > "$CRLFBIN/jq"; chmod +x "$CRLFBIN/jq"
+is "jq CRLF : temoin, la sortie finit par CR" "1" "$(PATH="$CRLFBIN:$PATH" bash -c 'jq -rn "\"x\""' | grep -c $'\r')"
+H="$(bhome)"; jq -n --arg t "$UMBRA" --arg c "$WANT" '{theme: $t, statusLine: {type: "command", command: $c}}' > "$(S "$H")"
+touch -d @0 "$(S "$H")"
+out="$(PATH="$CRLFBIN:$PATH" HOME="$H" CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/appearance" 2> /dev/null)"; rc=$?
+is "jq CRLF : Umbra + statusLine justes, fichier non reecrit (mtime)" "0" "$(stat -c %Y "$(S "$H")")"
+is "jq CRLF : Umbra conserve" "$UMBRA" "$(gettheme "$H")"
+hasnt "jq CRLF : pas de 'prochaine session'" "prochaine session" "$out"
+has "jq CRLF : banniere affichee, theme Umbra actif" "thème Umbra actif" "$(msg "$out" | plain)"
+has "jq CRLF : version dans la banniere" "helia $VERSION" "$(msg "$out" | plain)"
+is "jq CRLF : sortie 0" "0" "$rc"
+out="$(PATH="$CRLFBIN:$PATH" banner_render color palettes/umbra.json "x")"; rc=$?
+is "jq CRLF : banniere en couleur, sortie 0" "0" "$rc"
+has "jq CRLF : banniere en accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺" "$out"
+UC="$TMP/sl-umbra-crlf"; mkdir -p "$UC/.claude"; echo '{"theme":"custom:helia:umbra"}' > "$UC/.claude/settings.json"
+out="$(PATH="$CRLFBIN:$PATH" SLH="$UC" sl "$(slrl 20 30)")"
+has "jq CRLF, statusline sous Umbra : accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺ helia" "$out"
+hasnt "jq CRLF, statusline sous Umbra : aucune couleur Helia" "$ACC" "$out"
+is "jq CRLF, statusline : reset hebdo conserve" "ctx $G4 30 %    5h ━━────────── 20 % ↺ 1h00    hebdo $G4 30 % ↺ 1j" \
+   "$(line 2 "$out" | plain)"
 
 echo
 echo "$pass passes, $fail echecs"
