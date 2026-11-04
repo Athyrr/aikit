@@ -32,7 +32,10 @@ Write the full findings to the given file. Return only:
   never more. Zero raw code blocks either way: point at `file:line`, don't
   paste the file;
 - the references that carry it;
-- anything that contradicts the premise of the question.
+- anything that contradicts the premise of the question, and any vault
+  document (registry file, heuristics, reference, note) contradicted by what
+  you observed — its path, what it says, what you saw. Do not correct it: the
+  orchestrator does, with your human partner's agreement.
 
 That last one matters most. If you were asked "where is the carrier filter
 applied" and there is no carrier filter, say that first — do not produce the

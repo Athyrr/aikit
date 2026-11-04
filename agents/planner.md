@@ -68,4 +68,8 @@ Return the plan path, the task count, which tasks are parallelisable, and any
 place where the spec was silent and you had to choose. That last list is what
 the human reviews first.
 
+Name any vault document — registry file, heuristics, the spec's Impact
+section — that the code contradicts: its path, what it says, what you saw.
+Do not correct it; the orchestrator does, with your human partner's agreement.
+
 Never dispatch subagents. Never start implementing.

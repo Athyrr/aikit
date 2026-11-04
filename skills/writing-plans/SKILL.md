@@ -25,10 +25,14 @@ separate ledger. Helia writes nothing inside the project repository itself.
 
 Before drafting tasks, read two files, in this order, if they exist:
 
-1. `vault/_global/heuristics.md` — rules about this machine's environment,
-   OS and shell that apply everywhere.
+1. `vault/_global/heuristics.md` — technical traps that do not depend on the
+   project: machine, OS, shell, or a cross-project pattern.
 2. `vault/<project>/heuristics.md` — empirical rules and traps specific to
    this project, learned from prior features.
+
+`vault/_global/consignes.md` — your human partner's instructions for every
+project — is not in this cascade: a `SubagentStart` hook already injects it
+into every `helia:*` agent, the planner included. Do not read it again.
 
 Both are short (capped at 50 lines) — reading them in full costs little and
 saves a task from repeating a mistake already paid for once. When a task's

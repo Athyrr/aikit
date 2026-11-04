@@ -57,3 +57,8 @@ contradicts the plan), not just "it didn't work."
 
 `FAILURE` is not failure of the method — it is the signal the method needs. A
 task forced to `SUCCESS` on a guess costs far more than one reported honestly.
+
+A vault document (registry file, heuristics, reference) contradicted by what
+you observed goes in your report file — its path, what it says, what you saw
+— and in your short return as `SUCCESS (concern: vault document contradicted:
+<path>)`, or inside the `FAILURE:` reason. Never correct it yourself.
