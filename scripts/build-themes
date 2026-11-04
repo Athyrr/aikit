@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Generates themes/<name>.json, in Claude Code's theme format, from each
+# palettes/<name>.json. The palettes are the source of truth for the colours;
+# the themes are generated, versioned, and never edited by hand.
+#
+#   scripts/build-themes            rewrite every theme
+#   scripts/build-themes --check    write nothing; exit 0 when every versioned
+#                                   theme equals what would be generated, 1
+#                                   otherwise, naming each file that differs
+#
+# Exit 2 on a usage error, a missing jq, or a palette that breaks the contract
+# (exactly the fourteen roles below, each a #RRGGBB value).
+#
+# `claude plugin validate` does not read a theme's content: this script and
+# scripts/test-appearance are the only checks of its keys and values.
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 2
+
+check=0
+case "${1:-}" in
+  "") ;;
+  --check) check=1 ;;
+  *) echo "usage: scripts/build-themes [--check]" >&2; exit 2 ;;
+esac
+command -v jq > /dev/null 2>&1 || { echo "build-themes: jq is required" >&2; exit 2; }
+
+# The fourteen roles of a palette, and the role each theme key takes its colour
+# from. Every key not listed here inherits from the `dark` preset.
+roles='["accent","accent2","bg","border","diffAddedBg","diffAddedWord","diffRemovedBg","diffRemovedWord","error","muted","success","surface","text","warning"]'
+map='{
+  "claude": "accent", "claudeShimmer": "accent2",
+  "promptBorder": "muted", "promptBorderShimmer": "accent",
+  "text": "text", "inactive": "muted", "subtle": "border",
+  "suggestion": "accent2", "permission": "accent2",
+  "success": "success", "warning": "warning", "error": "error",
+  "diffAdded": "diffAddedBg", "diffRemoved": "diffRemovedBg",
+  "diffAddedWord": "diffAddedWord", "diffRemovedWord": "diffRemovedWord",
+  "userMessageBackground": "surface",
+  "rate_limit_fill": "accent", "rate_limit_empty": "border"
+}'
+
+status=0
+found=0
+for pal in palettes/*.json; do
+  [ -e "$pal" ] || continue
+  found=1
+  name=$(basename "$pal" .json)
+  theme="themes/$name.json"
+  if ! jq -e --argjson roles "$roles" '
+      (.name | type == "string" and length > 0)
+      and (.colors | type == "object")
+      and ((.colors | keys) == $roles)
+      and all(.colors[]; type == "string" and test("^#[0-9A-Fa-f]{6}$"))' "$pal" > /dev/null 2>&1; then
+    echo "build-themes: $pal breaks the palette contract (name, the fourteen roles, #RRGGBB values)" >&2
+    exit 2
+  fi
+  generated=$(jq --argjson map "$map" '
+    .colors as $c
+    | {name: .name, base: "dark", overrides: ($map | map_values($c[.]))}' "$pal") || exit 2
+  if [ "$check" = 1 ]; then
+    if [ ! -f "$theme" ] || [ "$(tr -d '\r' < "$theme")" != "$generated" ]; then
+      echo "build-themes: $theme differs from $pal -- run scripts/build-themes" >&2
+      status=1
+    fi
+  else
+    mkdir -p themes
+    printf '%s\n' "$generated" > "$theme" || exit 2
+  fi
+done
+[ "$found" = 1 ] || { echo "build-themes: no palettes/*.json" >&2; exit 2; }
+exit "$status"

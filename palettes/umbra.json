@@ -1,0 +1,20 @@
+{
+  "name": "Umbra",
+  "description": "eclipse : noir froid, couronne pale doree, acier bleute",
+  "colors": {
+    "bg": "#0B0C10",
+    "surface": "#15171E",
+    "border": "#2A2E3A",
+    "text": "#D8DCE6",
+    "muted": "#7A8194",
+    "accent": "#E9D3A0",
+    "accent2": "#8FA3CC",
+    "success": "#7FB59A",
+    "warning": "#D9A65B",
+    "error": "#D06B6B",
+    "diffAddedBg": "#16261F",
+    "diffRemovedBg": "#2E1719",
+    "diffAddedWord": "#24402F",
+    "diffRemovedWord": "#4C2226"
+  }
+}

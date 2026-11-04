@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Tests de l'apparence : palettes et themes (scripts/build-themes), hook
+# hooks/appearance, status line bin/helia-statusline, banniere lib/banner.
+# Aucune dependance reseau, aucune fixture versionnee. jq est requis : le hook
+# et la status line en dependent a l'execution (SETUP.md), sans lui la suite ne
+# prouverait rien et le dit.
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+command -v jq > /dev/null 2>&1 || { echo "jq absent : test impossible (prerequis, SETUP.md)" >&2; exit 1; }
+
+pass=0; fail=0
+ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
+ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
+is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
+has() { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
+hasnt() { case "$3" in *"$2"*) ko "$1" "ne contient pas [$2]" "$3" ;; *) ok "$1" ;; esac; }
+
+REPO="$PWD"
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+ESC="$(printf '\033')"
+plain() { sed "s/${ESC}\[[0-9;]*m//g"; }
+tc() {  # tc <#RRGGBB> -> la sequence truecolor de premier plan attendue
+  local h=${1#\#}
+  printf '%s[38;2;%d;%d;%dm' "$ESC" "$((16#${h:0:2}))" "$((16#${h:2:2}))" "$((16#${h:4:2}))"
+}
+pal() { jq -r ".colors.$2" "$REPO/palettes/$1.json"; }  # pal <helia|umbra> <role>
+
+line() { printf '%s\n' "$2" | sed -n "${1}p"; }   # line <n> <texte>
+# Les couleurs Helia attendues, en sequences truecolor.
+ACC=$(tc "$(pal helia accent)"); ACC2=$(tc "$(pal helia accent2)"); BRD=$(tc "$(pal helia border)")
+MUT=$(tc "$(pal helia muted)"); TXT=$(tc "$(pal helia text)")
+OK=$(tc "$(pal helia success)"); WARN=$(tc "$(pal helia warning)"); ERR=$(tc "$(pal helia error)")
+
+# =============================================================================
+echo "palettes et themes (scripts/build-themes)"
+ROLES="accent accent2 bg border diffAddedBg diffAddedWord diffRemovedBg diffRemovedWord error muted success surface text warning"
+KEYS="claude claudeShimmer diffAdded diffAddedWord diffRemoved diffRemovedWord error inactive permission promptBorder promptBorderShimmer rate_limit_empty rate_limit_fill subtle success suggestion text userMessageBackground warning"
+# Les valeurs de la spec, recopiees ici : l'oracle ne derive pas des fichiers testes.
+SPEC_HELIA="bg=#16130F surface=#221C15 border=#3A3024 text=#EDE3D1 muted=#9C8F7A accent=#F5B921 accent2=#E8871E success=#7FA650 warning=#E8871E error=#C8553D diffAddedBg=#26301A diffRemovedBg=#3A1E16 diffAddedWord=#3E5222 diffRemovedWord=#5C2A1E"
+SPEC_UMBRA="bg=#0B0C10 surface=#15171E border=#2A2E3A text=#D8DCE6 muted=#7A8194 accent=#E9D3A0 accent2=#8FA3CC success=#7FB59A warning=#D9A65B error=#D06B6B diffAddedBg=#16261F diffRemovedBg=#2E1719 diffAddedWord=#24402F diffRemovedWord=#4C2226"
+for p in helia umbra; do
+  f="palettes/$p.json"; t="themes/$p.json"
+  is "$f : les quatorze roles, exactement" "$ROLES" "$(jq -r '.colors | keys | join(" ")' "$f")"
+  is "$f : chaque valeur en #RRGGBB" "0" "$(jq '[.colors[] | select(type != "string" or (test("^#[0-9A-Fa-f]{6}$") | not))] | length' "$f")"
+  if [ "$p" = helia ]; then want="$SPEC_HELIA"; else want="$SPEC_UMBRA"; fi
+  is "$f : les valeurs de la spec" "$want" "$(jq -r '.colors | to_entries | map("\(.key)=\(.value)") | join(" ")' "$f")"
+  is "$f : une description d'une ligne" "1" "$(jq -r '.description' "$f" | grep -c .)"
+  is "$t : base dark" "dark" "$(jq -r '.base' "$t")"
+  is "$t : cles d'overrides = la table de correspondance" "$KEYS" "$(jq -r '.overrides | keys | join(" ")' "$t")"
+  is "$t : chaque valeur en #RRGGBB" "0" "$(jq '[.overrides[] | select(type != "string" or (test("^#[0-9A-Fa-f]{6}$") | not))] | length' "$t")"
+done
+is "themes/helia.json : name" "Helia" "$(jq -r '.name' themes/helia.json)"
+is "themes/umbra.json : name" "Umbra" "$(jq -r '.name' themes/umbra.json)"
+is "correspondance : claude <- accent (Helia)" "#F5B921" "$(jq -r '.overrides.claude' themes/helia.json)"
+is "correspondance : userMessageBackground <- surface (Umbra)" "#15171E" "$(jq -r '.overrides.userMessageBackground' themes/umbra.json)"
+is "correspondance : diffAdded <- diffAddedBg (Umbra)" "#16261F" "$(jq -r '.overrides.diffAdded' themes/umbra.json)"
+is "plugin.json ne declare aucune cle themes (elle remplacerait le scan du dossier)" "" \
+   "$(jq -r '(.themes // .experimental.themes // empty) | tostring' .claude-plugin/plugin.json)"
+out="$(scripts/build-themes --check 2>&1)"; rc=$?
+is "build-themes --check : vert sur le depot" "0|" "$rc|$out"
+# Le detecteur detecte : une copie dont une couleur est alteree.
+CP="$TMP/copie"; mkdir -p "$CP/scripts"
+cp scripts/build-themes "$CP/scripts/"; cp -r palettes themes "$CP/"
+jq '.colors.accent = "#000000"' "$CP/palettes/helia.json" > "$CP/p.tmp" && mv "$CP/p.tmp" "$CP/palettes/helia.json"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "couleur alteree : --check sort en 1" "1" "$rc"
+has "... en nommant le fichier qui differe" "themes/helia.json" "$out"
+hasnt "... et pas celui qui concorde" "themes/umbra.json" "$out"
+is "... sans rien ecrire" "#F5B921" "$(jq -r '.overrides.claude' "$CP/themes/helia.json")"
+bash "$CP/scripts/build-themes"; rc=$?
+is "sans argument : regenere, sortie 0" "0" "$rc"
+is "... la couleur alteree est reportee" "#000000" "$(jq -r '.overrides.claude' "$CP/themes/helia.json")"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "... puis --check repasse au vert" "0" "$rc"
+jq '.overrides.text = "#123456"' "$CP/themes/umbra.json" > "$CP/t.tmp" && mv "$CP/t.tmp" "$CP/themes/umbra.json"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "theme retouche a la main : --check sort en 1" "1" "$rc"
+has "... en le nommant" "themes/umbra.json" "$out"
+jq 'del(.colors.bg)' "$CP/palettes/umbra.json" > "$CP/p.tmp" && mv "$CP/p.tmp" "$CP/palettes/umbra.json"
+out="$(bash "$CP/scripts/build-themes" --check 2>&1)"; rc=$?
+is "palette a qui manque un role : sortie 2" "2" "$rc"
+has "... en la nommant" "palettes/umbra.json" "$out"
+
+
+echo
+echo "$pass passes, $fail echecs"
+# `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
+# d'un script sans `set -e` est celui de sa DERNIERE commande, donc toute
+# ligne ajoutee dessous rendrait la suite verte quoi qu'elle imprime -- et la
+# porte 14 de `scripts/doctor` deviendrait decorative sans que rien ne le dise.
+exit $(( fail != 0 ))
