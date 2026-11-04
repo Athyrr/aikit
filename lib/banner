@@ -1,0 +1,80 @@
+# The HELIA logotype, for the startup banner of hooks/appearance. SOURCE, never
+# execute.
+#
+#   banner_render <color|mono> <palette.json> [right-text]...
+#
+# Prints three lines on stdout: the logotype, then -- three spaces after the
+# widest logotype line (22 columns) -- the right-text arguments, one per line,
+# top down; a line with no right text carries no trailing space.
+#
+# color: ✺ in accent bold; each letter column in a linear gradient from accent
+#   (first column) to accent2 (last); the shadow (▌ and line 3) in border; the
+#   first right text in accent bold, the others in muted. Truecolor only, read
+#   from the palette: no colour is copied into this file.
+# mono: the same characters, no escape sequence at all.
+#
+# Returns 1 and prints nothing when color mode cannot read the palette (or jq is
+# missing): the caller then shows no banner. Never exits, never fails under
+# `set -euo pipefail`.
+
+# Switch to mono if a real session shows raw escape codes instead of colours.
+BANNER_MODE=color
+
+# Letter area: 17 columns. One array element per column, so no width has to be
+# measured on multibyte characters. Line 3 is the shadow, one column right.
+_BANNER_L1=('█' ' ' '█' ' ' '█' '▀' '▀' ' ' '█' ' ' ' ' ' ' '█' ' ' '▄' '▀' '█')
+_BANNER_L2=('█' '▀' '█' ' ' '█' '█' '▄' ' ' '█' '▄' '▄' ' ' '█' ' ' '█' '▀' '█')
+_BANNER_L3='▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀'
+
+_banner_rgb() {  # _banner_rgb <#RRGGBB> -> "R G B"
+  local h=${1#\#}
+  printf '%d %d %d' "$((16#${h:0:2}))" "$((16#${h:2:2}))" "$((16#${h:4:2}))"
+}
+
+_banner_letters() {  # _banner_letters <array-name> -- uses the caller's grad and off
+  local -n _row=$1
+  local s="" k
+  for ((k = 0; k < 17; k++)); do
+    if [ "${_row[k]}" = " " ]; then s+=" "; else s+="${grad[k]:-}${_row[k]}${off}"; fi
+  done
+  printf '%s' "$s"
+}
+
+banner_render() {
+  local mode=${1:-color} pal=${2:-}
+  shift 2 2> /dev/null || shift $#
+  local e=$'\033' off="" bold="" acc="" brd="" mut="" cols i c line
+  local -a grad=() out=()
+  if [ "$mode" = color ]; then
+    command -v jq > /dev/null 2>&1 || return 1
+    cols=$(jq -r '.colors | [.accent, .accent2, .border, .muted]
+                  | if all(type == "string" and test("^#[0-9A-Fa-f]{6}$")) then join(" ") else empty end' \
+             "$pal" 2> /dev/null) || return 1
+    cols="${cols##*$'\n'}"   # the last line: jq's answer, whatever else ran
+    local a1 a2 b m r1 g1 b1 r2 g2 b2 hex='^#[0-9A-Fa-f]{6}$'
+    read -r a1 a2 b m <<< "$cols"
+    [[ "$a1" =~ $hex && "$a2" =~ $hex && "$b" =~ $hex && "$m" =~ $hex ]] || return 1
+    read -r r1 g1 b1 <<< "$(_banner_rgb "$a1")"
+    read -r r2 g2 b2 <<< "$(_banner_rgb "$a2")"
+    off="${e}[0m"; bold="${e}[1m"
+    acc="${e}[38;2;${r1};${g1};${b1}m"
+    read -r i c line <<< "$(_banner_rgb "$b")"; brd="${e}[38;2;${i};${c};${line}m"
+    read -r i c line <<< "$(_banner_rgb "$m")"; mut="${e}[38;2;${i};${c};${line}m"
+    for ((i = 0; i < 17; i++)); do
+      grad[i]="${e}[38;2;$(( (r1 * (16 - i) + r2 * i + 8) / 16 ));$(( (g1 * (16 - i) + g2 * i + 8) / 16 ));$(( (b1 * (16 - i) + b2 * i + 8) / 16 ))m"
+    done
+  fi
+  out[0]=" ${acc}${bold}✺${off}  $(_banner_letters _BANNER_L1)"
+  out[1]="    $(_banner_letters _BANNER_L2)${brd}▌${off}"
+  out[2]="     ${brd}${_BANNER_L3}${off}"
+  for i in 0 1 2; do
+    line=${out[i]}
+    if [ -n "${1:-}" ]; then
+      [ "$i" = 0 ] && line+=" "        # line 1 is 21 columns wide, the others 22
+      if [ "$i" = 0 ] && [ -n "$acc" ]; then line+="   ${acc}${bold}$1${off}"
+      else line+="   ${mut}$1${off}"; fi
+      shift
+    fi
+    printf '%s\n' "$line"
+  done
+}

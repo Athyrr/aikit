@@ -349,6 +349,38 @@ is "sans jq : code de sortie 0" "0" "$rc"
 out="$(cd "$TMP/hors-registre" && PATH="$NOJQ" HOME="$SLHOME" "$BASH" "$REPO/bin/helia-statusline" <<< '{}')"
 is "sans jq, hors git : pas de parentheses" "helia · hors-registre" "$out"
 
+# =============================================================================
+echo "lib/banner"
+. lib/banner
+mono="$(banner_render mono "" "helia 1.2.3" "thème Helia actif" "vault levault · 2 projets")"; rc=$?
+is "mono : trois lignes, texte a droite aligne" \
+" ✺  █ █ █▀▀ █   █ ▄▀█    helia 1.2.3
+    █▀█ ██▄ █▄▄ █ █▀█▌   thème Helia actif
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀   vault levault · 2 projets" "$mono"
+is "mono : sortie 0" "0" "$rc"
+hasnt "mono : aucune sequence d'echappement" "$ESC" "$mono"
+is "mono, sans texte a droite : le logotype seul, sans espace final" \
+" ✺  █ █ █▀▀ █   █ ▄▀█
+    █▀█ ██▄ █▄▄ █ █▀█▌
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀" "$(banner_render mono "")"
+is "mono, un seul texte : la ligne 2 n'en porte pas" "    █▀█ ██▄ █▄▄ █ █▀█▌" \
+   "$(banner_render mono "" "helia 1.2.3" | sed -n 2p)"
+col="$(banner_render color palettes/helia.json "helia 1.2.3" "thème Helia actif" "vault levault · 2 projets")"; rc=$?
+is "couleur : sortie 0" "0" "$rc"
+is "couleur : trois lignes" "3" "$(printf '%s\n' "$col" | wc -l | tr -d ' ')"
+is "couleur : memes caracteres que mono" "$mono" "$(printf '%s\n' "$col" | plain)"
+has "✺ en accent gras" "${ACC}${ESC}[1m✺" "$col"
+has "premiere colonne de lettres en accent" "  ${ACC}█" "$(line 1 "$col")"
+has "derniere colonne de lettres en accent2" "${ACC2}█${ESC}[0m${BRD}▌" "$(line 2 "$col")"
+has "ombre de la ligne 3 en border" "     ${BRD}▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀" "$(line 3 "$col")"
+is "degrade : une couleur par colonne (13 colonnes de lettres et l'ombre, ligne 2)" "14" \
+   "$(banner_render color palettes/helia.json | sed -n 2p | grep -o "${ESC}\[38;2;[0-9;]*m" | sort -u | wc -l | tr -d ' ')"
+ucol="$(banner_render color palettes/umbra.json "x")"
+has "palette Umbra : accent Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺" "$ucol"
+out="$(banner_render color "$TMP/nexiste-pas.json" "x")"; rc=$?
+is "palette illisible en couleur : sortie 1, rien imprime" "1|" "$rc|$out"
+is "mode par defaut : couleur" "color" "$BANNER_MODE"
+
 echo
 echo "$pass passes, $fail echecs"
 # `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
