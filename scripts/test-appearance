@@ -249,7 +249,7 @@ is "faux jq bavard : settings.json intact (sortie refusee)" '{"theme":"dark"}' "
 
 echo "hooks/hooks.json"
 HJ=hooks/hooks.json
-is "SessionStart porte deux groupes" "2" "$(jq '.hooks.SessionStart | length' "$HJ")"
+is "SessionStart porte trois groupes" "3" "$(jq '.hooks.SessionStart | length' "$HJ")"
 is "premier groupe inchange : matcher" "startup|clear|compact" "$(jq -r '.hooks.SessionStart[0].matcher' "$HJ")"
 is "premier groupe inchange : commande" \
    '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" session-start' "$(jq -r '.hooks.SessionStart[0].hooks[0].command' "$HJ")"
@@ -258,6 +258,26 @@ is "second groupe : commande appearance" \
    '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" appearance' "$(jq -r '.hooks.SessionStart[1].hooks[0].command' "$HJ")"
 is "second groupe : synchrone" "false" "$(jq '.hooks.SessionStart[1].hooks[0].async' "$HJ")"
 is "second groupe : timeout 10" "10" "$(jq '.hooks.SessionStart[1].hooks[0].timeout' "$HJ")"
+is "troisieme groupe : matcher" "startup|resume|clear|compact|fork" "$(jq -r '.hooks.SessionStart[2].matcher' "$HJ")"
+is "troisieme groupe : commande consignes" \
+   '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" consignes SessionStart' "$(jq -r '.hooks.SessionStart[2].hooks[0].command' "$HJ")"
+is "troisieme groupe : synchrone" "false" "$(jq '.hooks.SessionStart[2].hooks[0].async' "$HJ")"
+is "troisieme groupe : timeout 10" "10" "$(jq '.hooks.SessionStart[2].hooks[0].timeout' "$HJ")"
+CVH="$TMP/consignes-vault"; mkdir -p "$CVH/_global"; printf 'une consigne\n' > "$CVH/_global/consignes.md"
+printf 'vault cv %s\n' "$CVH" > "$TMP/consignes-vaults"
+out="$(HELIA_VAULTS="$TMP/consignes-vaults" bash "$REPO/hooks/run-hook.cmd" consignes SubagentStart 2> /dev/null)"; rc=$?
+is "via run-hook.cmd : consignes, sortie 0" "0" "$rc"
+is "via run-hook.cmd : l'evenement passe en argument" "SubagentStart" \
+   "$(printf '%s' "$out" | jq -r '.hookSpecificOutput.hookEventName' | tr -d '\r')"
+awk '/^if \/i not "%~1"=="session-start" exit \/b 0$/ { g = NR } /hookEventName":"SessionStart"/ { e = NR } END { exit !(g && e && g < e) }' hooks/run-hook.cmd \
+  && ok "run-hook.cmd sans bash : seul session-start parle" \
+  || ko "run-hook.cmd sans bash : seul session-start parle" 'if /i not "%~1"=="session-start" exit /b 0 avant le echo' "absent"
+is "SubagentStart : un groupe" "1" "$(jq '.hooks.SubagentStart | length' "$HJ")"
+is "SubagentStart : matcher ancre sur les agents helia" "^helia:" "$(jq -r '.hooks.SubagentStart[0].matcher' "$HJ")"
+is "SubagentStart : commande consignes" \
+   '"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" consignes SubagentStart' "$(jq -r '.hooks.SubagentStart[0].hooks[0].command' "$HJ")"
+is "SubagentStart : synchrone" "false" "$(jq '.hooks.SubagentStart[0].hooks[0].async' "$HJ")"
+is "SubagentStart : timeout 10" "10" "$(jq '.hooks.SubagentStart[0].hooks[0].timeout' "$HJ")"
 hasnt "plus aucune mention de statusline-install" "statusline-install" "$(cat "$HJ")"
 [ -x hooks/appearance ] && ok "hooks/appearance est executable" || ko "hooks/appearance est executable" "x" "non"
 [ ! -e hooks/statusline-install ] && ok "hooks/statusline-install est supprime" \

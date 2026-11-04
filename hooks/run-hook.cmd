@@ -34,9 +34,12 @@ if %ERRORLEVEL% equ 0 (
     exit /b %ERRORLEVEL%
 )
 
-REM No bash found. Say so in the transcript AND in the model's context, then
-REM exit 0 so the session still starts. Never exit 2 here: on SessionStart an
-REM exit 2 blocks startup, and a "deny" decision does the same.
+REM No bash found. Only session-start says so, in the transcript AND in the
+REM model's context: it runs once per session. Every other hook exits silent --
+REM consignes may run before every helia:* agent and must neither repeat the
+REM message nor claim a SessionStart event on SubagentStart. exit 0 either way:
+REM on SessionStart an exit 2 blocks startup, and a "deny" decision does the same.
+if /i not "%~1"=="session-start" exit /b 0
 echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<EXTREMELY_IMPORTANT>Helia could NOT load: no bash found. Git for Windows is a hard prerequisite. The method is NOT active in this session.</EXTREMELY_IMPORTANT>"},"systemMessage":"Helia: no bash found, preamble not injected"}
 exit /b 0
 CMDBLOCK

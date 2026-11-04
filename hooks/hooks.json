@@ -21,6 +21,30 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" consignes SessionStart",
+            "async": false,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "^helia:",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" consignes SubagentStart",
+            "async": false,
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

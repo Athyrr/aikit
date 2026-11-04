@@ -157,10 +157,15 @@ run "1 manifest"        claude plugin validate .
 run "2 skills (strict)" claude plugin validate ./skills --strict
 run "3 agents (strict)" claude plugin validate ./agents --strict
 
-echo "→ 4 hook emits valid JSON"
+echo "→ 4 hooks emit valid JSON"
 if ! CLAUDE_PLUGIN_ROOT=$PWD bash hooks/session-start | json_ok; then
-  echo "  ✗ FAILED"; fail=1
+  echo "    hooks/session-start"; echo "  ✗ FAILED"; fail=1
 fi
+for ev in SessionStart SubagentStart; do
+  if ! CLAUDE_PLUGIN_ROOT=$PWD bash hooks/consignes "$ev" | json_ok; then
+    echo "    hooks/consignes $ev"; echo "  ✗ FAILED"; fail=1
+  fi
+done
 
 # Gate 5 is a TRIPWIRE, not a debt probe: ancestor-walk resolution is already
 # gone from the tree, and this is what refuses its return. `lib` is in SCOPE for
