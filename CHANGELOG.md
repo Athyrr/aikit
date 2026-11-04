@@ -3,6 +3,18 @@
 All notable changes to the Helia method (named aiKit up to 0.27.0). Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## Unreleased
+- **Themes Helia et Umbra.** Deux themes sombres dans `themes/`, generes par
+  `scripts/build-themes` depuis `palettes/helia.json` et `palettes/umbra.json`
+  (roles semantiques, source de verite des couleurs ; `--check` verifie la
+  concordance). Le hook `hooks/appearance` (`SessionStart`, `startup`) remplace
+  `hooks/statusline-install` et devient le seul ecrivain de
+  `~/.claude/settings.json` : `statusLine` (regles inchangees) et `theme`, pose
+  a `custom:helia:helia` sauf s'il vaut deja Helia ou Umbra, effet a la session
+  suivante. Opt-out `~/.config/helia/no-theme`. Suite `scripts/test-appearance`,
+  porte 14 de `scripts/doctor` (quatorze portes) ; les tests de la status line
+  et de l'installateur quittent `scripts/test-vaults` pour elle.
+
 ## 0.28.0
 - **aiKit devient Helia.** Plugin `helia`, marketplace `athyrr-marketplace`
   (identifiant `helia@athyrr-marketplace`), prefixe de dispatch `helia:`, skill

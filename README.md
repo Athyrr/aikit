@@ -12,6 +12,14 @@ Derived from [superpowers](https://github.com/obra/superpowers) (MIT, Jesse
 Vincent) and detached from it: there is no merge path back, by design. Compare
 and cherry-pick by hand when you feel like it.
 
+## Why Helia
+
+*Helia* comes from *Helianthus*, the sunflower — Greek *hēlios*, the sun, and
+*anthos*, the flower. *Umbra* is its counterpart, the shadow facing that light.
+The two themes the plugin ships come from that pair: **Helia**, a warm
+dark-brown base with the sunflower's gold, amber and leaf green; **Umbra**, an
+eclipse — cold black, a pale golden corona, bluish steel.
+
 ## What it does
 
 A SessionStart hook injects, at every startup, `/clear` and **after every
@@ -188,6 +196,8 @@ the method itself.
 ```
 <anywhere>/helia/             a clone of the method — the SOURCE, not the plugin
   hooks/                      the SessionStart injection
+  palettes/                   the colours of the two themes, by role — their source of truth
+  themes/                     Helia and Umbra, generated from palettes/ by scripts/build-themes
   skills/                     the skills
   agents/                     the six archetypes
   VOCABULARY.md               one word, one meaning — read before naming anything
@@ -255,6 +265,28 @@ claude plugin install helia@athyrr-marketplace --scope user
 ```
 
 Then `/reload-plugins`. Old `AIKIT_*` variables and `~/.config/aikit/` are still read for now.
+
+## Appearance
+
+The plugin ships two dark themes, **Helia** and **Umbra** (`themes/`, generated
+from `palettes/` by `scripts/build-themes` — edit the palette, never the theme;
+gate 14 refuses a theme that no longer matches its palette). `/theme` lists them.
+
+At startup, a `SessionStart` hook (`hooks/appearance`) sets `theme` in
+`~/.claude/settings.json` to `custom:helia:helia`, unless it already names
+Helia or Umbra: any other theme is replaced. Claude Code reads the theme once
+per session, so the hook says `thème Helia à la prochaine session` and the next
+session opens in Helia. A `theme` set in a project's or local settings wins
+over the user's.
+
+Opt-outs, one file each; the hook then leaves that part alone:
+
+- `~/.config/helia/no-statusline` — the status line
+- `~/.config/helia/no-theme` — the theme
+
+Uninstalling the plugin leaves `theme` pointing at a theme that no longer
+exists, and `statusLine` at a script that no longer exists: pick another theme
+with `/theme`, and delete `statusLine` from `~/.claude/settings.json`.
 
 ## Iterating on the method
 
