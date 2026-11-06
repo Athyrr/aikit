@@ -24,14 +24,14 @@ there.
 
 ## Frontmatter — parsed by tooling
 
-Get this wrong and things fail silently: the hook drops the row, the launchers
-skip the project.
+Get this wrong and things fail silently: the hook drops the row, `bin/scoped`
+skips the project.
 
 | Field | Required | Read by | Meaning |
 |---|---|---|---|
 | `name` | yes | hook | identifier; must equal the filename. The primary key: a repo can be renamed or transferred without the file moving |
-| `repo` | no | hook, `bin/ezy`, `bin/scoped` | normalized `host/org/repo`, ssh and https alike. Absent means the project has no repository |
-| `dir` | no | hook, launchers | where the working directory is. Relative to the **located repo root** when `repo` is set, to the search root otherwise; defaults to `name`. `repo` and `dir` are orthogonal — a project can need both (a repo whose working tree is a subdirectory) |
+| `repo` | no | hook, `bin/scoped` | normalized `host/org/repo`, ssh and https alike. Absent means the project has no repository |
+| `dir` | no | hook, `bin/scoped` | where the working directory is. Relative to the **located repo root** when `repo` is set, to the search root otherwise; defaults to `name`. `repo` and `dir` are orthogonal — a project can need both (a repo whose working tree is a subdirectory) |
 | `kind` | no | hook | `depot` (implicit default), `conception` or `ecosysteme` — exactly these, lowercase, no accent. Any other value is flagged `⚠ kind « … » inconnu` in the session table |
 | `part_of` | no | hook | the `name` of **one** ecosystem of the same vault (a file with `kind: ecosysteme`). Absent or empty means none. Flagged `⚠` when no file bears that name, or when that file is not an ecosystem |
 | `summary` | yes | hook | one line; **the only always-on part** |

@@ -25,14 +25,19 @@
 # so no risk of opening a perimeter on whichever parallel clone happened to sit
 # above the current directory.
 #
+# Helia stays on in the perimeter, as it was when the plugin was on at user
+# level: once `helia install` has turned it off there, the process gets the
+# launcher's own settings (lib/launcher) and its marker HELIA_LAUNCHER=1.
+#
 # Usage:
 #   scoped <project> <feature> <instruction...>
 #   scoped <project> <feature> @path/to/prompt.md
 #   scoped --dry-run <project> <feature> <instruction...>
 set -euo pipefail
 
-LIB="$(cd "$(dirname "$0")/.." && pwd)/lib/vaults"
-. "$LIB"
+PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+. "$PLUGIN_DIR/lib/vaults"
+. "$PLUGIN_DIR/lib/launcher"
 
 # --dry-run prints the command and the directory it would run in, instead of
 # running it. It is what makes this file testable: without it, a test has to
@@ -66,7 +71,7 @@ while IFS=$'\t' read -r vname vpath; do
       # Registered, but not cloned here. Remember which vault said so, and keep
       # searching: the same project may be declared in a second vault that does
       # hold the clone. Refusing on the first `absent` would refuse work that
-      # exists — and would disagree with bin/ezy, which finds it.
+      # exists.
       registered="${registered:-$vname}"
       continue
     fi
@@ -92,9 +97,8 @@ if [ -z "$found" ]; then
   elif [ "$resolved" = 0 ]; then
     echo "scoped: no declared vault carries a project registry" >&2
   elif [ -n "$registered" ]; then
-    # Deliberately different from bin/ezy, which skips an absent project and
-    # carries on: here the request names THIS project, so there is nothing else
-    # to do. But the refusal leaves only once every vault has been searched.
+    # The request names THIS project, so there is nothing else to do. But the
+    # refusal leaves only once every vault has been searched.
     echo "scoped: '${project}' is registered in vault '${registered}', but not cloned on this machine" >&2
   else
     echo "scoped: no project named '${project}' in any declared vault" >&2
@@ -134,7 +138,15 @@ fi
 marker="${vault_dir}/.session"
 [ "$dry" = 1 ] || mkdir -p "$vault_dir"
 
-args=()
+# Without HELIA_LAUNCHER, hooks/appearance would write Helia's theme into
+# ~/.claude/settings.json and leak it into every native `claude`. A dry run
+# writes nothing: it names the file.
+if [ "$dry" = 1 ]; then
+  settings="$(launcher_mixed "$(launcher_settings_path)")"
+else
+  settings="$(launcher_write_settings "$PLUGIN_DIR")"     || { echo "scoped: cannot write the launch settings $(launcher_settings_path) — is jq installed?" >&2; exit 2; }
+fi
+args=(--settings "$settings")
 read -r -a allow <<< "$(fiche_field "$fiche" allow)"
 read -r -a deny  <<< "$(fiche_field "$fiche" deny)"
 [ ${#allow[@]} -gt 0 ] && args+=(--allowed-tools "${allow[@]}")
@@ -158,10 +170,12 @@ else
 fi
 
 if [ "$dry" = 1 ]; then
-  # The cd is part of the printed command: unlike bin/ezy, this launcher really
-  # does move, and the perimeter is the whole point of reading the line.
-  printf 'cd %q && claude' "$dir"; printf ' %q' "${args[@]}"; printf ' -p %q\n' "$instruction"
+  # The cd is part of the printed command: this script really does move, and
+  # the perimeter is the whole point of reading the line. So is the marker:
+  # without it, the line would not open the same session.
+  printf 'cd %q && HELIA_LAUNCHER=1 claude' "$dir"; printf ' %q' "${args[@]}"; printf ' -p %q\n' "$instruction"
   exit 0
 fi
 cd "$dir"
+export HELIA_LAUNCHER=1
 exec claude "${args[@]}" -p "$instruction"

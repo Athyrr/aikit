@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Resolution des vaults et des projets. SOURCE, jamais execute.
 #
-# Remplace la remontee d'ancetres qui etait dupliquee dans trois fichiers --
-# hooks/session-start, bin/ezy et bin/scoped. Les chemins du fichier de vaults
+# Remplace la remontee d'ancetres qui etait dupliquee dans hooks/session-start
+# et les lanceurs de l'epoque (bin/scoped). Les chemins du fichier de vaults
 # sont absolus, plus rien ne se devine en remontant les repertoires.
 #
 # Format du fichier, un enregistrement par ligne :
