@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+# `helia install` and `helia uninstall`, and the shims they write. SOURCE, never
+# execute: lib/launcher sources it for those two words, after itself.
+#
+# install, once per machine AND per environment (Git Bash, WSL): puts the shims
+# in ~/.local/bin, then turns the plugin off at user level and takes Helia's
+# theme and statusLine out of settings.json -- `claude` alone is then native.
+# Nothing is written before every refusal has been checked.
+#
+# A shim carries HELIA_SHIM and no version. Only `helia install` writes one, so
+# an update of the plugin never touches it. helia.cmd is CRLF and finds bash the
+# way hooks/run-hook.cmd does, then hands over to the bash shim beside it.
+# Both are generated with printf, never a heredoc: their line endings are part
+# of the contract.
+#
+# settings.json may carry the user's `env` block, hence secrets: its backup,
+# settings.json.helia-backup, is chmod 600 (no effect on Windows, no error) and
+# never printed.
+
+LAUNCHER_HELIA_CLEAN='(if (.statusLine | type) == "object"
+      and ((.statusLine.command // "") | tostring
+           | (contains("HELIA_STATUSLINE=1") or contains("AIKIT_STATUSLINE=1")))
+    then del(.statusLine) else . end)
+  | (if .theme == "custom:helia:helia" or .theme == "custom:helia:umbra" then del(.theme) else . end)'
+
+launcher_shim_bash() {
+  printf '%s\n' '#!/usr/bin/env bash' \
+    '# HELIA_SHIM -- posee par « helia install », jamais reecrite par une mise a jour,' \
+    '# aucune version ici : trouve le plugin installe et passe la main a son cli/helia.' \
+    '# Retrait : helia uninstall.' \
+    'set -uo pipefail'
+  # Some bashes print $'\r' as a raw CR between quotes: put the escape back, the shim is LF only.
+  declare -f launcher_resolve | sed "s/'\r'/\$'\\\\r'/g"
+  printf '%s\n' \
+    'd="$(launcher_resolve)"; rc=$?' \
+    'if [ "$rc" = 2 ]; then echo "helia: jq introuvable — requis (SETUP.md)" >&2; exit 1; fi' \
+    'if [ "$rc" != 0 ]; then echo "helia: plugin non installé — claude plugin install helia@athyrr-marketplace --scope user" >&2; exit 1; fi' \
+    'exec bash "$d/cli/helia" "$@"'
+}
+
+launcher_shim_cmd() {
+  printf '%s\r\n' '@echo off' \
+    'REM HELIA_SHIM -- pose par helia install, jamais reecrit par une mise a jour, aucune version ici.' \
+    'REM Trouve bash comme hooks/run-hook.cmd et passe la main a la cale bash voisine.' \
+    'REM Le repli sur le PATH ignore tout resultat sous %SystemRoot% (bash.exe de WSL).' \
+    'setlocal' \
+    'set "HELIA_BASH="' \
+    'if exist "C:\Program Files\Git\bin\bash.exe" set "HELIA_BASH=C:\Program Files\Git\bin\bash.exe"' \
+    'if not defined HELIA_BASH if exist "C:\Program Files (x86)\Git\bin\bash.exe" set "HELIA_BASH=C:\Program Files (x86)\Git\bin\bash.exe"' \
+    'if not defined HELIA_BASH for /f "delims=" %%b in ('"'"'where bash 2^>nul'"'"') do if not defined HELIA_BASH (echo %%b| findstr /i /b /l /c:"%SystemRoot%" >nul || set "HELIA_BASH=%%b")' \
+    'if not defined HELIA_BASH (' \
+    '  echo helia: bash introuvable -- Git for Windows est requis 1>&2' \
+    '  exit /b 1' \
+    ')' \
+    '"%HELIA_BASH%" "%~dp0helia" %*' \
+    'exit /b %ERRORLEVEL%'
+}
+
+_launcher_put_shim() {  # _launcher_put_shim <path> <bash|cmd> -> 0 posee, 3 identique, 4 mise a jour, 1 echec
+  local f="$1" tmp="$1.helia-tmp.$$" was=0
+  [ ! -e "$f" ] || was=1
+  if ! "launcher_shim_$2" > "$tmp" 2> /dev/null; then rm -f "$tmp"; return 1; fi
+  if [ "$was" = 1 ] && cmp -s "$tmp" "$f"; then rm -f "$tmp"; return 3; fi
+  chmod 755 "$tmp" 2> /dev/null || :
+  if ! mv -f "$tmp" "$f" 2> /dev/null; then rm -f "$tmp"; return 1; fi
+  if [ "$was" = 1 ]; then return 4; fi
+  return 0
+}
+
+_launcher_settings_target() {  # -> the settings.json path, a symlink resolved; 1 when the link cannot be
+  local f
+  f="$(launcher_settings_file)"
+  if [ -L "$f" ]; then
+    f="$(readlink -f "$f" 2> /dev/null)" || return 1
+    [ -n "$f" ] || return 1
+  fi
+  printf '%s' "$f"
+}
+
+_launcher_settings_check() {  # 0 when settings.json is absent or a JSON object; the refusal printed otherwise
+  local f
+  if ! f="$(_launcher_settings_target)"; then
+    echo "helia: lien $(launcher_settings_file) illisible — rien n'a été écrit" >&2; return 1
+  fi
+  [ -e "$f" ] || return 0
+  if jq -e 'type == "object"' "$f" > /dev/null 2>&1; then return 0; fi
+  echo "helia: $f n'est pas un objet JSON — rien n'a été écrit" >&2
+  return 1
+}
+
+# _launcher_edit_settings <install|uninstall> -> 0 written, 3 already right, 1 failure.
+# install: enabledPlugins[id] = false; uninstall: the key removed. Both remove a
+# Helia statusLine (current or former marker) and a Helia theme; nothing else.
+_launcher_edit_settings() {
+  local f cur new tmp filter
+  f="$(_launcher_settings_target)" || return 1
+  case "${1:-}" in
+    install)   filter='.enabledPlugins = ((.enabledPlugins // {}) + {($id): false}) | '"$LAUNCHER_HELIA_CLEAN" ;;
+    uninstall) filter='(if (.enabledPlugins | type) == "object" then .enabledPlugins |= del(.[$id]) else . end) | '"$LAUNCHER_HELIA_CLEAN" ;;
+    *) return 1 ;;
+  esac
+  tmp="$f.helia-tmp.$$"
+  if [ ! -e "$f" ]; then
+    [ "$1" = install ] || return 3
+    mkdir -p "${f%/*}" 2> /dev/null || return 1
+    if jq -n --arg id "$LAUNCHER_ID" '{enabledPlugins: {($id): false}}' > "$tmp" 2> /dev/null && mv -f "$tmp" "$f" 2> /dev/null; then
+      return 0
+    fi
+    rm -f "$tmp"; return 1
+  fi
+  cur="$(jq -cS . "$f" 2> /dev/null)" || return 1
+  new="$(jq -cS --arg id "$LAUNCHER_ID" "$filter" "$f" 2> /dev/null)" || return 1
+  cur="${cur//$'\r'/}"; new="${new//$'\r'/}"
+  [ "$cur" != "$new" ] || return 3
+  cp -p "$f" "$f.helia-backup" 2> /dev/null || return 1
+  chmod 600 "$f.helia-backup" 2> /dev/null || :
+  # cp -p first: the redirection below truncates and so keeps the permissions.
+  if cp -p "$f" "$tmp" 2> /dev/null \
+     && jq --arg id "$LAUNCHER_ID" "$filter" "$f" > "$tmp" 2> /dev/null \
+     && jq -e 'type == "object"' "$tmp" > /dev/null 2>&1 \
+     && mv -f "$tmp" "$f" 2> /dev/null; then
+    return 0
+  fi
+  rm -f "$tmp"; return 1
+}
+
+_launcher_path_hint() {  # on stderr: the line to add, never added
+  local bin
+  bin="$(launcher_bin_dir)"
+  echo "helia: $bin n'est pas dans le PATH — ajoute cette ligne à ~/.bashrc (ou ~/.zshrc), rien n'a été modifié :"
+  echo '  export PATH="$HOME/.local/bin:$PATH"'
+  if launcher_is_windows; then
+    echo "  et, pour PowerShell et cmd, une fois, dans PowerShell :"
+    echo "  [Environment]::SetEnvironmentVariable('Path', \"\$env:USERPROFILE\\.local\\bin;\" + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')"
+  fi
+}
+
+helia_cmd_install() {
+  command -v jq > /dev/null 2>&1 || { echo "helia: jq introuvable — requis (SETUP.md)" >&2; return 1; }
+  local bin f i rc changed=0 target
+  local -a names=(helia) kinds=(bash)
+  bin="$(launcher_bin_dir)"
+  if launcher_is_windows; then names+=(helia.cmd); kinds+=(cmd); fi
+  # Every refusal before the first write.
+  for i in "${!names[@]}"; do
+    f="$bin/${names[$i]}"
+    if [ -e "$f" ] && ! grep -qF HELIA_SHIM "$f" 2> /dev/null; then
+      echo "helia: $f existe et n'a pas été posé par Helia (pas de marqueur HELIA_SHIM) — rien n'a été écrit" >&2
+      return 1
+    fi
+  done
+  _launcher_settings_check || return 1
+  mkdir -p "$bin" 2> /dev/null || { echo "helia: impossible de créer $bin" >&2; return 1; }
+  for i in "${!names[@]}"; do
+    f="$bin/${names[$i]}"
+    _launcher_put_shim "$f" "${kinds[$i]}"; rc=$?
+    case "$rc" in
+      0) echo "cale posée : $f"; changed=1 ;;
+      3) echo "cale déjà en place : $f" ;;
+      4) echo "cale à jour : $f"; changed=1 ;;
+      *) echo "helia: impossible d'écrire $f" >&2; return 1 ;;
+    esac
+  done
+  _launcher_edit_settings install; rc=$?
+  target="$(_launcher_settings_target)" || target="$(launcher_settings_file)"
+  case "$rc" in
+    0) echo "settings.json : helia désactivé au niveau user, thème et status line Helia retirés ($target)"
+       [ ! -e "$target.helia-backup" ] \
+         || echo "  sauvegarde : $target.helia-backup (droits 600 ; elle peut contenir le bloc env, ne pas la partager)"
+       changed=1 ;;
+    3) echo "settings.json : déjà prêt ($target)" ;;
+    *) echo "helia: $target n'a pas pu être modifié" >&2; return 1 ;;
+  esac
+  case ":${PATH:-}:" in *":$bin:"*|*":$bin/:"*) ;; *) _launcher_path_hint >&2 ;; esac
+  if [ "$changed" = 0 ]; then
+    echo "helia install : rien à faire, ce poste est déjà installé"
+  else
+    echo "helia install : fait — « claude » ouvre Claude Code natif, « helia » l'ouvre avec Helia"
+  fi
+}
+
+helia_cmd_uninstall() {
+  local yes=0 a ans="" t bin n f rc
+  for a in "$@"; do
+    case "$a" in
+      --yes|-y) yes=1 ;;
+      *) echo "helia: option inconnue '$a' (helia uninstall [--yes])" >&2; return 2 ;;
+    esac
+  done
+  if [ -z "${HELIA_UNINSTALL_COPY:-}" ]; then
+    if [ "$yes" = 0 ]; then
+      printf 'Désinstaller Helia de ce poste (cales, réglages, plugin) ? [o/N] '
+      read -r ans || ans=""
+      case "$ans" in
+        o|O|oui|y|Y|yes) ;;
+        *) echo "helia uninstall : abandon, rien n'a changé"; return 1 ;;
+      esac
+    fi
+    # This file lives in the plugin's cache folder, which `claude plugin
+    # uninstall` deletes: the rest runs from a copy.
+    t="${TMPDIR:-/tmp}/helia-uninstall.$$"
+    if ! { mkdir -p "$t/cli" "$t/lib" && cp "$HELIA_ROOT/cli/helia" "$t/cli/" && cp "$HELIA_ROOT"/lib/launcher* "$t/lib/"; } 2> /dev/null; then
+      rm -rf "$t"; echo "helia: copie temporaire impossible ($t)" >&2; return 1
+    fi
+    HELIA_UNINSTALL_COPY=1 exec bash "$t/cli/helia" uninstall --yes
+  fi
+  # The copy erases itself -- and nothing but a folder bearing the copy's name.
+  case "$HELIA_ROOT" in */helia-uninstall.*) trap 'rm -rf "$HELIA_ROOT"' EXIT ;; esac
+  command -v claude > /dev/null 2>&1 || { echo "helia: claude introuvable" >&2; return 1; }
+  command -v jq > /dev/null 2>&1 || { echo "helia: jq introuvable — requis (SETUP.md)" >&2; return 1; }
+  _launcher_settings_check || return 1
+  # A1: uninstall first, while the key still says false -- `claude plugin
+  # uninstall` refuses when it cannot tell the scope no longer enables the plugin.
+  if ! claude plugin uninstall "$LAUNCHER_ID"; then
+    echo "helia: « claude plugin uninstall helia@athyrr-marketplace » a échoué — cales et settings.json laissés en place" >&2
+    return 1
+  fi
+  bin="$(launcher_bin_dir)"
+  for n in helia helia.cmd; do
+    f="$bin/$n"
+    [ -e "$f" ] || continue
+    if grep -qF HELIA_SHIM "$f" 2> /dev/null; then
+      rm -f "$f" && echo "cale retirée : $f"
+    else
+      echo "laissé en place (pas une cale Helia) : $f"
+    fi
+  done
+  _launcher_edit_settings uninstall; rc=$?
+  case "$rc" in
+    0) echo "settings.json : traces Helia retirées ($(launcher_settings_file))" ;;
+    3) echo "settings.json : rien à retirer" ;;
+    *) echo "helia: $(launcher_settings_file) n'a pas pu être nettoyé" >&2; return 1 ;;
+  esac
+  echo "~/.config/helia conservé — rm -rf ~/.config/helia pour l'effacer"
+}

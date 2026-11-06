@@ -233,6 +233,178 @@ src="$(bash -c '. "$1/lib/launcher"; declare -f launcher_resolve' _ "$REPO")"
 r="$(HOME="$H" PATH="$FAKEBIN:$PATH" bash -c "$src"$'\n''launcher_resolve' 2> /dev/null)"
 is "launcher_resolve autonome : meme reponse hors de lib/launcher" "$REPO" "$r"
 
+# =============================================================================
+echo "helia install : cales"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"
+out="$(hl "$H" install)"; rc=$?
+SH="$H/.local/bin/helia"
+is "install : sortie 0" "0" "$rc"
+[ -x "$SH" ] && ok "cale bash posee, executable" || ko "cale bash posee, executable" "executable" "$(ls -l "$SH" 2>&1)"
+has "... porte le marqueur" "HELIA_SHIM" "$(cat "$SH")"
+is "... aucun CR" "0" "$(tr -cd '\015' < "$SH" | wc -c | tr -d ' ')"
+hasnt "... aucune version" "$(jq -r .version .claude-plugin/plugin.json)" "$(cat "$SH")"
+hasnt "... aucun chemin du plugin" "$REPO" "$(cat "$SH")"
+[ -e "$H/.local/bin/helia.cmd" ] && ko "hors Windows : pas de helia.cmd" "absent" "present" || ok "hors Windows : pas de helia.cmd"
+has "install : la cale est annoncee" "cale posée : $SH" "$out"
+out="$(HOME="$H" PATH="$FAKEBIN:$PATH" bash "$SH" help 2> /dev/null)"
+has "la cale passe la main a cli/helia" "helia install" "$out"
+HOME="$H" TMPDIR="$H/tmp" PATH="$FAKEBIN:$PATH" bash "$SH" -p "dis ok" > /dev/null 2>&1
+is "la cale lance : HELIA_LAUNCHER puis --settings" "HELIA_LAUNCHER=1|--settings" "$(lastargs | sed -n '1,2p' | paste -sd'|')"
+is "... arguments intacts" "-p|dis ok" "$(lastargs | sed -n '4,5p' | paste -sd'|')"
+HOME="$H" PATH="$CRLFBIN:$FAKEBIN:$PATH" bash "$SH" help > /dev/null 2>&1; rc=$?
+is "jq CRLF : la cale trouve quand meme le plugin" "0" "$rc"
+H2="$(newhome)"; mkdir -p "$H2/.local/bin"; cp "$SH" "$H2/.local/bin/helia"
+err="$(HOME="$H2" PATH="$FAKEBIN:$PATH" bash "$H2/.local/bin/helia" help 2>&1 > /dev/null)"; rc=$?
+is "plugin absent : le message exact" "helia: plugin non installé — claude plugin install helia@athyrr-marketplace --scope user" "$err"
+is "... sortie 1" "1" "$rc"
+installed "$(IP "$H2")" "$H2/parti" 3.3.3
+err="$(HOME="$H2" PATH="$FAKEBIN:$PATH" bash "$H2/.local/bin/helia" help 2>&1 > /dev/null)"; rc=$?
+is "dossier introuvable : meme message, sortie 1" "1|helia: plugin non installé — claude plugin install helia@athyrr-marketplace --scope user" "$rc|$err"
+err="$(HOME="$H2" PATH="$TMP/path-vide" "$BASH" "$H2/.local/bin/helia" help 2>&1 > /dev/null)"; rc=$?
+is "cale sans jq : sortie 1" "1" "$rc"
+has "... nomme jq" "jq introuvable" "$err"
+
+echo "helia install : Windows"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"
+out="$(FAKE_UNAME=MINGW64_NT-10.0-26200 hlall "$H" install)"; rc=$?
+CMD="$H/.local/bin/helia.cmd"
+is "Windows : sortie 0" "0" "$rc"
+[ -f "$CMD" ] && ok "Windows : helia.cmd posee" || ko "Windows : helia.cmd posee" "present" "absent"
+[ -x "$H/.local/bin/helia" ] && ok "Windows : la cale bash aussi" || ko "Windows : la cale bash aussi" "present" "absent"
+total="$(wc -l < "$CMD" | tr -d ' ')"
+is "helia.cmd : chaque ligne en CRLF" "$total" "$(tr -cd '\015' < "$CMD" | wc -c | tr -d ' ')"
+has "... marqueur" "HELIA_SHIM" "$(cat "$CMD")"
+has "... passe la main a la cale bash voisine, arguments tels quels" '"%HELIA_BASH%" "%~dp0helia" %*' "$(cat "$CMD")"
+l1="$(grep -nF 'if exist "C:\Program Files\Git\bin\bash.exe"' "$CMD" | head -1 | cut -d: -f1)"
+l2="$(grep -nF 'C:\Program Files (x86)\Git\bin\bash.exe' "$CMD" | head -1 | cut -d: -f1)"
+l3="$(grep -nF 'where bash' "$CMD" | head -1 | cut -d: -f1)"
+if [ -n "$l1" ] && [ -n "$l2" ] && [ -n "$l3" ] && [ "$l1" -lt "$l2" ] && [ "$l2" -lt "$l3" ]; then
+  ok "... cherche bash comme run-hook.cmd : Program Files, (x86), puis le PATH"
+else ko "... cherche bash comme run-hook.cmd : Program Files, (x86), puis le PATH" "l1 < l2 < l3" "$l1 $l2 $l3"; fi
+has "... bash introuvable : sortie 1" "exit /b 1" "$(cat "$CMD")"
+has "... P1 : le repli where bash ignore %SystemRoot% (bash de WSL)" 'findstr /i /b /l /c:"%SystemRoot%"' "$(cat "$CMD")"
+has "Windows, PATH absent : la ligne PowerShell est donnee" "SetEnvironmentVariable('Path'" "$out"
+
+echo "helia install : refus, settings.json"
+H="$(newhome)"; mkdir -p "$H/.local/bin"; echo 'mon helia a moi' > "$H/.local/bin/helia"
+echo '{"theme":"custom:helia:helia"}' > "$H/.claude/settings.json"; cp "$H/.claude/settings.json" "$TMP/avant-refus"
+err="$(hlerr "$H" install)"; rc=$?
+is "fichier etranger : sortie 1" "1" "$rc"
+has "... nomme le marqueur absent" "pas de marqueur HELIA_SHIM" "$err"
+is "... fichier intact" "mon helia a moi" "$(cat "$H/.local/bin/helia")"
+is "... settings.json intact : aucun ecrit avant les refus" "$(cat "$TMP/avant-refus")" "$(cat "$H/.claude/settings.json")"
+
+H="$(newhome)"
+jq -n --arg id "$ID" '{enabledPlugins: {($id): true, "autre@x": true}, theme: "custom:helia:umbra",
+  statusLine: {type: "command", command: "HELIA_STATUSLINE=1 bash \"/x/bin/helia-statusline\""}, env: {SECRET: "s"}}' > "$H/.claude/settings.json"
+cp "$H/.claude/settings.json" "$TMP/avant-install"
+out="$(hl "$H" install)"; rc=$?
+is "settings.json : helia a false, le reste garde, theme et status line Helia retires" \
+   "$(jq -cnS --arg id "$ID" '{enabledPlugins: {($id): false, "autre@x": true}, env: {SECRET: "s"}}')" \
+   "$(jq -cS . "$H/.claude/settings.json")"
+is "sauvegarde : copie exacte de l'avant" "$(cat "$TMP/avant-install")" "$(cat "$H/.claude/settings.json.helia-backup")"
+case "$(uname -s)" in
+  MINGW*|MSYS*) ok "sauvegarde : droits 600 (sans effet sous Windows, non mesurable ici)" ;;
+  *) is "sauvegarde : droits 600" "600" "$(stat -c %a "$H/.claude/settings.json.helia-backup")" ;;
+esac
+hasnt "sauvegarde : jamais affichee" "SECRET" "$out"
+has "install : dit ce qu'il a fait" "settings.json : helia désactivé au niveau user" "$out"
+is "aucun temporaire laisse" "plugins settings.json settings.json.helia-backup" "$(ls -A "$H/.claude" | tr '\n' ' ' | sed 's/ $//')"
+
+H="$(newhome)"; echo '{"statusLine":{"type":"command","command":"AIKIT_STATUSLINE=1 bash x"},"theme":"dark"}' > "$H/.claude/settings.json"
+hl "$H" install > /dev/null
+is "ancien marqueur AIKIT : status line retiree, theme etranger garde" "absent|dark" \
+   "$(jq -r '"\(.statusLine // "absent")|\(.theme)"' "$H/.claude/settings.json")"
+H="$(newhome)"; echo '{"statusLine":{"type":"command","command":"~/a-moi.sh"}}' > "$H/.claude/settings.json"
+hl "$H" install > /dev/null
+is "status line de l'utilisateur gardee" "~/a-moi.sh" "$(jq -r '.statusLine.command' "$H/.claude/settings.json")"
+H="$(newhome)"; hl "$H" install > /dev/null
+is "settings.json absent : cree, helia a false" "$(jq -cn --arg id "$ID" '{enabledPlugins: {($id): false}}')" "$(jq -c . "$H/.claude/settings.json")"
+H="$(newhome)"; printf '{"theme": "dark",\n' > "$H/.claude/settings.json"; cp "$H/.claude/settings.json" "$TMP/avant-invalide"
+err="$(hlerr "$H" install)"; rc=$?
+is "JSON invalide : sortie 1" "1" "$rc"
+has "... le dit" "n'est pas un objet JSON" "$err"
+is "... intact" "$(cat "$TMP/avant-invalide")" "$(cat "$H/.claude/settings.json")"
+[ -e "$H/.local/bin/helia" ] && ko "... aucune cale posee" "absente" "posee" || ok "... aucune cale posee"
+H="$(newhome)"; mkdir -p "$H/cfg"; echo '{}' > "$H/cfg/settings.json"
+CLAUDE_CONFIG_DIR="$H/cfg" hl "$H" install > /dev/null
+is "CLAUDE_CONFIG_DIR : son settings.json" "false" "$(jq -r --arg id "$ID" '.enabledPlugins[$id]' "$H/cfg/settings.json")"
+[ -e "$H/.claude/settings.json" ] && ko "... et pas celui de ~/.claude" "absent" "cree" || ok "... et pas celui de ~/.claude"
+H="$(newhome)"; mkdir -p "$TMP/reel-l"; echo '{"theme":"custom:helia:helia"}' > "$TMP/reel-l/settings.json"
+if ln -s "$TMP/reel-l/settings.json" "$H/.claude/settings.json" 2> /dev/null && [ -L "$H/.claude/settings.json" ]; then
+  hl "$H" install > /dev/null
+  [ -L "$H/.claude/settings.json" ] && ok "lien symbolique : reste un lien" || ko "lien symbolique : reste un lien" "lien" "fichier"
+  is "... la cible est ecrite" "false|absent" "$(jq -r --arg id "$ID" '"\(.enabledPlugins[$id])|\(.theme // "absent")"' "$TMP/reel-l/settings.json")"
+else echo "  - lien symbolique : non disponible sur ce poste (ln -s copie), cas non mesure"; fi
+
+echo "helia install : idempotence, PATH"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"; echo '{}' > "$H/.claude/settings.json"
+hl "$H" install > /dev/null
+touch -d @0 "$H/.claude/settings.json" "$H/.local/bin/helia" "$H/.claude/settings.json.helia-backup"
+out="$(hl "$H" install)"; rc=$?
+is "deuxieme install : sortie 0" "0" "$rc"
+has "... le dit" "helia install : rien à faire, ce poste est déjà installé" "$out"
+is "... rien de reecrit (mtime)" "0 0 0" \
+   "$(stat -c %Y "$H/.claude/settings.json" "$H/.local/bin/helia" "$H/.claude/settings.json.helia-backup" | tr '\n' ' ' | sed 's/ $//')"
+printf '#!/usr/bin/env bash\n# HELIA_SHIM ancienne forme\n' > "$H/.local/bin/helia"
+out="$(hl "$H" install)"
+has "cale Helia d'une autre forme : remplacee" "cale à jour : $H/.local/bin/helia" "$out"
+is "... par la forme courante" "$(bash -c '. "$1/lib/launcher"; . "$1/lib/launcher-install"; launcher_shim_bash' _ "$REPO")" "$(cat "$H/.local/bin/helia")"
+H="$(newhome)"; out="$(hlall "$H" install)"
+has "PATH sans ~/.local/bin : la ligne a ajouter" 'export PATH="$HOME/.local/bin:$PATH"' "$out"
+hasnt "... hors Windows, pas de PowerShell" "SetEnvironmentVariable" "$out"
+H="$(newhome)"; out="$(XPATH="$H/.local/bin:" hlall "$H" install)"
+hasnt "PATH deja bon : aucun avertissement" "n'est pas dans le PATH" "$out"
+
+# =============================================================================
+echo "helia uninstall"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"; echo '{"enabledPlugins":{"autre@x":true}}' > "$H/.claude/settings.json"
+hl "$H" install > /dev/null; cp "$H/.claude/settings.json" "$TMP/avant-desinst"
+out="$(printf 'n\n' | hlall "$H" uninstall)"; rc=$?
+is "refus a la confirmation : sortie 1" "1" "$rc"
+has "... la question" "[o/N]" "$out"
+has "... le dit" "helia uninstall : abandon, rien n'a changé" "$out"
+noclaude "... claude n'est pas appele"
+is "... settings.json intact" "$(cat "$TMP/avant-desinst")" "$(cat "$H/.claude/settings.json")"
+[ -e "$H/.local/bin/helia" ] && ok "... cale en place" || ko "... cale en place" "presente" "absente"
+jq '.theme = "custom:helia:helia"' "$H/.claude/settings.json" > "$TMP/s.json" && mv "$TMP/s.json" "$H/.claude/settings.json"
+out="$(hlall "$H" uninstall --yes)"; rc=$?
+is "--yes : sortie 0" "0" "$rc"
+has "claude plugin uninstall appele" "plugin uninstall helia@athyrr-marketplace" "$(cat "$FAKE_STATE/calls")"
+is "A1 : a la desinstallation, helia vaut encore false" "false" \
+   "$(jq -r --arg id "$ID" '.enabledPlugins[$id]' "$FAKE_STATE/settings-at-uninstall.json")"
+is "apres : cle helia retiree, le reste garde, theme Helia retire" '{"enabledPlugins":{"autre@x":true}}' "$(jq -cS . "$H/.claude/settings.json")"
+[ -e "$H/.local/bin/helia" ] && ko "cale retiree" "absente" "presente" || ok "cale retiree"
+[ -d "$H/.config/helia" ] && ok "~/.config/helia garde" || ko "~/.config/helia garde" "present" "absent"
+is "derniere ligne" "~/.config/helia conservé — rm -rf ~/.config/helia pour l'effacer" "$(printf '%s\n' "$out" | tail -1)"
+is "copie temporaire effacee" "" "$(ls "$H/tmp" | grep helia-uninstall)"
+
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"; hl "$H" install > /dev/null
+printf 'o\n' | hlall "$H" uninstall > /dev/null; rc=$?
+is "confirmation o : sortie 0" "0" "$rc"
+
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"; hl "$H" install > /dev/null
+echo 1 > "$FAKE_STATE/uninstall-rc"; cp "$H/.claude/settings.json" "$TMP/avant-echec"
+err="$(hlerr "$H" uninstall --yes)"; rc=$?
+is "claude plugin uninstall en echec : sortie 1" "1" "$rc"
+has "... le dit" "a échoué — cales et settings.json laissés en place" "$err"
+is "... settings.json intact" "$(cat "$TMP/avant-echec")" "$(cat "$H/.claude/settings.json")"
+[ -e "$H/.local/bin/helia" ] && ok "... cale en place" || ko "... cale en place" "presente" "absente"
+
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"; hl "$H" install > /dev/null; echo 'a moi' > "$H/.local/bin/helia.cmd"
+out="$(hlall "$H" uninstall --yes)"
+is "fichier etranger : laisse" "a moi" "$(cat "$H/.local/bin/helia.cmd")"
+has "... et dit" "laissé en place (pas une cale Helia) : $H/.local/bin/helia.cmd" "$out"
+
+H="$(newhome)"; PC="$TMP/cache-jetable/helia/9.9.9"; mkdir -p "$PC"; cp -r "$REPO/cli" "$REPO/lib" "$REPO/.claude-plugin" "$PC/"
+installed "$(IP "$H")" "$PC"; hl "$H" install > /dev/null
+out="$(HOME="$H" TMPDIR="$H/tmp" FAKE_PLUGIN_DIR="$PC" PATH="$FAKEBIN:$PATH" bash "$PC/cli/helia" uninstall --yes 2>&1)"; rc=$?
+[ -d "$PC" ] && ko "temoin : le dossier du plugin a disparu" "absent" "present" || ok "temoin : le dossier du plugin a disparu"
+is "depuis le cache qui disparait : sortie 0" "0" "$rc"
+has "... va jusqu'au bout" "~/.config/helia conservé" "$out"
+[ -e "$H/.local/bin/helia" ] && ko "... cales retirees" "absente" "presente" || ok "... cales retirees"
+is "... copie temporaire effacee" "" "$(ls "$H/tmp" | grep helia-uninstall)"
+
 # --- fin : le decompte ---
 echo
 echo "$pass passes, $fail echecs"
