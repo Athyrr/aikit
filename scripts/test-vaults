@@ -1048,6 +1048,8 @@ mkdir -p "$CV/lienf/_global" "$CV/liend" "$TMP/ext/glob"
 ln -s "$TMP/ext/dehors.md" "$CV/lienf/_global/consignes.md"
 cp "$TMP/ext/dehors.md" "$TMP/ext/glob/consignes.md"; ln -s "$TMP/ext/glob" "$CV/liend/_global"
 for lv in lienf liend; do
+  lk="$CV/$lv/_global/consignes.md"; [ "$lv" = liend ] && lk="$CV/liend/_global"
+  if [ ! -L "$lk" ]; then echo "  (liens symboliques indisponibles ici : cas ignore)"; continue; fi
   cconf "$TMP/c-$lv" "$lv"
   is "lien symbolique ($lv) : SessionStart {}" "{}" "$(chook "$TMP/c-$lv" SessionStart)"
   is "lien symbolique ($lv) : SubagentStart {}" "{}" "$(chook "$TMP/c-$lv" SubagentStart)"

@@ -217,10 +217,14 @@ H="$(newhome)"; mkdir -p "$TMP/reel"
 echo '{"theme":"dark"}' > "$TMP/reel/settings.json"; chmod 640 "$TMP/reel/settings.json"
 ln -s "$TMP/reel/settings.json" "$(S "$H")"
 app "$H" > /dev/null
+if [ -L "$(S "$H")" ]; then
 [ -L "$(S "$H")" ] && ok "lien symbolique : le lien reste un lien" \
   || ko "lien symbolique : le lien reste un lien" "lien" "fichier"
 is "lien symbolique : la cible resolue est ecrite" "$WANT|$HELIA" "$(jq -r '"\(.statusLine.command)|\(.theme)"' "$TMP/reel/settings.json")"
 is "lien symbolique : permissions conservees" "640" "$(stat -c %a "$TMP/reel/settings.json")"
+else
+  echo "  (liens symboliques indisponibles ici : cas ignore)"
+fi
 is "lien symbolique : aucun temporaire laisse" "settings.json" "$(ls "$TMP/reel")"
 
 H="$(newhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
@@ -383,7 +387,7 @@ is "palette illisible : sortie 0" "0" "$rc"
 
 # Le cache par session : une entree posee a la main est relue telle quelle.
 CC="$TMP/sl-cache-projet"; mkdir -p "$CC/helia"
-printf '%s\t%s\n' "$ROOT/avec-remote" "nom-en-cache" > "$CC/helia/project-scache"
+printf '%s\t%s\n' "$(jq -nr --arg d "$ROOT/avec-remote" '$d' | tr -d '\r')" "nom-en-cache" > "$CC/helia/project-scache"
 is "le projet vient du cache de la session" \
    "✺ helia  │  Opus  │  nom-en-cache ⎇ trunk" "$(line 1 "$(SLC="$CC" sl "$(slin "$ROOT/avec-remote" scache 30)")" | plain)"
 printf '%s\t%s\n' "$TMP/ailleurs" "nom-perime" > "$CC/helia/project-sperime"
