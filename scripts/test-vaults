@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Tests de lib/vaults. Aucune dependance reseau, aucune fixture versionnee.
 set -uo pipefail
+# A session started by `helia` exports HELIA_LAUNCHER: without this, the "exporte HELIA_LAUNCHER" assertion could not fail.
+unset HELIA_LAUNCHER
 cd "$(dirname "$0")/.." || exit 1
 . lib/vaults
 

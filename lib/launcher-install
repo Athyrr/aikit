@@ -42,7 +42,7 @@ launcher_shim_cmd() {
   printf '%s\r\n' '@echo off' \
     'REM HELIA_SHIM -- pose par helia install, jamais reecrit par une mise a jour, aucune version ici.' \
     'REM Trouve bash comme hooks/run-hook.cmd et passe la main a la cale bash voisine.' \
-    'REM Le repli sur le PATH ignore tout resultat sous %SystemRoot% (bash.exe de WSL).' \
+    'REM Le repli sur le PATH ignore tout resultat sous %SystemRoot% ou WindowsApps (bash.exe de WSL).' \
     'setlocal' \
     'set "HELIA_BASH="' \
     'if exist "C:\Program Files\Git\bin\bash.exe" set "HELIA_BASH=C:\Program Files\Git\bin\bash.exe"' \
@@ -52,8 +52,7 @@ launcher_shim_cmd() {
     '  echo helia: bash introuvable -- Git for Windows est requis 1>&2' \
     '  exit /b 1' \
     ')' \
-    '"%HELIA_BASH%" "%~dp0helia" %*' \
-    'exit /b %ERRORLEVEL%'
+    '"%HELIA_BASH%" "%~dp0helia" %* & exit /b'
 }
 
 _launcher_put_shim() {  # _launcher_put_shim <path> <bash|cmd> -> 0 posee, 3 identique, 4 mise a jour, 1 echec

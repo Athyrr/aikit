@@ -13,7 +13,7 @@ other sessions until `scripts/deploy` has published it.
 - `jq` — **required for `helia`, the status line, the theme and the startup banner**: `helia` builds its launch settings and `helia install` edits `~/.claude/settings.json` with it; the startup hook leaves that file untouched when `jq` is missing; the renderer falls back to a bare `helia · <folder> (<branch>)` line,
   where `<folder>` is the shell's folder (the process's current directory), not
   the session's working folder. `scripts/test-appearance` (gate 14) refuses to
-  run without it. Everything else works without it.
+  run without it. `bin/scoped` and the `helia` launcher need it too.
 - an SSH key loaded in `ssh-agent`, with `github.com` in `known_hosts`
 - Claude Code ≥ 2.1.193
 - **optional:** an `obsidian` plugin providing the `obsidian:obsidian-markdown`
@@ -75,6 +75,9 @@ first argument, which `helia` refuses as an unknown subcommand.
 
 Known limits:
 
+- Through `helia.cmd`, an argument starting with `/` (`helia -p "/review"` from
+  PowerShell) is rewritten by Git Bash's path conversion. Set
+  `MSYS2_ARG_CONV_EXCL` or launch from Git Bash with `//review`.
 - `/theme` or `/config` inside a `helia` session writes `theme` into
   `~/.claude/settings.json`, and the theme then leaks into native `claude`.
   Choose it with `helia theme <helia|umbra|off>`; `helia doctor` reports the
@@ -218,7 +221,9 @@ Known limits:
   `allowManagedHooksOnly`; a project-level or managed `statusLine` takes
   precedence over the one in `~/.claude/settings.json`.
 - `claude --plugin-dir .` writes the development path into your global
-  `settings.json` (the marker allows it); the next normal startup rewrites it.
+  `settings.json` (the marker allows it). Without `helia install`, the next
+  normal startup rewrites it; after `helia install`, only `helia install` cleans
+  it up: use `helia --plugin-dir .` (§4).
 - `resume` and `fork` do not rewrite the path; the previous version's folder
   stays valid for 14 days.
 - Whether a write made at startup applies to the session that made it, or only

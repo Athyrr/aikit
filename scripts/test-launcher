@@ -34,7 +34,7 @@ printf '%s\n' "$*" >> "$FAKE_STATE/calls"
 printf '%s\n' "HELIA_LAUNCHER=${HELIA_LAUNCHER:-}" "$@" > "$FAKE_STATE/last-args"
 prev=""
 for a in "$@"; do
-  [ "$prev" = --settings ] && cp "$a" "$FAKE_STATE/last-settings.json"
+  [ "$prev" = --settings ] && { cp "$a" "$FAKE_STATE/last-settings.json"; stat -c %a "$a" > "$FAKE_STATE/last-mode" 2> /dev/null; }
   prev="$a"
 done
 case "${1:-} ${2:-}" in
@@ -158,6 +158,10 @@ has "fusion : fichier temporaire du lanceur" "$H/tmp/helia-launch." "$(lastargs 
 is "fusion : premier niveau, enabledPlugins par id, statusLine remplacee entiere" \
    "$(jq -cnS --arg id "$ID" '{enabledPlugins: {"autre@x": true, ($id): true}, model: "haiku", statusLine: {type: "command", command: "moi"}, theme: "custom:helia:helia"}')" \
    "$(lastset)"
+case "$(uname -s)" in
+  MINGW*|MSYS*) ok "fusion : droits 600 (sans effet sous Windows, non mesurable ici)" ;;
+  *) is "fusion : fichier fusionne en mode 600 (reglages prives de l'utilisateur)" "600" "$(cat "$FAKE_STATE/last-mode" 2> /dev/null)" ;;
+esac
 is "fusion : -p x suit" "-p|x" "$(lastargs | sed -n '4,5p' | paste -sd'|')"
 is "fusion : launch-settings.json intact" "custom:helia:helia|$WANT_SL" \
    "$(jq -r '"\(.theme)|\(.statusLine.command)"' "$H/.config/helia/launch-settings.json")"
@@ -274,7 +278,7 @@ is "Windows : sortie 0" "0" "$rc"
 total="$(wc -l < "$CMD" | tr -d ' ')"
 is "helia.cmd : chaque ligne en CRLF" "$total" "$(tr -cd '\015' < "$CMD" | wc -c | tr -d ' ')"
 has "... marqueur" "HELIA_SHIM" "$(cat "$CMD")"
-has "... passe la main a la cale bash voisine, arguments tels quels" '"%HELIA_BASH%" "%~dp0helia" %*' "$(cat "$CMD")"
+has "... passe la main a la cale bash voisine, arguments tels quels, code de sortie transmis" '"%HELIA_BASH%" "%~dp0helia" %* & exit /b' "$(cat "$CMD")"
 l1="$(grep -nF 'if exist "C:\Program Files\Git\bin\bash.exe"' "$CMD" | head -1 | cut -d: -f1)"
 l2="$(grep -nF 'C:\Program Files (x86)\Git\bin\bash.exe' "$CMD" | head -1 | cut -d: -f1)"
 l3="$(grep -nF 'where bash' "$CMD" | head -1 | cut -d: -f1)"

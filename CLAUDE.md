@@ -82,8 +82,8 @@ bloc en est la formulation impérative, pas une règle séparée.
   SessionStart injections still need a session event — `session-start` matches
   `startup|clear|compact`, `consignes` matches `startup|resume|clear|compact|fork`,
   a difference that is deliberate — and `/clear` is one of them.
-  `claude --plugin-dir .` loads this tree for one session, taking
-  precedence over the installed copy.
+  `helia --plugin-dir .` loads this tree for one session, taking
+  precedence over the installed copy (the installed launcher and status line still run; a bare `claude --plugin-dir .` writes theme and status line into `settings.json`).
 
 ## Completion criterion
 

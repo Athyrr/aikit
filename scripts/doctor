@@ -25,7 +25,7 @@
 # `helia install`, against a fake claude and throwaway HOMEs -- the one path by
 # which `helia` opens Claude Code with the plugin on while `claude` stays native.
 #
-# A failing gate prints its own output, capped: `run` at 25 lines, the four
+# A failing gate prints its own output, capped: `run` at 25 lines, the five
 # suites (9, 11, 13, 14 and 15) their already-filtered failure block at 30 — all name how
 # many lines they cut and what to rerun directly for the rest. A session reading
 # this output is not the same as a person scrolling a terminal; an uncapped gate

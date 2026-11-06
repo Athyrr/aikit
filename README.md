@@ -307,7 +307,7 @@ the active theme's palette — Umbra under `custom:helia:umbra` (under `helia`: 
 ctx ━━━━──────── 30 %    5h ━━━━━━━───── 60 % ↺ 2h14    hebdo ━━━━──────── 32 % ↺ 3j
 ```
 
-After a `/theme`, it changes colour at the next message. At startup the hook
+Under `helia`, the bar reads `~/.config/helia/theme`: change it with `helia theme`. At startup the hook
 also shows the HELIA logotype, with the plugin version, the theme's state and
 the first declared vault that has a `projects/` folder.
 
@@ -333,7 +333,8 @@ scripts/deploy [patch|minor|major] "message"
 from the clone bumps both manifests, runs every gate of `scripts/doctor`, commits, pushes,
 refreshes the marketplace and updates the install. **Takes effect in a new
 session.** Run `scripts/doctor` any time for the gates without deploying, and
-`claude --plugin-dir .` to load the working tree into one session only.
+`helia --plugin-dir .` to load the working tree into one session only (with `helia install` done, use `helia --plugin-dir .`: the loop
+still runs the installed `cli/helia` and status line).
 [`SETUP.md`](SETUP.md) §4 has the whole loop, from clone to merge.
 
 The registry is exempt: `<vault>/projects/*.md` lives in the vault
