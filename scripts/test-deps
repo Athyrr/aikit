@@ -47,7 +47,11 @@ planmd() {
   } > "$VAULT/$p/$b/plan.md"
 }
 
-deps() { OUT=$(bin/helia-deps "$@" 2>&1); RC=$?; }
+deps() {
+  local b="${HELIA_DEPS_BUDGET-}"
+  case "$(uname -s)" in MINGW*|MSYS*) b="${b:-30}" ;; esac
+  OUT=$(HELIA_DEPS_BUDGET="$b" bin/helia-deps "$@" 2>&1); RC=$?
+}
 
 # Faux gh : une reponse par ligne de commande. Sans reponse posee, il rend ce que
 # le vrai rend sur un depot sans release : le 404 sur stderr, code 1.
