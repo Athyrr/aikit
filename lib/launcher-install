@@ -47,7 +47,7 @@ launcher_shim_cmd() {
     'set "HELIA_BASH="' \
     'if exist "C:\Program Files\Git\bin\bash.exe" set "HELIA_BASH=C:\Program Files\Git\bin\bash.exe"' \
     'if not defined HELIA_BASH if exist "C:\Program Files (x86)\Git\bin\bash.exe" set "HELIA_BASH=C:\Program Files (x86)\Git\bin\bash.exe"' \
-    'if not defined HELIA_BASH for /f "delims=" %%b in ('"'"'where bash 2^>nul'"'"') do if not defined HELIA_BASH (echo %%b| findstr /i /b /l /c:"%SystemRoot%" >nul || set "HELIA_BASH=%%b")' \
+    'if not defined HELIA_BASH for /f "delims=" %%b in ('"'"'where bash 2^>nul'"'"') do if not defined HELIA_BASH (echo %%b| findstr /i /b /l /c:"%SystemRoot%" /c:"%LOCALAPPDATA%\Microsoft\WindowsApps" >nul || set "HELIA_BASH=%%b")' \
     'if not defined HELIA_BASH (' \
     '  echo helia: bash introuvable -- Git for Windows est requis 1>&2' \
     '  exit /b 1' \
@@ -180,14 +180,16 @@ helia_cmd_install() {
 }
 
 helia_cmd_uninstall() {
-  local yes=0 a ans="" t bin n f rc
+  local yes=0 a ans="" t bin n f rc is_copy
   for a in "$@"; do
     case "$a" in
       --yes|-y) yes=1 ;;
       *) echo "helia: option inconnue '$a' (helia uninstall [--yes])" >&2; return 2 ;;
     esac
   done
-  if [ -z "${HELIA_UNINSTALL_COPY:-}" ]; then
+  # The copy mode needs the marker AND a HELIA_ROOT that is the temporary copy: the variable alone skips nothing.
+  case "$HELIA_ROOT" in */helia-uninstall.*) is_copy=1 ;; *) is_copy=0 ;; esac
+  if [ -z "${HELIA_UNINSTALL_COPY:-}" ] || [ "$is_copy" = 0 ]; then
     if [ "$yes" = 0 ]; then
       printf 'Désinstaller Helia de ce poste (cales, réglages, plugin) ? [o/N] '
       read -r ans || ans=""
@@ -198,7 +200,7 @@ helia_cmd_uninstall() {
     fi
     # This file lives in the plugin's cache folder, which `claude plugin
     # uninstall` deletes: the rest runs from a copy.
-    t="${TMPDIR:-/tmp}/helia-uninstall.$$"
+    t="$(mktemp -d "${TMPDIR:-/tmp}/helia-uninstall.XXXXXX")" || { echo "helia: copie temporaire impossible" >&2; return 1; }
     if ! { mkdir -p "$t/cli" "$t/lib" && cp "$HELIA_ROOT/cli/helia" "$t/cli/" && cp "$HELIA_ROOT"/lib/launcher* "$t/lib/"; } 2> /dev/null; then
       rm -rf "$t"; echo "helia: copie temporaire impossible ($t)" >&2; return 1
     fi
