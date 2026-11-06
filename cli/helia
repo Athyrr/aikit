@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# `helia`: opens Claude Code with Helia active, or runs `helia <subcommand>`.
+# Reached through the shim `helia install` puts in ~/.local/bin, which finds the
+# installed plugin and runs THIS file -- so the logic follows the plugin's
+# updates while the shim never changes. Everything lives in lib/launcher; this
+# file only finds it, with builtins alone: `helia` must still be able to say
+# "jq missing" on a PATH that holds nothing.
+set -uo pipefail
+case "${BASH_SOURCE[0]}" in */*) here="${BASH_SOURCE[0]%/*}" ;; *) here="." ;; esac
+HELIA_ROOT="$(cd "$here/.." 2> /dev/null && pwd)" || { echo "helia: dossier du plugin introuvable" >&2; exit 1; }
+. "$HELIA_ROOT/lib/launcher" 2> /dev/null || { echo "helia: $HELIA_ROOT/lib/launcher illisible" >&2; exit 1; }
+launcher_main "$@"
+exit $?

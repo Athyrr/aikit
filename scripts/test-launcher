@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+# Tests du lanceur : cli/helia, lib/launcher*, les cales de `helia install`.
+# Faux claude, faux cygpath, faux uname, HOME jetables : aucun reseau, rien n'est
+# ecrit hors de $TMP. jq est requis, comme pour le lanceur (SETUP.md).
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+command -v jq > /dev/null 2>&1 || { echo "jq absent : test impossible (prerequis, SETUP.md)" >&2; exit 1; }
+# Lancee depuis une session helia, la suite heriterait de son environnement.
+unset HELIA_LAUNCHER HELIA_UNINSTALL_COPY CLAUDE_CONFIG_DIR CLAUDE_CODE_PLUGIN_CACHE_DIR FAKE_UNAME FAKE_PLUGIN_DIR
+
+pass=0; fail=0
+ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
+ko()  { echo "  ✗ $1"; echo "      attendu: [$2]"; echo "      obtenu : [$3]"; fail=$((fail+1)); }
+is()  { [ "$2" = "$3" ] && ok "$1" || ko "$1" "$2" "$3"; }
+has() { case "$3" in *"$2"*) ok "$1" ;; *) ko "$1" "contient [$2]" "${3:-vide}" ;; esac; }
+hasnt() { case "$3" in *"$2"*) ko "$1" "ne contient pas [$2]" "$3" ;; *) ok "$1" ;; esac; }
+
+REPO="$PWD"
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+REALJQ="$(command -v jq)"
+ID="helia@athyrr-marketplace"
+WINREPO="${REPO//\//\\}"          # le depot ecrit comme un installPath Windows
+export FAKE_STATE="$TMP/state"; mkdir -p "$FAKE_STATE"
+export HELIA_VAULTS="$TMP/aucun-fichier-de-vaults"
+mkdir -p "$TMP/path-vide"
+
+# --- faux binaires --------------------------------------------------------------
+FAKEBIN="$TMP/bin"; mkdir -p "$FAKEBIN"
+cat > "$FAKEBIN/claude" <<'EOF'
+#!/usr/bin/env bash
+# Faux claude : journalise l'appel, garde une copie du fichier --settings,
+# repond a `plugin list|uninstall|update` depuis $FAKE_STATE.
+printf '%s\n' "$*" >> "$FAKE_STATE/calls"
+printf '%s\n' "HELIA_LAUNCHER=${HELIA_LAUNCHER:-}" "$@" > "$FAKE_STATE/last-args"
+prev=""
+for a in "$@"; do
+  [ "$prev" = --settings ] && cp "$a" "$FAKE_STATE/last-settings.json"
+  prev="$a"
+done
+case "${1:-} ${2:-}" in
+  "plugin list") cat "$FAKE_STATE/plugin-list.json" 2> /dev/null || echo '[]' ;;
+  "plugin uninstall")
+    cp "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" "$FAKE_STATE/settings-at-uninstall.json" 2> /dev/null
+    [ -z "${FAKE_PLUGIN_DIR:-}" ] || rm -rf "$FAKE_PLUGIN_DIR"
+    exit "$(cat "$FAKE_STATE/uninstall-rc" 2> /dev/null || echo 0)" ;;
+  "plugin update") exit "$(cat "$FAKE_STATE/update-rc" 2> /dev/null || echo 0)" ;;
+esac
+exit 0
+EOF
+cat > "$FAKEBIN/cygpath" <<'EOF'
+#!/usr/bin/env bash
+# Faux cygpath : `-m <chemin>` rend les antislashs en slashs, rien d'autre.
+[ "${1:-}" = -m ] || exit 1
+p="${2:-}"; printf '%s\n' "${p//\\//}"
+EOF
+cat > "$FAKEBIN/uname" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "${FAKE_UNAME:-Linux}"
+EOF
+chmod +x "$FAKEBIN/claude" "$FAKEBIN/cygpath" "$FAKEBIN/uname"
+# Un jq natif Windows termine chaque ligne par CR : ce faux jq le reproduit, et
+# garde le code de sortie du vrai (pipefail).
+CRLFBIN="$TMP/jq-crlf"; mkdir -p "$CRLFBIN"
+printf '#!/usr/bin/env bash\nset -o pipefail\n"%s" "$@" | sed "s/\\$/\\r/"\n' "$REALJQ" > "$CRLFBIN/jq"; chmod +x "$CRLFBIN/jq"
+
+# --- aides ------------------------------------------------------------------------
+newhome() {  # newhome -> un HOME jetable ; remet a zero l'etat du faux claude
+  local h; h="$(mktemp -d "$TMP/home.XXXXXX")"
+  mkdir -p "$h/.claude/plugins" "$h/.config/helia" "$h/tmp"
+  rm -rf "$FAKE_STATE"; mkdir -p "$FAKE_STATE"
+  printf '%s' "$h"
+}
+IP() { printf '%s' "$1/.claude/plugins/installed_plugins.json"; }   # IP <home>
+installed() {  # installed <fichier> <installPath> [version] [scope]
+  jq -n --arg id "$ID" --arg p "$2" --arg v "${3:-9.9.9}" --arg s "${4:-user}" \
+    '{version: 2, plugins: {($id): [{scope: $s, installPath: $p, version: $v}]}}' > "$1"
+}
+# hl <home> <args...> : cli/helia du depot, faux binaires devant le PATH (XPATH=
+# ajoute des dossiers devant). hl : stdout ; hlerr : stderr ; hlall : les deux.
+hl()    { local h="$1"; shift; HOME="$h" TMPDIR="$h/tmp" PATH="${XPATH:-}$FAKEBIN:$PATH" bash "$REPO/cli/helia" "$@" 2> /dev/null; }
+hlerr() { local h="$1"; shift; HOME="$h" TMPDIR="$h/tmp" PATH="${XPATH:-}$FAKEBIN:$PATH" bash "$REPO/cli/helia" "$@" 2>&1 > /dev/null; }
+hlall() { local h="$1"; shift; HOME="$h" TMPDIR="$h/tmp" PATH="${XPATH:-}$FAKEBIN:$PATH" bash "$REPO/cli/helia" "$@" 2>&1; }
+lastargs() { cat "$FAKE_STATE/last-args" 2> /dev/null; }
+lastset()  { jq -cS . "$FAKE_STATE/last-settings.json" 2> /dev/null; }
+noclaude() {  # noclaude <libelle> : le faux claude n'a pas ete appele depuis newhome
+  if [ -e "$FAKE_STATE/calls" ]; then ko "$1" "aucun appel" "$(cat "$FAKE_STATE/calls")"; else ok "$1"; fi
+}
+resolve() {  # resolve <home> : launcher_resolve, source depuis lib/launcher
+  HOME="$1" PATH="${XPATH:-}$FAKEBIN:$PATH" bash -c '. "$1/lib/launcher"; launcher_resolve' _ "$REPO" 2> /dev/null
+}
+WANT_SL="HELIA_STATUSLINE=1 bash \"$REPO/bin/helia-statusline\""
+
+# =============================================================================
+echo "cli/helia : aiguillage"
+H="$(newhome)"
+out="$(hl "$H" help)"; rc=$?
+is "help : sortie 0" "0" "$rc"
+has "help : liste install" "helia install" "$out"
+has "help : liste theme" "helia theme [helia|umbra|off]" "$out"
+has "help : --help est celle de claude" "helia --help" "$out"
+noclaude "help : claude n'est pas lance"
+
+H="$(newhome)"
+err="$(hlerr "$H" frobnique)"; rc=$?
+is "mot inconnu : sortie 2" "2" "$rc"
+has "mot inconnu : nomme le mot" "helia: commande inconnue 'frobnique'" "$err"
+has "mot inconnu : l'aide suit, sur stderr" "helia install" "$err"
+noclaude "mot inconnu : claude n'est pas lance"
+
+# =============================================================================
+echo "cli/helia : lancement"
+H="$(newhome)"
+hl "$H" > /dev/null; rc=$?
+is "sans argument : sortie du faux claude" "0" "$rc"
+is "HELIA_LAUNCHER=1 exporte" "HELIA_LAUNCHER=1" "$(lastargs | sed -n 1p)"
+is "premier argument : --settings" "--settings" "$(lastargs | sed -n 2p)"
+is "... le fichier de lancement" "$H/.config/helia/launch-settings.json" "$(lastargs | sed -n 3p)"
+is "... et rien d'autre" "3" "$(lastargs | wc -l | tr -d ' ')"
+is "reglages : plugin actif, theme Helia, status line" \
+   "$(jq -cnS --arg id "$ID" --arg c "$WANT_SL" '{enabledPlugins: {($id): true}, theme: "custom:helia:helia", statusLine: {type: "command", command: $c}}')" \
+   "$(lastset)"
+
+H="$(newhome)"; hl "$H" -p "dis ok" > /dev/null
+is "-p \"dis ok\" : transmis tel quel, apres --settings" "-p|dis ok" "$(lastargs | sed -n '4,5p' | paste -sd'|')"
+H="$(newhome)"; hl "$H" --help > /dev/null
+is "--help : passe a claude" "--help" "$(lastargs | sed -n 4p)"
+H="$(newhome)"; hl "$H" -- install > /dev/null
+is "-- install : passe a claude, pas une sous-commande" "--|install" "$(lastargs | sed -n '4,5p' | paste -sd'|')"
+[ -e "$H/.local/bin/helia" ] && ko "-- install : aucune cale posee" "absente" "posee" || ok "-- install : aucune cale posee"
+
+H="$(newhome)"; echo umbra > "$H/.config/helia/theme"; hl "$H" > /dev/null
+is "theme umbra" "custom:helia:umbra" "$(jq -r '.theme' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; printf 'umbra\r\n' > "$H/.config/helia/theme"; hl "$H" > /dev/null
+is "fichier theme en CRLF : umbra quand meme" "custom:helia:umbra" "$(jq -r '.theme' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; echo off > "$H/.config/helia/theme"; hl "$H" > /dev/null
+is "theme off : cle absente" "absent" "$(jq -r '.theme // "absent"' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; echo bleu > "$H/.config/helia/theme"; hl "$H" > /dev/null
+is "theme inconnu : Helia" "custom:helia:helia" "$(jq -r '.theme' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; : > "$H/.config/helia/no-statusline"; hl "$H" > /dev/null
+is "no-statusline : pas de statusLine" "absent" "$(jq -r '.statusLine // "absent"' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; mkdir -p "$H/.config/aikit"; : > "$H/.config/aikit/no-statusline"; hl "$H" > /dev/null
+is "ancien no-statusline : pas de statusLine" "absent" "$(jq -r '.statusLine // "absent"' "$FAKE_STATE/last-settings.json")"
+
+H="$(newhome)"; hl "$H" > /dev/null; touch -d @0 "$H/.config/helia/launch-settings.json"
+hl "$H" > /dev/null
+is "relance a l'identique : fichier non reecrit (mtime)" "0" "$(stat -c %Y "$H/.config/helia/launch-settings.json")"
+echo umbra > "$H/.config/helia/theme"; hl "$H" > /dev/null
+is "changement de theme : fichier reecrit" "custom:helia:umbra" "$(jq -r '.theme' "$H/.config/helia/launch-settings.json")"
+is "aucun temporaire laisse" "launch-settings.json theme" "$(ls "$H/.config/helia" | tr '\n' ' ' | sed 's/ $//')"
+
+# =============================================================================
+echo "cli/helia : --settings de l'utilisateur"
+H="$(newhome)"
+hl "$H" --settings '{"model":"haiku","enabledPlugins":{"autre@x":true},"statusLine":{"type":"command","command":"moi"}}' -p x > /dev/null; rc=$?
+is "fusion : sortie 0" "0" "$rc"
+is "fusion : un seul --settings transmis" "1" "$(lastargs | grep -c '^--settings$')"
+has "fusion : fichier temporaire du lanceur" "$H/tmp/helia-launch." "$(lastargs | sed -n 3p)"
+is "fusion : premier niveau, enabledPlugins par id, statusLine remplacee entiere" \
+   "$(jq -cnS --arg id "$ID" '{enabledPlugins: {"autre@x": true, ($id): true}, model: "haiku", statusLine: {type: "command", command: "moi"}, theme: "custom:helia:helia"}')" \
+   "$(lastset)"
+is "fusion : -p x suit" "-p|x" "$(lastargs | sed -n '4,5p' | paste -sd'|')"
+is "fusion : launch-settings.json intact" "custom:helia:helia|$WANT_SL" \
+   "$(jq -r '"\(.theme)|\(.statusLine.command)"' "$H/.config/helia/launch-settings.json")"
+H="$(newhome)"; echo '{"theme":"dark"}' > "$H/perso.json"; hl "$H" "--settings=$H/perso.json" > /dev/null
+is "--settings=<fichier> : lu et fusionne" "dark" "$(jq -r '.theme' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; hl "$H" --settings "{\"enabledPlugins\":{\"$ID\":false}}" > /dev/null
+is "l'utilisateur garde le dernier mot sur helia" "false" "$(jq -r --arg id "$ID" '.enabledPlugins[$id]' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; err="$(hlerr "$H" --settings '{pas du json')"; rc=$?
+is "JSON invalide : sortie 2" "2" "$rc"
+has "... le dit" "--settings invalide" "$err"
+noclaude "... claude n'est pas lance"
+H="$(newhome)"; hlerr "$H" --settings '[1,2]' > /dev/null; rc=$?
+is "JSON qui n'est pas un objet : sortie 2" "2" "$rc"
+H="$(newhome)"; hlerr "$H" --settings > /dev/null; rc=$?
+is "--settings sans valeur : sortie 2" "2" "$rc"
+H="$(newhome)"; hl "$H" -- --settings x > /dev/null
+is "apres -- : --settings n'est plus lu par le lanceur" "--|--settings|x" "$(lastargs | sed -n '4,6p' | paste -sd'|')"
+
+H="$(newhome)"
+touch -d '2 days ago' "$H/tmp/helia-launch.111.json"; : > "$H/tmp/helia-launch.222.json"; : > "$H/tmp/autre.json"
+hl "$H" > /dev/null
+[ -e "$H/tmp/helia-launch.111.json" ] && ko "purge : plus d'un jour, supprime" "absent" "present" || ok "purge : plus d'un jour, supprime"
+[ -e "$H/tmp/helia-launch.222.json" ] && ok "purge : recent, garde" || ko "purge : recent, garde" "present" "absent"
+[ -e "$H/tmp/autre.json" ] && ok "purge : autre motif, garde" || ko "purge : autre motif, garde" "present" "absent"
+
+# =============================================================================
+echo "cli/helia : prerequis, jq CRLF"
+H="$(newhome)"
+err="$(HOME="$H" PATH="$TMP/path-vide" "$BASH" "$REPO/cli/helia" 2>&1 > /dev/null)"; rc=$?
+is "sans jq : sortie 1" "1" "$rc"
+has "... nomme jq" "jq" "$err"
+JQONLY="$TMP/jq-seul"; mkdir -p "$JQONLY"
+printf '#!%s\nexec "%s" "$@"\n' "$BASH" "$REALJQ" > "$JQONLY/jq"; chmod +x "$JQONLY/jq"
+err="$(HOME="$H" PATH="$JQONLY" "$BASH" "$REPO/cli/helia" 2>&1 > /dev/null)"; rc=$?
+is "sans claude : sortie 1" "1" "$rc"
+has "... nomme claude" "claude" "$err"
+H="$(newhome)"; echo umbra > "$H/.config/helia/theme"
+XPATH="$CRLFBIN:" hl "$H" > /dev/null; rc=$?
+is "jq CRLF : sortie 0" "0" "$rc"
+is "jq CRLF : reglages justes" "custom:helia:umbra|$WANT_SL" \
+   "$(jq -r '"\(.theme)|\(.statusLine.command)"' "$FAKE_STATE/last-settings.json")"
+H="$(newhome)"; XPATH="$CRLFBIN:" hl "$H" --settings '{"model":"haiku"}' > /dev/null
+is "jq CRLF : fusion juste" "haiku|true" \
+   "$(jq -r --arg id "$ID" '"\(.model)|\(.enabledPlugins[$id])"' "$FAKE_STATE/last-settings.json")"
+
+# =============================================================================
+echo "lib/launcher : launcher_resolve"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"
+is "installPath en antislashs : rendu en slashs (cygpath -m)" "$REPO" "$(resolve "$H")"
+is "jq CRLF : meme chemin, sans CR" "$REPO" "$(XPATH="$CRLFBIN:" resolve "$H")"
+H="$(newhome)"; C="$H/.claude/plugins/cache/athyrr-marketplace/helia/1.2.3"; mkdir -p "$C/cli"; : > "$C/cli/helia"
+installed "$(IP "$H")" "$H/n-existe-pas" 1.2.3
+is "installPath absent : dossier du cache par version" "$C" "$(resolve "$H")"
+H="$(newhome)"; installed "$(IP "$H")" "$H/n-existe-pas" 1.2.3
+CC="$TMP/cache-ailleurs"; mkdir -p "$CC/athyrr-marketplace/helia/1.2.3/cli"; : > "$CC/athyrr-marketplace/helia/1.2.3/cli/helia"
+is "CLAUDE_CODE_PLUGIN_CACHE_DIR respecte" "$CC/athyrr-marketplace/helia/1.2.3" "$(CLAUDE_CODE_PLUGIN_CACHE_DIR="$CC" resolve "$H")"
+H="$(newhome)"; mkdir -p "$H/autre/plugins"; installed "$H/autre/plugins/installed_plugins.json" "$WINREPO"
+is "CLAUDE_CONFIG_DIR remplace ~/.claude" "$REPO" "$(CLAUDE_CONFIG_DIR="$H/autre" resolve "$H")"
+H="$(newhome)"
+jq -n --arg id "$ID" --arg p "$WINREPO" '[{id: $id, scope: "user", installPath: $p, version: "9.9.9"}]' > "$FAKE_STATE/plugin-list.json"
+is "sans installed_plugins.json : repli claude plugin list --json" "$REPO" "$(resolve "$H")"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO" 9.9.9 project
+r="$(resolve "$H")"; rc=$?
+is "seule une entree project, liste vide : sortie 1" "1|" "$rc|$r"
+H="$(newhome)"; installed "$(IP "$H")" "$H/n-existe-pas" 7.7.7
+r="$(resolve "$H")"; rc=$?
+is "dossier introuvable : sortie 1" "1|" "$rc|$r"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"
+HOME="$H" PATH="$TMP/path-vide" "$BASH" -c '. "$1/lib/launcher"; launcher_resolve' _ "$REPO" > /dev/null 2>&1; rc=$?
+is "sans jq : sortie 2" "2" "$rc"
+# Autonome : c'est ce texte-la que `helia install` recopie dans la cale.
+src="$(bash -c '. "$1/lib/launcher"; declare -f launcher_resolve' _ "$REPO")"
+r="$(HOME="$H" PATH="$FAKEBIN:$PATH" bash -c "$src"$'\n''launcher_resolve' 2> /dev/null)"
+is "launcher_resolve autonome : meme reponse hors de lib/launcher" "$REPO" "$r"
+
+# --- fin : le decompte ---
+echo
+echo "$pass passes, $fail echecs"
+# `exit`, jamais un simple `[ "$fail" = 0 ]` en derniere ligne : le statut
+# d'un script sans `set -e` est celui de sa DERNIERE commande, donc toute
+# ligne ajoutee dessous rendrait la suite verte quoi qu'elle imprime -- et la
+# porte 15 de `scripts/doctor` deviendrait decorative sans que rien ne le dise.
+exit $(( fail != 0 ))

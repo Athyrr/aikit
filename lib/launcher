@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# The `helia` launcher: where the installed plugin is, the settings a `helia`
+# session opens with, and the dispatch of `helia <word>`. SOURCE, never execute.
+# Sourced by cli/helia (everything), bin/scoped (launcher_write_settings),
+# hooks/appearance and bin/helia-statusline (launcher_theme).
+#
+# `helia` turns the plugin on for one session through `--settings`; once
+# `helia install` has turned it off at user level, `claude` alone is native.
+# Measured 2026-11-06: `--settings` beats the user's enabledPlugins both ways,
+# and of several `--settings` only the last counts -- hence launcher_launch
+# merges a user's own `--settings` instead of passing it on.
+#
+# Hosts source this under `set -euo pipefail`: no function may kill its host.
+# Every `jq -r` capture strips CR: a native jq.exe under Git Bash ends each line
+# with one.
+
+LAUNCHER_ID="helia@athyrr-marketplace"
+LAUNCHER_WORDS="install uninstall doctor version update theme help"
+
+# The lib/ file that defines helia_cmd_<word>. A new subcommand is a word in
+# LAUNCHER_WORDS, a line here and its function: the shims never change.
+_launcher_lib_of() {
+  case "${1:-}" in
+    install|uninstall) printf 'launcher-install' ;;
+    doctor|version|update|theme) printf 'launcher-tools' ;;
+    help) printf 'launcher' ;;
+    *) return 1 ;;
+  esac
+}
+
+launcher_is_windows() {  # Git Bash: uname says MINGW* or MSYS*
+  case "$(uname -s 2> /dev/null)" in MINGW*|MSYS*) return 0 ;; esac
+  return 1
+}
+launcher_bin_dir()       { printf '%s' "${HOME:-}/.local/bin"; }
+launcher_settings_file() { printf '%s' "${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}/settings.json"; }
+launcher_settings_path() { printf '%s' "${HOME:-}/.config/helia/launch-settings.json"; }
+
+# launcher_mixed <path> -> the C:/... form under Git Bash (cygpath -m), the path
+# unchanged elsewhere: what a native claude.exe and a status line run by Git Bash
+# both read right (Git Bash eats the backslashes of a C:\... path).
+launcher_mixed() {
+  local p="${1:-}" m
+  if command -v cygpath > /dev/null 2>&1 && m="$(cygpath -m "$p" 2> /dev/null)" && [ -n "$m" ]; then
+    p="${m//$'\r'/}"
+  fi
+  printf '%s' "$p"
+}
+
+# launcher_resolve -> the installed plugin directory on stdout, exit 0; 1 when
+# the plugin has no user-scope install or its directory is gone; 2 when jq is
+# missing. installed_plugins.json first (fast), `claude plugin list --json` when
+# that file is absent or has no user entry. SELF-CONTAINED on purpose: `helia
+# install` copies this function into the shim with `declare -f`, where nothing
+# else of this file exists -- builtins, jq, cygpath and claude only.
+launcher_resolve() {
+  local id="helia@athyrr-marketplace" cfg="${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}"
+  local f line="" ip="" ver="" cache m
+  command -v jq > /dev/null 2>&1 || return 2
+  f="$cfg/plugins/installed_plugins.json"
+  if [ -r "$f" ]; then
+    line="$(jq -r --arg id "$id" '(.plugins[$id] // []) | map(select(.scope == "user")) | .[0] // empty
+      | "\(.installPath // "")\u001f\(.version // "")"' "$f" 2> /dev/null)" || line=""
+    line="${line//$'\r'/}"
+  fi
+  if [ -z "$line" ] && command -v claude > /dev/null 2>&1; then
+    line="$(claude plugin list --json 2> /dev/null | jq -r --arg id "$id" 'map(select(.id == $id and .scope == "user")) | .[0] // empty
+      | "\(.installPath // "")\u001f\(.version // "")"' 2> /dev/null)" || line=""
+    line="${line//$'\r'/}"
+  fi
+  line="${line%%$'\n'*}"
+  [ -n "$line" ] || return 1
+  ip="${line%%$'\037'*}"; ver="${line#*$'\037'}"
+  cache="${CLAUDE_CODE_PLUGIN_CACHE_DIR:-$cfg/plugins/cache}"
+  if command -v cygpath > /dev/null 2>&1; then
+    if [ -n "$ip" ] && m="$(cygpath -m "$ip" 2> /dev/null)"; then ip="${m//$'\r'/}"; fi
+    if m="$(cygpath -m "$cache" 2> /dev/null)"; then cache="${m//$'\r'/}"; fi
+  fi
+  if [ -n "$ip" ] && [ -f "$ip/cli/helia" ]; then printf '%s\n' "$ip"; return 0; fi
+  if [ -n "$ver" ] && [ -f "$cache/athyrr-marketplace/helia/$ver/cli/helia" ]; then
+    printf '%s\n' "$cache/athyrr-marketplace/helia/$ver"; return 0
+  fi
+  return 1
+}
+
+# launcher_theme -> helia, umbra or off: the first line of ~/.config/helia/theme
+# (`helia theme` writes it), helia when the file is absent or says anything else.
+launcher_theme() {
+  local t="" f="${HOME:-}/.config/helia/theme"
+  if [ -r "$f" ]; then IFS= read -r t < "$f" || :; fi
+  t="${t//[[:space:]]/}"
+  case "$t" in helia|umbra|off) printf '%s' "$t" ;; *) printf 'helia' ;; esac
+}
+
+# launcher_settings_json <plugin-dir> -> the launch settings: the plugin on, the
+# theme unless `off`, the status line unless no-statusline (or the former
+# aikit/no-statusline) exists.
+launcher_settings_json() {
+  local theme sl=""
+  theme="$(launcher_theme)"
+  case "$theme" in off) theme="" ;; *) theme="custom:helia:$theme" ;; esac
+  if [ ! -e "${HOME:-}/.config/helia/no-statusline" ] && [ ! -e "${HOME:-}/.config/aikit/no-statusline" ]; then
+    sl="HELIA_STATUSLINE=1 bash \"$(launcher_mixed "${1:-}")/bin/helia-statusline\""
+  fi
+  jq -n --arg id "$LAUNCHER_ID" --arg t "$theme" --arg c "$sl" '
+    {enabledPlugins: {($id): true}}
+    + (if $t == "" then {} else {theme: $t} end)
+    + (if $c == "" then {} else {statusLine: {type: "command", command: $c}} end)'
+}
+
+# launcher_write_settings <plugin-dir> -> writes launcher_settings_path, atomic,
+# only when the content changes; prints its launcher_mixed path; 1 on failure.
+launcher_write_settings() {
+  local f tmp
+  f="$(launcher_settings_path)"
+  mkdir -p "${f%/*}" 2> /dev/null || return 1
+  tmp="$f.tmp.$$"
+  if ! launcher_settings_json "${1:-}" > "$tmp" 2> /dev/null || ! jq -e 'type == "object"' "$tmp" > /dev/null 2>&1; then
+    rm -f "$tmp"; return 1
+  fi
+  if [ -f "$f" ] && cmp -s "$tmp" "$f"; then
+    rm -f "$tmp"
+  elif ! mv -f "$tmp" "$f" 2> /dev/null; then
+    rm -f "$tmp"; return 1
+  fi
+  launcher_mixed "$f"
+}
+
+# launcher_merge_settings <base-file> <file-or-json> <out-file> -- A3: the user's
+# value over the base at the TOP level (an object such as statusLine is replaced
+# whole, as the harness does), enabledPlugins merged by id. 1 when the value is
+# neither a file nor a JSON object.
+launcher_merge_settings() {
+  local u="${2:-}" made=""
+  if [ ! -f "$u" ]; then
+    u="$3.user"; made=1
+    printf '%s' "${2:-}" > "$u" 2> /dev/null || return 1
+  fi
+  if jq -e 'type == "object"' "$u" > /dev/null 2>&1 \
+     && jq -s '.[0] as $a | .[1] as $u | ($a + $u)
+         | .enabledPlugins = (($a.enabledPlugins // {}) + ($u.enabledPlugins // {}))' "$1" "$u" > "$3" 2> /dev/null; then
+    [ -z "$made" ] || rm -f "$u"
+    return 0
+  fi
+  [ -z "$made" ] || rm -f "$u"
+  return 1
+}
+
+# launcher_launch [claude args...] -- writes the launch settings, merges any user
+# `--settings` (several are applied in order), exports HELIA_LAUNCHER=1 and execs
+# claude. Returns only on failure: 1 missing prerequisite or unwritable file, 2 a
+# bad `--settings`. Everything after `--` is claude's, untouched.
+launcher_launch() {
+  command -v jq > /dev/null 2>&1 || { echo "helia: jq introuvable — requis (SETUP.md)" >&2; return 1; }
+  command -v claude > /dev/null 2>&1 || { echo "helia: claude introuvable — installe Claude Code" >&2; return 1; }
+  local base tmpd="${TMPDIR:-/tmp}" file merged src v
+  local -a rest=() users=()
+  base="$(launcher_write_settings "${HELIA_ROOT:-}")" \
+    || { echo "helia: impossible d'écrire $(launcher_settings_path)" >&2; return 1; }
+  # Merged files of earlier launches: a day is far longer than any startup.
+  find "$tmpd" -maxdepth 1 -name 'helia-launch.*.json' -mtime +0 -delete 2> /dev/null || :
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --) rest+=("$@"); break ;;
+      --settings)
+        [ $# -ge 2 ] || { echo "helia: --settings attend une valeur (fichier ou JSON)" >&2; return 2; }
+        users+=("$2"); shift 2 ;;
+      --settings=*) users+=("${1#--settings=}"); shift ;;
+      *) rest+=("$1"); shift ;;
+    esac
+  done
+  file="$base"
+  if [ ${#users[@]} -gt 0 ]; then
+    merged="$tmpd/helia-launch.$$.json"; src="$(launcher_settings_path)"
+    for v in "${users[@]}"; do
+      if ! launcher_merge_settings "$src" "$v" "$merged.tmp" || ! mv -f "$merged.tmp" "$merged" 2> /dev/null; then
+        rm -f "$merged" "$merged.tmp"
+        echo "helia: --settings invalide (ni fichier ni objet JSON) : $v" >&2
+        return 2
+      fi
+      src="$merged"
+    done
+    file="$(launcher_mixed "$merged")"
+  fi
+  export HELIA_LAUNCHER=1
+  exec claude --settings "$file" ${rest[@]+"${rest[@]}"}
+}
+
+helia_cmd_help() {
+  printf '%s\n' \
+    "helia — Claude Code avec Helia actif ; « claude » seul reste natif (après « helia install »)." \
+    "" \
+    "  helia [arguments de claude...]  lance Claude Code avec Helia ; tout argument passe à claude" \
+    "  helia -- <mot>                  passe <mot> à claude sans en faire une sous-commande" \
+    "  helia install                   pose les cales, rend « claude » natif sur ce poste" \
+    "  helia uninstall [--yes]         désinstalle le plugin, retire les cales et les réglages Helia" \
+    "  helia doctor                    santé du poste : une ligne ok/KO par contrôle" \
+    "  helia version                   version, dossier installé, vaults déclarés" \
+    "  helia update                    met à jour le plugin, puis les vaults (git pull --ff-only)" \
+    "  helia theme [helia|umbra|off]   thème des sessions helia" \
+    "  helia help                      cette aide ; « helia --help » affiche celle de claude"
+}
+
+# launcher_main [args...] -- no argument, or a first argument starting with `-`:
+# launch. A known word: its subcommand. Anything else: 2, with the help.
+launcher_main() {
+  case "${1:-}" in ''|-*) launcher_launch "$@"; return ;; esac
+  local w="$1" lib
+  shift
+  case " $LAUNCHER_WORDS " in
+    *" $w "*) ;;
+    *) echo "helia: commande inconnue '$w' (pour passer ce mot à claude : helia -- $w)" >&2
+       helia_cmd_help >&2
+       return 2 ;;
+  esac
+  lib="$(_launcher_lib_of "$w")" || return 2
+  if [ "$lib" != launcher ]; then
+    . "${HELIA_ROOT:-}/lib/$lib" 2> /dev/null || { echo "helia: ${HELIA_ROOT:-}/lib/$lib illisible" >&2; return 1; }
+  fi
+  "helia_cmd_$w" "$@"
+}
