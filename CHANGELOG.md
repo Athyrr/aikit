@@ -3,6 +3,28 @@
 All notable changes to the Helia method (named aiKit up to 0.27.0). Versions follow the plugin manifests
 (`.claude-plugin/plugin.json`). Dates are the commit dates.
 
+## 0.31.0
+- **Lanceur `helia`.** `helia` ouvre Claude Code avec Helia actif ; `claude`
+  seul ouvre un Claude Code natif. `helia install` (une fois par poste et par
+  environnement) pose les cales `~/.local/bin/helia` et, sous Windows,
+  `helia.cmd`, met `enabledPlugins["helia@athyrr-marketplace"]` a `false` au
+  niveau user et retire de `~/.claude/settings.json` le theme et la status line
+  Helia (sauvegarde `settings.json.helia-backup`, droits 600). Le lancement
+  passe plugin, theme et status line par `--settings`
+  (`~/.config/helia/launch-settings.json`) ; un `--settings` de l'utilisateur
+  est fusionne au premier niveau. Sous-commandes `uninstall`, `doctor`,
+  `version`, `update`, `theme`, `help`. Point d'entree `cli/helia`, logique dans
+  `lib/launcher`, `lib/launcher-install`, `lib/launcher-tools`.
+- `hooks/appearance` : sous le lanceur (`HELIA_LAUNCHER=1` et
+  `CLAUDE_PLUGIN_ROOT`), n'ouvre plus `settings.json`, banniere seule, theme
+  actif des la premiere session ; sans lui, comportement inchange et rappel
+  `helia install`. La status line lit le theme de `~/.config/helia/theme` sous
+  le lanceur.
+- `bin/scoped` ouvre le perimetre avec les reglages du lanceur et
+  `HELIA_LAUNCHER=1`.
+- **`ezy` supprime** (`bin/ezy`, ses tests, ses mentions).
+- Suite `scripts/test-launcher`, porte 15 de `scripts/doctor` (quinze portes).
+
 ## 0.30.0
 - **Consignes communes.** `<vault>/_global/consignes.md` (consignes de l'humain
   valables pour tous les projets) est injecte par un nouveau hook,

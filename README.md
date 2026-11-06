@@ -209,9 +209,11 @@ the method itself.
   agents/                     the six archetypes
   VOCABULARY.md               one word, one meaning — read before naming anything
   scripts/                    doctor, deploy and their test suites — NOT on the Bash tool's PATH
-  bin/                        ezy, scoped and helia-deps — these ARE on it
+  bin/                        scoped and helia-deps — these ARE on it
+  cli/helia                   the `helia` command, reached through the shim ~/.local/bin/helia
 
 ~/.config/helia/vaults         which vaults this machine knows, and where
+~/.config/helia/theme          the theme of helia sessions (helia theme)
 <vault>/                      a clone of a vault (an Obsidian vault)
   projects/                   the registry: one file per project
   _global/heuristics.md       technical traps that hold for every project — machine, OS, shell
@@ -245,6 +247,7 @@ On any machine, once, at user scope:
 ```bash
 claude plugin marketplace add Athyrr/helia
 claude plugin install helia@athyrr-marketplace --scope user
+bash ~/.claude/plugins/cache/athyrr-marketplace/helia/<version>/cli/helia install
 ```
 
 Install in **one scope only** — two
@@ -252,6 +255,13 @@ scopes means two copies, and an update touches one while the other keeps
 running. `--scope user` makes the method available from any repository on the
 machine: it is a way of working, not vault data. **You do not clone this
 repository to use the method.**
+
+`helia install` — once per machine and per environment (Git Bash, WSL) — puts
+the `helia` command in `~/.local/bin` and turns the plugin off at user level:
+from then on `helia` opens Claude Code with the method active and `claude`
+opens a native one. `helia help` lists the subcommands (`install`, `uninstall`,
+`doctor`, `version`, `update`, `theme`). Helia runs in the terminal only; the
+desktop app, IDE extensions and cloud sessions start native.
 
 To make a vault routable, give it a registry — `<vault>/projects/<name>.md`
 per project, and declare the vault in `~/.config/helia/vaults`.
@@ -280,16 +290,17 @@ The plugin ships two dark themes, **Helia** and **Umbra** (`themes/`, generated
 from `palettes/` by `scripts/build-themes` — edit the palette, never the theme;
 gate 14 refuses a theme that no longer matches its palette). `/theme` lists them.
 
-At startup, a `SessionStart` hook (`hooks/appearance`) sets `theme` in
-`~/.claude/settings.json` to `custom:helia:helia`, unless it already names
-Helia or Umbra: any other theme is replaced. Claude Code reads the theme once
-per session, so the hook says `thème Helia à la prochaine session` and the next
-session opens in Helia. A `theme` set in a project's or local settings wins
-over the user's.
+In a session opened by `helia`, the theme is the one chosen with `helia theme`
+(`helia` by default, `umbra`, or `off`), passed through `--settings` and active
+from the first session; `~/.claude/settings.json` is not written. On a machine
+where `helia install` has not run, a `SessionStart` hook (`hooks/appearance`)
+sets `theme` in `~/.claude/settings.json` to `custom:helia:helia`, unless it
+already names Helia or Umbra; Claude Code reads the theme once per session, so
+the hook says `thème Helia à la prochaine session`. A `theme` set in a
+project's or local settings wins over both.
 
 The status line (`bin/helia-statusline`) draws two lines in the exact colours of
-the active theme's palette — Umbra under `custom:helia:umbra`, Helia under
-anything else:
+the active theme's palette — Umbra under `custom:helia:umbra` (under `helia`: when `helia theme` says umbra), Helia under anything else:
 
 ```
 ✺ helia  │  <model>  │  <project> ⎇ <branch>
@@ -303,12 +314,10 @@ the first declared vault that has a `projects/` folder.
 Opt-outs, one file each; the hook then leaves that part alone:
 
 - `~/.config/helia/no-statusline` — the status line
-- `~/.config/helia/no-theme` — the theme
+- `~/.config/helia/no-theme` — the theme written by the hook (under `helia`, use `helia theme off`)
 - `~/.config/helia/no-banner` — the startup banner
 
-Uninstalling the plugin leaves `theme` pointing at a theme that no longer
-exists, and `statusLine` at a script that no longer exists: pick another theme
-with `/theme`, and delete `statusLine` from `~/.claude/settings.json`.
+`helia uninstall` removes Helia's `theme` and `statusLine` from `~/.claude/settings.json`; a bare `claude plugin uninstall` leaves them behind.
 
 ## Iterating on the method
 

@@ -48,6 +48,8 @@ exists to prevent.
 | **consigne** | a lasting instruction the human partner gave | a heuristic (a trap the method learned), a memory | for one project it lives in `<project>/heuristics.md`, for every project in `_global/consignes.md`; written the moment it is given, never only in the harness memory |
 | **ecosystem** | a registry file with `kind: ecosysteme`: projects that share a contract or a document, with a directory for what they share | a company, a data dependency, a project with code | members declare `part_of: <ecosystem>`; the session table lists them under it, prefixed `↳` |
 | **kind** | the frontmatter field of a registry file saying what sort of project it is: `depot`, `conception` or `ecosysteme` | `type` (what a *need* produces) | `kind` lives in `<vault>/projects/<name>.md`; `type` lives in a need's `plan.md` |
+| **launcher** | the `helia` command (`cli/helia`): opens Claude Code with Helia active for that session only, through `--settings`, and runs `helia <subcommand>` | `claude` itself, `bin/scoped`, a hook | it exports `HELIA_LAUNCHER=1`; French *lanceur* |
+| **shim** | the file `helia install` puts in `~/.local/bin` — `helia`, plus `helia.cmd` on Windows — that finds the installed plugin and hands over to `cli/helia` | the launcher, a symlink, a copy of the plugin | it carries `HELIA_SHIM` and no version, and no update ever rewrites it; French *cale* |
 
 The word **budget**, unqualified, is retired. Write `attempt budget`. Never
 `loop` as a technical term; write `cycle` or `attempt` and say which.

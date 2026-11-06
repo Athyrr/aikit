@@ -10,9 +10,7 @@ other sessions until `scripts/deploy` has published it.
 - `git`
 - `node` **or** `python3` — the scripts try `node` first and fall back to
   `python3`; either one alone is enough.
-- `jq` — **required for the status line, the theme and the startup banner**: the startup hook edits
-  `~/.claude/settings.json` with it and leaves the file untouched when `jq` is
-  missing; the renderer falls back to a bare `helia · <folder> (<branch>)` line,
+- `jq` — **required for `helia`, the status line, the theme and the startup banner**: `helia` builds its launch settings and `helia install` edits `~/.claude/settings.json` with it; the startup hook leaves that file untouched when `jq` is missing; the renderer falls back to a bare `helia · <folder> (<branch>)` line,
   where `<folder>` is the shell's folder (the process's current directory), not
   the session's working folder. `scripts/test-appearance` (gate 14) refuses to
   run without it. Everything else works without it.
@@ -28,11 +26,12 @@ other sessions until `scripts/deploy` has published it.
 On Windows: **Git for Windows is a hard prerequisite** — without it the hook
 cannot start and now says so in the transcript instead of failing silently.
 
-## 2. Using Helia — two commands
+## 2. Using Helia — three commands
 
 ```bash
 claude plugin marketplace add Athyrr/helia
 claude plugin install helia@athyrr-marketplace --scope user
+bash ~/.claude/plugins/cache/athyrr-marketplace/helia/<version>/cli/helia install
 ```
 
 The marketplace is a public `github` source, so no credentials are needed to
@@ -42,8 +41,54 @@ update touches one while the other keeps running.
 `--scope user` makes the method available from any repository on the machine:
 it is a way of working, not vault data.
 
-That is the whole installation. You do **not** clone this repository to use the
-method.
+You do **not** clone this repository to use the method.
+
+**`helia install`** — once per machine *and per environment*: on Windows run it
+from Git Bash, and once more inside WSL if you use Claude Code there. It puts
+two shims in `~/.local/bin` — `helia` (bash) everywhere, plus `helia.cmd`
+(PowerShell, cmd) on Windows — which find the installed plugin and never change
+when it updates. Then, in `~/.claude/settings.json` (a copy is kept as
+`settings.json.helia-backup`, mode 600: it may hold your `env` block), it turns
+the plugin off at user level (`enabledPlugins["helia@athyrr-marketplace"]` =
+`false`) and removes Helia's `theme` and `statusLine`. Nothing else is touched;
+running it again changes nothing and says so. When `~/.local/bin` is not on your
+`PATH` it prints the line to add — it never edits a shell profile.
+
+From then on:
+
+- `helia` opens Claude Code with the method active — skills, hooks, theme,
+  status line — for that session only. Every argument goes to `claude`
+  (`helia -p "…"`, `helia --resume`); `helia -- <word>` passes a word that would
+  otherwise be a subcommand.
+- `claude` opens a native Claude Code: no skill, hook, theme or status line of
+  Helia.
+- `helia help` lists the subcommands: `install`; `uninstall [--yes]`; `doctor`,
+  one ok/KO line per check of this machine; `version`; `update`, the plugin and
+  then `git pull --ff-only` of each declared vault — a vault with local changes
+  or that cannot fast-forward is skipped and named, never forced; `theme
+  [helia|umbra|off]`.
+
+**Where Helia runs: the terminal, through `helia`, only.** The desktop app, IDE
+extensions and cloud sessions start native. The VS Code extension's
+`claudeCode.claudeProcessWrapper` is not supported: it passes the binary as
+first argument, which `helia` refuses as an unknown subcommand.
+
+Known limits:
+
+- `/theme` or `/config` inside a `helia` session writes `theme` into
+  `~/.claude/settings.json`, and the theme then leaks into native `claude`.
+  Choose it with `helia theme <helia|umbra|off>`; `helia doctor` reports the
+  leak, `helia install` removes it.
+- `helia.cmd` hands its arguments over as cmd reads them: a prompt full of `"`,
+  `%`, `!`, `^` or `&` is safer from Git Bash, or from a file. Ctrl+C in
+  PowerShell or cmd may ask `Terminate batch job (Y/N)?`.
+- `helia.cmd` looks for Git Bash and skips WSL's `bash` (the one under
+  `%SystemRoot%` and `%LOCALAPPDATA%\Microsoft\WindowsApps`).
+
+**Uninstalling:** `helia uninstall` asks first (unless `--yes`), runs
+`claude plugin uninstall helia@athyrr-marketplace`, then removes the shims, the
+`enabledPlugins` entry and any Helia `theme` or `statusLine`. It keeps the
+marketplace and `~/.config/helia/`, and prints how to delete the latter.
 
 ## 3. Registering a vault
 
@@ -83,8 +128,8 @@ git config core.hooksPath .githooks     # arms the pre-commit gate — per clone
 git switch -c <chantier>
 # ... edit skills/ agents/ hooks/ ...
 
-scripts/doctor                          # the fourteen gates
-claude --plugin-dir .                   # test in a session WITHOUT publishing
+scripts/doctor                          # the fifteen gates
+helia --plugin-dir .                    # test in a session WITHOUT publishing
                                         # (takes precedence over the installed
                                         # plugin, for that session only)
 
@@ -94,14 +139,17 @@ scripts/deploy patch "message"          # bump + gates + commit + push
 git switch main && git merge <chantier>
 ```
 
+On a machine where `helia install` has run, a bare `claude --plugin-dir .` takes the hook's legacy branch and writes Helia's theme and status line into `~/.claude/settings.json`; `helia --plugin-dir .` does not (`helia install` cleans up after the former).
+
 **Nothing you edit reaches your other sessions before `scripts/deploy`.** That
 separation is native to the montage, not built on top of it.
 
 ## 5. The two directories that matter
 
 `bin/` is added to the Bash tool's `PATH` while the plugin is enabled — it holds
-execution commands (`ezy`, `scoped`, `helia-deps`) and the status line renderer
+execution commands (`scoped`, `helia-deps`) and the status line renderer
 (`helia-statusline`, prefixed so it cannot collide with a bare command name).
+`cli/` holds `helia`, the launcher's entry point. It is **not** on the Bash tool's `PATH`: the shim `helia install` puts in `~/.local/bin` reaches it.
 
 `scripts/` is **not** on the `PATH` and holds repository maintenance (`deploy`,
 `doctor`, and their test scripts).
@@ -138,14 +186,17 @@ values of the active theme's palette (README, *Appearance*), re-read at the next
 message after a `/theme` (the renderer caches the theme for up to 5 s); an unreadable palette falls back on the terminal's 16
 ANSI colours.
 
-How it gets there: a plugin cannot declare `statusLine`, so a `SessionStart` hook
+How it gets there: a plugin cannot declare `statusLine`. In a session opened by
+`helia`, the launcher passes it through `--settings`
+(`~/.config/helia/launch-settings.json`, regenerated at each launch with a path
+resolved to the current plugin version) and `~/.claude/settings.json` is never
+written. On a machine where `helia install` has not run, a `SessionStart` hook
 (`hooks/appearance`, matcher `startup`) writes the key into
-`~/.claude/settings.json`, with a path already resolved to the current plugin
-version, and rewrites it at every startup. It writes nothing when the value is
-already right, and it never touches a `statusLine` that does not carry the
-marker `HELIA_STATUSLINE=1` — your own status line stays yours. The same hook
-sets the theme (README, *Appearance*): it is the only writer of that file, in
-one read and at most one atomic write.
+`~/.claude/settings.json` instead, rewrites it at every startup, writes nothing
+when the value is already right, and never touches a `statusLine` that does not
+carry the marker `HELIA_STATUSLINE=1` — your own status line stays yours. The
+same hook sets the theme there (README, *Appearance*), in one read and at most
+one atomic write.
 
 **Opt out**, one flag file per part; the hook then leaves that part alone. A
 flag only stops future writes: to remove a bar already installed, also delete
@@ -158,12 +209,11 @@ touch ~/.config/helia/no-theme        # the theme
 touch ~/.config/helia/no-banner       # the startup banner
 ```
 
+Under `helia`, `no-statusline` is honoured too; the theme is `helia theme`'s choice (`off` for none) and `no-theme` is not read.
+
 Known limits:
 
-- **Uninstalling the plugin leaves the `statusLine` and `theme` keys behind**,
-  pointing at a script and a theme that no longer exist; Claude Code then hides
-  the bar. Delete `statusLine` from `~/.claude/settings.json` by hand and pick
-  another theme with `/theme`.
+- **A bare `claude plugin uninstall` leaves the `statusLine` and `theme` keys behind**, pointing at a script and a theme that no longer exist; `helia uninstall` removes them.
 - The bar stays empty without trust in the workspace, with `disableAllHooks` or
   `allowManagedHooksOnly`; a project-level or managed `statusLine` takes
   precedence over the one in `~/.claude/settings.json`.
