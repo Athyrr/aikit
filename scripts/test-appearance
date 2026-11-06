@@ -7,6 +7,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 command -v jq > /dev/null 2>&1 || { echo "jq absent : test impossible (prerequis, SETUP.md)" >&2; exit 1; }
+# Lancee depuis une session helia, la suite prendrait partout la branche du lanceur.
+unset HELIA_LAUNCHER
 
 pass=0; fail=0
 ok()  { echo "  ✓ $1"; pass=$((pass+1)); }
@@ -457,7 +459,8 @@ is "banniere : logotype et etat, theme etranger" \
 "
  ✺  █ █ █▀▀ █   █ ▄▀█    helia $VERSION
     █▀█ ██▄ █▄▄ █ █▀█▌   thème Helia à la prochaine session
-     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀   vault levault · 2 projets" "$(printf '%s' "$m" | plain)"
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀   vault levault · 2 projets
+    lance « helia install » pour garder claude natif" "$(printf '%s' "$m" | plain)"
 has "banniere : en couleurs Helia" "${ACC}${ESC}[1m✺" "$m"
 is "banniere : le theme est quand meme pose" "$HELIA" "$(gettheme "$H")"
 
@@ -475,7 +478,8 @@ is "no-theme : la ligne d'etat est omise, le vault remonte" \
 "
  ✺  █ █ █▀▀ █   █ ▄▀█    helia $VERSION
     █▀█ ██▄ █▄▄ █ █▀█▌   vault levault · 2 projets
-     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀" "$m"
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀
+    lance « helia install » pour garder claude natif" "$m"
 is "no-theme : theme intact" "dark" "$(gettheme "$H")"
 
 H="$(bhome)"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
@@ -542,6 +546,49 @@ has "jq CRLF, statusline sous Umbra : accent Umbra" "$(tc "$(pal umbra accent)")
 hasnt "jq CRLF, statusline sous Umbra : aucune couleur Helia" "$ACC" "$out"
 is "jq CRLF, statusline : reset hebdo conserve" "ctx $G4 30 %    5h ━━────────── 20 % ↺ 1h00    hebdo $G4 30 % ↺ 1j" \
    "$(line 2 "$out" | plain)"
+
+# =============================================================================
+echo "hooks/appearance : sous le lanceur"
+# lapp <home> : le hook comme dans une session ouverte par `helia`.
+lapp() { HOME="$1" HELIA_LAUNCHER=1 CLAUDE_PLUGIN_ROOT="$PLUG" bash "$REPO/hooks/appearance" 2> /dev/null; }
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"; touch -d @0 "$(S "$H")"; cp "$(S "$H")" "$TMP/avant-lanceur.json"
+out="$(lapp "$H")"; rc=$?
+is "lanceur : settings.json intact" "$(cat "$TMP/avant-lanceur.json")" "$(cat "$(S "$H")")"
+is "... jamais reecrit (mtime)" "0" "$(stat -c %Y "$(S "$H")")"
+is "... sortie 0" "0" "$rc"
+json_ok "$out" && ok "lanceur : un seul objet {systemMessage}" || ko "lanceur : un seul objet {systemMessage}" "JSON" "$out"
+is "lanceur : banniere, theme Helia actif des cette session, sans rappel" \
+"
+ ✺  █ █ █▀▀ █   █ ▄▀█    helia $VERSION
+    █▀█ ██▄ █▄▄ █ █▀█▌   thème Helia actif
+     ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀ ▀   vault levault · 2 projets" "$(msg "$out" | plain)"
+H="$(bhome)"; lapp "$H" > /dev/null
+[ -e "$(S "$H")" ] && ko "lanceur : settings.json absent n'est pas cree" "absent" "cree" || ok "lanceur : settings.json absent n'est pas cree"
+H="$(bhome)"; mkdir -p "$H/.config/helia"; echo umbra > "$H/.config/helia/theme"; echo '{"theme":"custom:helia:helia"}' > "$(S "$H")"
+m="$(msg "$(lapp "$H")")"
+has "lanceur, theme umbra : Umbra actif" "thème Umbra actif" "$(printf '%s' "$m" | plain)"
+has "... en couleurs Umbra" "$(tc "$(pal umbra accent)")${ESC}[1m✺" "$m"
+H="$(bhome)"; mkdir -p "$H/.config/helia"; echo off > "$H/.config/helia/theme"
+m="$(msg "$(lapp "$H")" | plain)"
+hasnt "lanceur, theme off : aucune ligne de theme" "thème" "$m"
+has "... la banniere quand meme" "helia $VERSION" "$m"
+H="$(bhome)"; mkdir -p "$H/.config/helia"; : > "$H/.config/helia/no-banner"; echo '{"theme":"dark"}' > "$(S "$H")"
+is "lanceur, no-banner : stdout vide" "" "$(lapp "$H")"
+is "... settings.json intact" '{"theme":"dark"}' "$(cat "$(S "$H")")"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+HOME="$H" HELIA_LAUNCHER=1 CLAUDE_PLUGIN_ROOT= bash "$REPO/hooks/appearance" > /dev/null 2>&1
+is "HELIA_LAUNCHER sans CLAUDE_PLUGIN_ROOT : branche heritee, theme pose" "$HELIA" "$(gettheme "$H")"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+has "lanceur, jq CRLF : version dans la banniere" "helia $VERSION" "$(msg "$(PATH="$CRLFBIN:$PATH" lapp "$H")" | plain)"
+H="$(bhome)"; echo '{"theme":"dark"}' > "$(S "$H")"
+has "branche heritee : rappel helia install" "lance « helia install » pour garder claude natif" "$(msg "$(app "$H")" | plain)"
+
+LT="$TMP/sl-lanceur"; mkdir -p "$LT/.claude" "$LT/.config/helia"
+echo '{"theme":"dark"}' > "$LT/.claude/settings.json"; echo umbra > "$LT/.config/helia/theme"
+has "status line sous le lanceur : theme lu dans ~/.config/helia/theme" "$(tc "$(pal umbra accent)")${ESC}[1m✺ helia" \
+    "$(HELIA_LAUNCHER=1 SLH="$LT" sl "$(slin "$ROOT/avec-remote" lt1 30)")"
+has "... sans le lanceur : settings.json, donc Helia" "${ACC}${ESC}[1m✺ helia" \
+    "$(SLH="$LT" sl "$(slin "$ROOT/avec-remote" lt2 30)")"
 
 echo
 echo "$pass passes, $fail echecs"

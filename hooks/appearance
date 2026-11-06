@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
-# SessionStart hook (matcher: startup). The plugin's ONLY writer of
+# SessionStart hook (matcher: startup). Shows the startup banner and -- only in
+# a session NOT opened by `helia` -- is the plugin's only HOOK writing
 # ~/.claude/settings.json: it points `statusLine` at bin/helia-statusline and
-# sets `theme` to Helia, in one read and at most one atomic write, then shows
-# the startup banner. Replaces hooks/statusline-install.
+# sets `theme` to Helia, in one read and at most one atomic write. (`helia
+# install` and `helia uninstall` write that file too, by hand, never during a
+# session event.) Replaces hooks/statusline-install.
+#
+# Launcher mode -- HELIA_LAUNCHER=1 AND a non-empty CLAUDE_PLUGIN_ROOT (the
+# marker alone is inherited by every child process): `helia` already passed the
+# theme and the statusLine through --settings, so settings.json is neither
+# opened nor written; the banner announces the theme of ~/.config/helia/theme
+# as active. Without the marker -- a machine where `helia install` has not run
+# -- the behaviour is unchanged and the banner adds the line pointing at it.
 #
 # statusLine -- a plugin cannot declare it, and ${CLAUDE_PLUGIN_ROOT} is not
 # substituted inside it: the hook writes a path already resolved, and rewrites
@@ -51,6 +60,10 @@ want_sl=1; want_theme=1; want_banner=1
 [ -e "$home/.config/aikit/no-statusline" ] && want_sl=0
 [ -e "$home/.config/helia/no-theme" ] && want_theme=0
 [ -e "$home/.config/helia/no-banner" ] && want_banner=0
+launcher=0
+if [ "${HELIA_LAUNCHER:-}" = 1 ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  launcher=1; want_sl=0; want_theme=0
+fi
 [ "$want_sl$want_theme$want_banner" = 000 ] && exit 0
 
 command -v jq > /dev/null 2>&1 || { note "jq not found, settings.json left untouched"; exit 0; }
@@ -62,7 +75,16 @@ command_value="HELIA_STATUSLINE=1 bash \"${root}/bin/helia-statusline\""
 # usable=0: the file cannot be read as a JSON object, and is then never written.
 usable=1; cur_theme=""; sl_verdict=set
 target="$home/.claude/settings.json"
-if [ -L "$target" ]; then
+if [ "$launcher" = 1 ]; then
+  usable=0   # never opened, never written
+  lt=helia
+  if [ -r "$plugin/lib/launcher" ] && . "$plugin/lib/launcher" 2> /dev/null \
+     && declare -F launcher_theme > /dev/null; then
+    lt="$(launcher_theme)"
+  fi
+  case "$lt" in helia|umbra) cur_theme="custom:helia:$lt" ;; esac
+fi
+if [ "$usable" = 1 ] && [ -L "$target" ]; then
   target="$(readlink -f "$target" 2> /dev/null)" || target=""
   [ -n "$target" ] || usable=0
 fi
@@ -97,7 +119,9 @@ fi
 
 # --- what changes ---------------------------------------------------------------
 set_sl=0; set_theme=0; theme_state=""
-if [ "$usable" = 1 ]; then
+if [ "$launcher" = 1 ]; then
+  [ -z "$cur_theme" ] || theme_state=active
+elif [ "$usable" = 1 ]; then
   [ "$want_sl" = 1 ] && [ "$sl_verdict" = set ] && set_sl=1
   if [ "$want_theme" = 1 ]; then
     case "$cur_theme" in
@@ -164,6 +188,8 @@ if [ "$want_banner" = 1 ] && [ -r "$plugin/lib/banner" ] \
   fi
   banner="$(banner_render "${BANNER_MODE:-color}" "$plugin/palettes/$pal.json" "${right[@]}")" || banner=""
   [ -z "$banner" ] || msg=$'\n'"$banner"
+  # A machine not migrated yet: say how to keep `claude` native.
+  [ -z "$msg" ] || [ "$launcher" = 1 ] || msg+=$'\n'"    lance « helia install » pour garder claude natif"
 fi
 [ -n "$msg" ] || { [ "$theme_state" = next ] && msg="thème Helia à la prochaine session"; }
 [ -z "$msg" ] || printf '{"systemMessage":"%s"}\n' "$(json_str "$msg")" >&3

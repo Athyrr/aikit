@@ -10,13 +10,16 @@
 # session JSON carries `rate_limits`.
 #
 # Colours: the exact (truecolor) values of the palette of the active theme --
-# palettes/umbra.json when ~/.claude/settings.json says `custom:helia:umbra`,
-# palettes/helia.json for anything else, a foreign theme included. The theme is
-# not part of the session JSON, hence the read of settings.json, cached 5 s. An
+# palettes/umbra.json when ~/.claude/settings.json says `custom:helia:umbra` --
+# or, in a session opened by `helia` (HELIA_LAUNCHER=1), when
+# ~/.config/helia/theme says umbra -- palettes/helia.json for anything else, a
+# foreign theme included. The theme is not part of the session JSON, hence that
+# read, cached 5 s. An
 # unreadable palette falls back on the terminal's 16 ANSI colours: no colour is
 # ever copied into this script.
 #
-# Installed into ~/.claude/settings.json by hooks/appearance. Runs on every
+# Passed by `helia` through --settings, or installed into ~/.claude/settings.json
+# by hooks/appearance on a machine where `helia install` has not run. Runs on every
 # refresh of the bar: the project lookup (lib/vaults) is expensive, so it is
 # cached per session; the branch and the theme are cached for 5 seconds.
 # No `set -e`: a renderer that dies prints an empty bar.
@@ -74,8 +77,15 @@ if [ -f "$tf" ]; then
   esac
 fi
 if [ "$fresh" = 0 ]; then
-  theme="$(jq -r '.theme // "" | tostring' "${HOME:-}/.claude/settings.json" 2> /dev/null)" || theme=""
-  theme="${theme//$'\r'/}"
+  # A session opened by `helia` carries its theme in --settings, not in
+  # settings.json: the choice is ~/.config/helia/theme, as for the launcher.
+  if [ "${HELIA_LAUNCHER:-}" = 1 ] && [ -r "$self/../lib/launcher" ] && . "$self/../lib/launcher" 2> /dev/null \
+     && declare -F launcher_theme > /dev/null; then
+    theme="custom:helia:$(launcher_theme)"
+  else
+    theme="$(jq -r '.theme // "" | tostring' "${HOME:-}/.claude/settings.json" 2> /dev/null)" || theme=""
+    theme="${theme//$'\r'/}"
+  fi
   cache_put "$tf" "$now"$'\t'"$theme"
 fi
 case "$theme" in custom:helia:umbra) palette=umbra ;; *) palette=helia ;; esac
