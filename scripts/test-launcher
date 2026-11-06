@@ -148,6 +148,18 @@ echo umbra > "$H/.config/helia/theme"; hl "$H" > /dev/null
 is "changement de theme : fichier reecrit" "custom:helia:umbra" "$(jq -r '.theme' "$H/.config/helia/launch-settings.json")"
 is "aucun temporaire laisse" "launch-settings.json theme" "$(ls "$H/.config/helia" | tr '\n' ' ' | sed 's/ $//')"
 
+# Course sur la cible fusionnee : un dossier pose a son nom juste avant le mv
+# (un faux mv le cree) ferait ranger notre fichier DEDANS, mv sortant 0.
+MVBIN="$TMP/mvbin"; mkdir -p "$MVBIN"; REALMV="$(command -v mv)"
+printf '#!%s
+for a in "$@"; do case "$a" in */helia-launch.*.json) mkdir -p "$a" ;; esac; done
+exec "%s" "$@"
+' "$BASH" "$REALMV" > "$MVBIN/mv"; chmod +x "$MVBIN/mv"
+H="$(newhome)"; err="$(XPATH="$MVBIN:" hlerr "$H" --settings '{"model":"haiku"}')"; rc=$?
+is "cible fusionnee occupee par un dossier : sortie 2" "2" "$rc"
+has "... refus nomme (chemin temporaire occupe)" "occupe" "$err"
+noclaude "... claude pas appele"
+
 # =============================================================================
 echo "cli/helia : --settings de l'utilisateur"
 H="$(newhome)"

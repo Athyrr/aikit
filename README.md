@@ -333,7 +333,7 @@ scripts/deploy [patch|minor|major] "message"
 from the clone bumps both manifests, runs every gate of `scripts/doctor`, commits, pushes,
 refreshes the marketplace and updates the install. **Takes effect in a new
 session.** Run `scripts/doctor` any time for the gates without deploying, and
-`helia --plugin-dir .` to load the working tree into one session only (with `helia install` done, use `helia --plugin-dir .`: the loop
+`helia --plugin-dir .` to load the working tree into one session only (the loop
 still runs the installed `cli/helia` and status line).
 [`SETUP.md`](SETUP.md) §4 has the whole loop, from clone to merge.
 

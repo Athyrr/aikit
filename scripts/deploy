@@ -209,7 +209,7 @@ if [ -z "$(installed_version)" ]; then
   echo "    claude plugin marketplace remove aikit-marketplace"
   echo "    claude plugin marketplace add Athyrr/helia"
   echo "    claude plugin install helia@athyrr-marketplace"
-  echo "    helia install   # pose les cales ; claude reste natif"
+  echo "    bash ~/.claude/plugins/cache/athyrr-marketplace/helia/${next}/cli/helia install   # pose les cales ; claude reste natif"
   echo "  puis /reload-plugins. Ne PAS relancer deploy : il bumperait une seconde fois."
   exit 0
 fi

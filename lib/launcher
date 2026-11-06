@@ -181,6 +181,13 @@ launcher_launch() {
         echo "helia: --settings invalide (ni fichier ni objet JSON) : $v" >&2
         return 2
       fi
+      # mv puts the file INSIDE a directory pre-created at that name and exits 0:
+      # the target must be our own regular file, not a link, not someone else's.
+      if ! { [ -f "$merged" ] && [ ! -L "$merged" ] && [ -O "$merged" ]; }; then
+        rm -f "$work"; umask "$oldmask"
+        echo "helia: chemin temporaire occupe ou refuse, lancement annule : $merged" >&2
+        return 2
+      fi
       src="$merged"
     done
     umask "$oldmask"
