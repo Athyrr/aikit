@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# `helia doctor`, `helia version`, `helia update`, `helia theme`. SOURCE, never
+# execute: lib/launcher sources it for those four words, after itself. The
+# declared vaults come from lib/vaults, sourced on demand.
+
+_tools_vaults() {  # sources lib/vaults once; 1 when it cannot
+  declare -F vaults_list > /dev/null && return 0
+  . "${HELIA_ROOT:-}/lib/vaults" 2> /dev/null || { echo "helia: ${HELIA_ROOT:-}/lib/vaults illisible" >&2; return 1; }
+}
+
+helia_cmd_theme() {
+  local f="${HOME:-}/.config/helia/theme"
+  if [ $# -eq 0 ]; then printf '%s\n' "$(launcher_theme)"; return 0; fi
+  case "$1" in
+    helia|umbra|off)
+      if ! { mkdir -p "${f%/*}" && printf '%s\n' "$1" > "$f"; } 2> /dev/null; then
+        echo "helia: impossible d'écrire $f" >&2; return 1
+      fi
+      echo "thème : $1 — prend effet au prochain helia" ;;
+    *) echo "helia: thème inconnu '$1' (helia, umbra ou off)" >&2; return 2 ;;
+  esac
+}
+
+helia_cmd_version() {
+  local v name path n=0
+  v="$(jq -r '.version // empty' "${HELIA_ROOT:-}/.claude-plugin/plugin.json" 2> /dev/null)" || v=""
+  v="${v//$'\r'/}"; v="${v%%$'\n'*}"
+  printf 'helia %s\n' "${v:-version inconnue}"
+  printf 'dossier : %s\n' "$(launcher_mixed "${HELIA_ROOT:-}")"
+  printf 'vaults :\n'
+  _tools_vaults || return 1
+  while IFS=$'\t' read -r name path; do
+    [ -n "$name" ] || continue
+    n=$((n + 1)); printf '  %s → %s\n' "$name" "$path"
+  done < <(vaults_list)
+  [ "$n" -gt 0 ] || printf '  aucun (%s)\n' "$(vaults_config_path)"
+}
+
+_doc_bad=0
+_doc_ok() { printf 'ok  %s\n' "$*"; }
+_doc_ko() { printf 'KO  %s\n' "$*"; _doc_bad=1; }
+
+# helia doctor -- one ok/KO line per check, 0 when all are ok, 1 otherwise. Reads
+# only: no file is created, changed or removed.
+helia_cmd_doctor() {
+  local d rc v bin n f s val t sl cfg name path
+  _doc_bad=0
+  d="$(launcher_resolve)"; rc=$?
+  if [ "$rc" = 0 ]; then
+    v="$(jq -r '.version // empty' "$d/.claude-plugin/plugin.json" 2> /dev/null)" || v=""
+    v="${v//$'\r'/}"; v="${v%%$'\n'*}"
+    _doc_ok "plugin installé : ${v:-version inconnue} ($d)"
+  else
+    _doc_ko "plugin non installé — claude plugin install helia@athyrr-marketplace --scope user"
+  fi
+  bin="$(launcher_bin_dir)"
+  for n in helia helia.cmd; do
+    [ "$n" = helia ] || launcher_is_windows || continue
+    if [ -f "$bin/$n" ] && grep -qF HELIA_SHIM "$bin/$n" 2> /dev/null; then _doc_ok "cale $bin/$n"
+    else _doc_ko "cale $bin/$n absente — helia install"; fi
+  done
+  case ":${PATH:-}:" in
+    *":$bin:"*|*":$bin/:"*) _doc_ok "$bin dans le PATH" ;;
+    *) _doc_ko "$bin absent du PATH — helia install imprime la ligne à ajouter" ;;
+  esac
+  # A2: the plugin must be OFF at user level -- an absent key means on
+  # (defaultEnabled); a Helia theme there is a leak, usually /theme in a session.
+  f="$(launcher_settings_file)"
+  if [ ! -f "$f" ]; then
+    _doc_ko "$f absent : helia n'y est pas désactivé — helia install"
+  else
+    s="$(jq -r --arg id "$LAUNCHER_ID" '[(.enabledPlugins[$id] | tostring), ((.theme // "") | tostring),
+        (if (.statusLine | type) == "object" and ((.statusLine.command // "") | tostring
+             | (contains("HELIA_STATUSLINE=1") or contains("AIKIT_STATUSLINE=1"))) then "helia" else "" end)]
+        | join("\u001f")' "$f" 2> /dev/null)" || s=""
+    s="${s//$'\r'/}"; s="${s##*$'\n'}"
+    if [ -z "$s" ]; then
+      _doc_ko "$f illisible (pas un objet JSON)"
+    else
+      val="${s%%$'\037'*}"; s="${s#*$'\037'}"; t="${s%%$'\037'*}"; sl="${s#*$'\037'}"
+      if [ "$val" = false ]; then _doc_ok "enabledPlugins user = false"
+      else _doc_ko "enabledPlugins[\"$LAUNCHER_ID\"] vaut $val au niveau user (attendu false : absent vaut activé) — helia install"; fi
+      case "$t" in
+        custom:helia:helia|custom:helia:umbra)
+          _doc_ko "thème $t dans settings.json : fuite (/theme en session ?) — helia theme ${t##*:} puis helia install" ;;
+        *) _doc_ok "aucun thème Helia dans settings.json" ;;
+      esac
+      if [ -z "$sl" ]; then _doc_ok "aucune status line Helia dans settings.json"
+      else _doc_ko "status line Helia dans settings.json — helia install"; fi
+    fi
+  fi
+  _doc_ok "bash ${BASH_VERSION:-}"
+  if command -v jq > /dev/null 2>&1; then _doc_ok "jq"; else _doc_ko "jq introuvable — requis (SETUP.md)"; fi
+  if command -v claude > /dev/null 2>&1; then _doc_ok "claude"; else _doc_ko "claude introuvable"; fi
+  if _tools_vaults; then
+    cfg="$(vaults_config_path)"
+    if [ -f "$cfg" ]; then
+      _doc_ok "fichier de vaults $cfg"
+      while IFS=$'\t' read -r name path; do
+        [ -n "$name" ] || continue
+        if [ -d "$path" ]; then _doc_ok "vault $name ($path)"; else _doc_ko "vault $name injoignable : $path"; fi
+      done < <(vaults_list)
+    else
+      _doc_ko "fichier de vaults absent : $cfg (SETUP.md §3)"
+    fi
+  else
+    _doc_ko "lib/vaults illisible"
+  fi
+  return "$_doc_bad"
+}
+
+# helia update -- R13: the plugin, then each declared vault fast-forward only. A
+# vault with local changes to tracked files, or that cannot fast-forward, is
+# skipped and named, never forced. 1 when any step failed or skipped.
+helia_cmd_update() {
+  local bad=0 name path
+  command -v claude > /dev/null 2>&1 || { echo "helia: claude introuvable" >&2; return 1; }
+  if ! claude plugin update "$LAUNCHER_ID"; then
+    echo "helia: « claude plugin update helia@athyrr-marketplace » a échoué" >&2; bad=1
+  fi
+  _tools_vaults || return 1
+  # < /dev/null on every git: ssh would otherwise eat the rest of the vault list.
+  while IFS=$'\t' read -r name path; do
+    [ -n "$name" ] || continue
+    if ! git -C "$path" rev-parse --is-inside-work-tree > /dev/null 2>&1 < /dev/null; then
+      echo "sauté : $name (pas un dépôt git)"; bad=1
+    elif [ -n "$(git -C "$path" status --porcelain --untracked-files=no 2> /dev/null < /dev/null)" ]; then
+      echo "sauté : $name (modifications locales)"; bad=1
+    elif GIT_TERMINAL_PROMPT=0 git -C "$path" pull --ff-only -q > /dev/null 2>&1 < /dev/null; then
+      echo "à jour : $name"
+    else
+      echo "sauté : $name (pull --ff-only refusé)"; bad=1
+    fi
+  done < <(vaults_list)
+  return "$bad"
+}

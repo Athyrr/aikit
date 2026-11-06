@@ -421,6 +421,112 @@ mkdir -p "$H/tmp/helia-uninstall.1"
 XPATH="$TMP/mkbin:" hlall "$H" uninstall --yes > /dev/null
 has "la copie vient de mktemp -d (nom non predictible)" "-d $H/tmp/helia-uninstall.XXXXXX" "$(cat "$TMP/mktemp-calls" 2> /dev/null)"
 is "... un dossier helia-uninstall.<pid> prepose n'est pas touche" "present" "$([ -d "$H/tmp/helia-uninstall.1" ] && echo present || echo absent)"
+# =============================================================================
+VERSION="$(jq -r '.version' .claude-plugin/plugin.json)"
+mkdir -p "$TMP/v-ok"; printf 'vault vok %s\n' "$TMP/v-ok" > "$TMP/vaults-ok"
+
+echo "helia theme"
+H="$(newhome)"
+is "sans fichier : helia" "helia" "$(hl "$H" theme)"
+out="$(hl "$H" theme umbra)"; rc=$?
+is "theme umbra : sortie 0" "0" "$rc"
+has "... dit quand" "prend effet au prochain helia" "$out"
+is "... ecrit" "umbra" "$(cat "$H/.config/helia/theme")"
+is "... relu" "umbra" "$(hl "$H" theme)"
+hl "$H" > /dev/null
+is "... pris par le lancement suivant" "custom:helia:umbra" "$(jq -r '.theme' "$FAKE_STATE/last-settings.json")"
+err="$(hlerr "$H" theme bleu)"; rc=$?
+is "theme inconnu : sortie 2" "2" "$rc"
+has "... le dit" "helia: thème inconnu 'bleu' (helia, umbra ou off)" "$err"
+is "... fichier inchange" "umbra" "$(cat "$H/.config/helia/theme")"
+hl "$H" theme off > /dev/null
+is "off" "off" "$(hl "$H" theme)"
+
+echo "helia version"
+H="$(newhome)"
+out="$(HELIA_VAULTS="$TMP/vaults-ok" hl "$H" version)"; rc=$?
+is "version : sortie 0" "0" "$rc"
+is "version : version, dossier, vaults" "helia $VERSION|dossier : $REPO|vaults :|  vok → $TMP/v-ok" "$(printf '%s\n' "$out" | paste -sd'|')"
+has "aucun vault declare : le dit" "  aucun ($TMP/aucun-fichier-de-vaults)" "$(hl "$H" version)"
+is "jq CRLF : version sans CR" "helia $VERSION" "$(XPATH="$CRLFBIN:" hl "$H" version | sed -n 1p)"
+
+echo "helia doctor"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"; hl "$H" install > /dev/null
+find "$H" -type f | sort > "$TMP/avant-doctor"; cksum < "$H/.claude/settings.json" > "$TMP/avant-doctor-ck"
+out="$(XPATH="$H/.local/bin:" HELIA_VAULTS="$TMP/vaults-ok" hl "$H" doctor)"; rc=$?
+is "poste installe : sortie 0" "0" "$rc"
+is "... aucune ligne KO" "" "$(printf '%s\n' "$out" | grep '^KO')"
+has "plugin installe, avec sa version" "ok  plugin installé : $VERSION ($REPO)" "$out"
+has "cale" "ok  cale $H/.local/bin/helia" "$out"
+has "PATH" "ok  $H/.local/bin dans le PATH" "$out"
+has "enabledPlugins" "ok  enabledPlugins user = false" "$out"
+has "theme" "ok  aucun thème Helia dans settings.json" "$out"
+has "status line" "ok  aucune status line Helia dans settings.json" "$out"
+has "bash" "ok  bash" "$out"; has "jq" "ok  jq" "$out"; has "claude" "ok  claude" "$out"
+has "fichier de vaults" "ok  fichier de vaults $TMP/vaults-ok" "$out"
+has "vault joignable" "ok  vault vok ($TMP/v-ok)" "$out"
+is "lecture seule : aucun fichier cree ni retire" "$(cat "$TMP/avant-doctor")" "$(find "$H" -type f | sort)"
+is "lecture seule : settings.json identique" "$(cat "$TMP/avant-doctor-ck")" "$(cksum < "$H/.claude/settings.json")"
+out="$(XPATH="$CRLFBIN:$H/.local/bin:" HELIA_VAULTS="$TMP/vaults-ok" hl "$H" doctor)"; rc=$?
+is "jq CRLF : tout ok" "0|" "$rc|$(printf '%s\n' "$out" | grep '^KO')"
+
+jq --arg id "$ID" 'del(.enabledPlugins[$id]) | .theme = "custom:helia:umbra"
+  | .statusLine = {type: "command", command: "HELIA_STATUSLINE=1 bash \"/x/bin/helia-statusline\""}' \
+  "$H/.claude/settings.json" > "$TMP/s.json" && mv "$TMP/s.json" "$H/.claude/settings.json"
+out="$(XPATH="$H/.local/bin:" HELIA_VAULTS="$TMP/vaults-ok" hl "$H" doctor)"; rc=$?
+is "fuites : sortie 1" "1" "$rc"
+has "cle absente = activee : KO" "KO  enabledPlugins[\"$ID\"] vaut null au niveau user" "$out"
+has "theme Helia : fuite nommee, avec le remede" "fuite (/theme en session ?) — helia theme umbra puis helia install" "$out"
+has "status line Helia : KO" "KO  status line Helia dans settings.json — helia install" "$out"
+
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"
+out="$(HELIA_VAULTS="$TMP/n-existe-pas" hl "$H" doctor)"; rc=$?
+is "poste non installe : sortie 1" "1" "$rc"
+has "cale absente" "KO  cale $H/.local/bin/helia absente — helia install" "$out"
+has "PATH" "KO  $H/.local/bin absent du PATH" "$out"
+has "settings.json absent" "KO  $H/.claude/settings.json absent" "$out"
+has "fichier de vaults absent" "KO  fichier de vaults absent : $TMP/n-existe-pas" "$out"
+H="$(newhome)"
+has "plugin absent" "KO  plugin non installé — claude plugin install helia@athyrr-marketplace --scope user" "$(hl "$H" doctor)"
+H="$(newhome)"; installed "$(IP "$H")" "$WINREPO"; FAKE_UNAME=MINGW64_NT-10.0-26200 hl "$H" install > /dev/null
+rm -f "$H/.local/bin/helia.cmd"
+has "Windows : helia.cmd exigee" "KO  cale $H/.local/bin/helia.cmd absente" \
+    "$(FAKE_UNAME=MINGW64_NT-10.0-26200 XPATH="$H/.local/bin:" hl "$H" doctor)"
+printf 'vault vok %s\nvault parti %s\n' "$TMP/v-ok" "$TMP/v-parti" > "$TMP/vaults-mixte"
+has "vault injoignable nomme" "KO  vault parti injoignable : $TMP/v-parti" "$(HELIA_VAULTS="$TMP/vaults-mixte" hl "$H" doctor)"
+
+echo "helia update"
+UP="$TMP/up"; mkdir -p "$UP"
+gq() { git -c user.name=t -c user.email=t@t -c init.defaultBranch=main "$@" > /dev/null 2>&1; }
+gq init --bare "$UP/origin.git"
+gq clone "$UP/origin.git" "$UP/seed"
+echo a > "$UP/seed/note.md"; gq -C "$UP/seed" add note.md; gq -C "$UP/seed" commit -m c1; gq -C "$UP/seed" push origin HEAD:main
+for v in propre sale diverge; do gq clone "$UP/origin.git" "$UP/$v"; done
+echo b >> "$UP/seed/note.md"; gq -C "$UP/seed" commit -am c2; gq -C "$UP/seed" push origin HEAD:main
+echo locale >> "$UP/sale/note.md"
+echo x > "$UP/diverge/autre.md"; gq -C "$UP/diverge" add autre.md; gq -C "$UP/diverge" commit -m local
+mkdir -p "$UP/pas-git"
+printf 'vault propre %s\nvault sale %s\nvault diverge %s\nvault pas-git %s\n' "$UP/propre" "$UP/sale" "$UP/diverge" "$UP/pas-git" > "$TMP/vaults-up"
+H="$(newhome)"
+out="$(HELIA_VAULTS="$TMP/vaults-up" hl "$H" update)"; rc=$?
+is "un vault saute : sortie 1" "1" "$rc"
+has "le plugin d'abord, par claude" "plugin update helia@athyrr-marketplace" "$(cat "$FAKE_STATE/calls")"
+has "vault propre : a jour" "à jour : propre" "$out"
+is "... en avance rapide" "$(git -C "$UP/seed" rev-parse HEAD)" "$(git -C "$UP/propre" rev-parse HEAD)"
+has "vault sale : saute" "sauté : sale (modifications locales)" "$out"
+is "... jamais force : la modification reste" "locale" "$(tail -1 "$UP/sale/note.md")"
+has "vault divergent : saute" "sauté : diverge (pull --ff-only refusé)" "$out"
+has "pas un depot : saute" "sauté : pas-git (pas un dépôt git)" "$out"
+gq -C "$UP/seed" commit --allow-empty -m c3; gq -C "$UP/seed" push origin HEAD:main
+printf 'vault propre %s\n' "$UP/propre" > "$TMP/vaults-propre"
+H="$(newhome)"; HELIA_VAULTS="$TMP/vaults-propre" hl "$H" update > /dev/null; rc=$?
+is "tout a jour : sortie 0" "0" "$rc"
+H="$(newhome)"; echo 1 > "$FAKE_STATE/update-rc"
+out="$(HELIA_VAULTS="$TMP/vaults-propre" hlall "$H" update)"; rc=$?
+is "claude plugin update en echec : sortie 1" "1" "$rc"
+has "... le dit" "« claude plugin update helia@athyrr-marketplace » a échoué" "$out"
+has "... les vaults passent quand meme" "à jour : propre" "$out"
+
 # --- fin : le decompte ---
 echo
 echo "$pass passes, $fail echecs"
