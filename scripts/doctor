@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The method's completion criterion, fourteen gates, no deploy, no network state.
+# The method's completion criterion, fifteen gates, no deploy, no network state.
 #
 # `claude plugin validate .` checks the marketplace manifest ONLY — it reads no
 # SKILL.md and no agents/*.md. The two --strict invocations are what gate the
@@ -8,10 +8,10 @@
 # Gates 5-7 are what the four form gates never catch: they validate the TARGET,
 # not the shape. Gate 8 is what makes the net exist on a machine other than the
 # one where somebody remembered to wire it. Gate 9 runs the whole vault suite,
-# which is NOT lib/vaults alone: it covers the session-start hook and both
-# launchers, `bin/ezy` and `bin/scoped` — the four distinct causes of failure
-# and the agreement of the two launchers. Resolution runs at every session
-# start, so its tests belong to the completion criterion rather than beside it.
+# which is NOT lib/vaults alone: it covers the session-start hook and
+# `bin/scoped` — the four distinct causes of failure. Resolution runs at every
+# session start, so its tests belong to the completion criterion rather than
+# beside it.
 # Gate 11 does the same for checking-plan-drift's `plan-drift`: a drift detector
 # that stopped detecting would pass every form gate and stay silent in a session.
 # Gate 12 checks each agent's frontmatter model/effort against the mirror table
@@ -21,9 +21,12 @@
 # Gate 14 runs the appearance suite: palettes and generated themes, the
 # hooks/appearance hook, the status line and the banner -- a theme with a key
 # the harness ignores passes `claude plugin validate`, so only a suite sees it.
+# Gate 15 runs the launcher suite: cli/helia and lib/launcher*, the shims of
+# `helia install`, against a fake claude and throwaway HOMEs -- the one path by
+# which `helia` opens Claude Code with the plugin on while `claude` stays native.
 #
 # A failing gate prints its own output, capped: `run` at 25 lines, the four
-# suites (9, 11, 13 and 14) their already-filtered failure block at 30 — all name how
+# suites (9, 11, 13, 14 and 15) their already-filtered failure block at 30 — all name how
 # many lines they cut and what to rerun directly for the rest. A session reading
 # this output is not the same as a person scrolling a terminal; an uncapped gate
 # used to be able to spend hundreds of lines on one failure.
@@ -99,11 +102,11 @@ gate_empty() {
   fi
 }
 
-# A behaviour suite (gates 9, 11, 13 and 14). Silent when green, and when red ONLY the
+# A behaviour suite (gates 9, 11, 13, 14 and 15). Silent when green, and when red ONLY the
 # failures and the count — captured from ONE run, so what gets printed is the
 # run that actually failed. Such a suite prints ~80 lines when it falls, of
 # which ~60 are green ticks: the gates whose red used to demand scrolling.
-# The four suites share one output format (✓/✗ lines, attendu:/obtenu:, a closing
+# The five suites share one output format (✓/✗ lines, attendu:/obtenu:, a closing
 # "N passes, M echecs"), which is what lets one filter serve them.
 suite() {
   local label=$1 script=$2
@@ -151,7 +154,7 @@ suite() {
   fi
 }
 
-SCOPE=(skills agents hooks bin lib scripts README.md CLAUDE.md SETUP.md VOCABULARY.md)
+SCOPE=(skills agents hooks bin cli lib scripts README.md CLAUDE.md SETUP.md VOCABULARY.md)
 
 run "1 manifest"        claude plugin validate .
 run "2 skills (strict)" claude plugin validate ./skills --strict
@@ -253,8 +256,12 @@ suite "13 upstream dependency tests" scripts/test-deps
 # appearance hook against throwaway HOMEs, the status line and the banner.
 suite "14 appearance tests" scripts/test-appearance
 
+# Gate 15 is a behaviour test like gates 9, 11, 13 and 14: the launcher against a
+# fake claude, a fake cygpath and throwaway HOMEs, without network.
+suite "15 launcher tests" scripts/test-launcher
+
 if [ "$fail" = 0 ]; then
-  echo "✓ fourteen gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
+  echo "✓ fifteen gates pass — GATES_PASS. A NEW session is still required to prove the method loads."
 else
   echo "✗ one or more gates failed"
 fi

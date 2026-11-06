@@ -87,13 +87,13 @@ bloc en est la formulation impérative, pas une règle séparée.
 
 ## Completion criterion
 
-One command, from the repository root, carrying **fourteen gates** — the four behaviour suites (9, 11, 13 and 14) are gates of it, not a test suite beside it:
+One command, from the repository root, carrying **fifteen gates** — the five behaviour suites (9, 11, 13, 14 and 15) are gates of it, not a test suite beside it:
 
 ```bash
 scripts/doctor
 ```
 
-It prints `GATES_PASS` and exits 0 when all fourteen pass; it exits 1 otherwise,
+It prints `GATES_PASS` and exits 0 when all fifteen pass; it exits 1 otherwise,
 naming each gate that fell.
 
 | # | Gate |
@@ -112,8 +112,9 @@ naming each gate that fell.
 | 12 | every archetype's frontmatter `model:` and `effort:` equal its row in the mirror table of `skills/using-helia/SKILL.md` (`## The archetypes: model and effort`) — only the frontmatter runs, the table is what people read |
 | 13 | `scripts/test-deps` — the suite of `bin/helia-deps`, against a fake `gh`, without network. A comparator that stopped comparing would pass every form gate and say nothing in a real session |
 | 14 | `scripts/test-appearance` — the appearance suite: `scripts/build-themes --check`, the `hooks/appearance` hook, the status line and the banner. `claude plugin validate` reads no theme content, so a theme with an unknown key or a bad colour passes every form gate |
+| 15 | `scripts/test-launcher` — the launcher suite: `cli/helia` and `lib/launcher*` (dispatch, launch settings and the `--settings` merge, `install`/`uninstall` round trip, the `helia.cmd` shim read as text), against a fake `claude` and throwaway HOMEs, without network. It is the only proof that `helia` turns the plugin on while `claude` stays native |
 
-Gates 1-4, 10 and 12 check form. Gates 9, 11, 13 and 14 check behaviour: they run a suite. Gates 5-7 check the target rather than the shape: they
+Gates 1-4, 10 and 12 check form. Gates 9, 11, 13, 14 and 15 check behaviour: they run a suite. Gates 5-7 check the target rather than the shape: they
 catch what no manifest validation can see. Gate 8 is **local** git config — it
 does not clone, push or inherit, so a fresh clone must arm it once:
 
@@ -122,7 +123,7 @@ git config core.hooksPath .githooks
 ```
 
 That is the whole point of gate 8, making the arming visible instead of assumed.
-Once armed, `.githooks/pre-commit` runs all fourteen before every commit, and a red
+Once armed, `.githooks/pre-commit` runs all fifteen before every commit, and a red
 gate refuses it.
 
 **What it does not prove, and says so itself** — `A NEW session is still
